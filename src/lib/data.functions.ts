@@ -155,7 +155,35 @@ export const getProduto = createServerFn({ method: "GET" })
       c.from("mv_growth_produto_proximo").select("sku_seguinte,produto_seguinte,ocorrencias,forca_pct,pos").eq("sku_origem", data.sku).order("ocorrencias", { ascending: false }).limit(8),
       c.from("dim_shopify_produto").select("*").eq("sku", data.sku).limit(1),
     ]);
-    return { serie, custo: custo.data?.[0] ?? null, custos: (custo.data ?? []) as Record<string, unknown>[], ciclo: ciclo.data?.[0] ?? null, proximo: proximo.data ?? [], estoque: estoque.data?.[0] ?? null };
+    // Estoque por canal, sem somar entre canais (Plano Mestre cap. 6.4). O vínculo é pelo
+    // SKU do vendedor em cada marketplace; se o SKU for diferente no canal, não aparece.
+    const [amz, ml, shp, tt] = await Promise.all([
+      c.from("dim_amazon_estoque").select("sku,asin,disponivel,reservado,total,atualizado_em").eq("sku", data.sku),
+      c.from("dim_ml_estoque_full").select("seller_sku,item_id,disponivel,em_transferencia,total,vendas_7d,atualizado_em").eq("seller_sku", data.sku),
+      // Shopee: o SKU pode estar na variação (model_sku) ou no item (item_sku). Duas consultas
+      // com .eq, sem interpolar o SKU num filtro .or.
+      Promise.all([
+        c.from("dim_shopee_estoque").select("model_id,model_sku,item_sku,estoque_normal,estoque_reservado,estoque_total,atualizado_em").eq("model_sku", data.sku),
+        c.from("dim_shopee_estoque").select("model_id,model_sku,item_sku,estoque_normal,estoque_reservado,estoque_total,atualizado_em").eq("item_sku", data.sku),
+      ]).then(([a, b]) => {
+        const seen = new Set<string>();
+        const rows = [...(a.data ?? []), ...(b.data ?? [])].filter((r: Record<string, unknown>) => {
+          const k = `${r["model_id"]}|${r["item_sku"]}|${r["model_sku"]}`;
+          return seen.has(k) ? false : (seen.add(k), true);
+        });
+        return { data: rows as Record<string, unknown>[], error: a.error ?? b.error };
+      }),
+      c.from("dim_tiktok_estoque").select("seller_sku,warehouse_id,quantidade,atualizado_em").eq("seller_sku", data.sku),
+    ]);
+    const sum = (rows: Record<string, unknown>[] | null, k: string) => (rows ?? []).reduce((t, r) => t + (Number(r[k]) || 0), 0);
+    const ult = (rows: Record<string, unknown>[] | null) => (rows ?? []).map((r) => String(r["atualizado_em"] ?? "")).sort().at(-1) ?? null;
+    const estoqueCanais = [
+      { canal: "Amazon (FBA)", disponivel: sum(amz.data, "disponivel"), total: sum(amz.data, "total"), registros: amz.data?.length ?? 0, atualizado: ult(amz.data), erro: amz.error?.message ?? null },
+      { canal: "Mercado Livre (Full)", disponivel: sum(ml.data, "disponivel"), total: sum(ml.data, "total"), registros: ml.data?.length ?? 0, atualizado: ult(ml.data), erro: ml.error?.message ?? null },
+      { canal: "Shopee", disponivel: sum(shp.data, "estoque_normal"), total: sum(shp.data, "estoque_total"), registros: shp.data?.length ?? 0, atualizado: ult(shp.data), erro: shp.error?.message ?? null },
+      { canal: "TikTok Shop", disponivel: sum(tt.data, "quantidade"), total: sum(tt.data, "quantidade"), registros: tt.data?.length ?? 0, atualizado: ult(tt.data), erro: tt.error?.message ?? null },
+    ];
+    return { serie, custo: custo.data?.[0] ?? null, custos: (custo.data ?? []) as Record<string, unknown>[], ciclo: ciclo.data?.[0] ?? null, proximo: proximo.data ?? [], estoque: estoque.data?.[0] ?? null, estoqueCanais };
   });
 
 /* ---------------- Orders ---------------- */
@@ -194,8 +222,12 @@ export const getMedia = createServerFn({ method: "GET" })
   .inputValidator((d) => Periodo.parse(d))
   .handler(async ({ data }) => {
     const c = await db();
-    const tipos = await fetchAll(() => c.from("vw_ads_por_tipo_dia").select("data,tipo,investimento,receita,impressoes,cliques,unidades").gte("data", data.de).lte("data", data.ate).order("data"), "ads tipo");
-    return { tipos };
+    const [tipos, funil] = await Promise.all([
+      fetchAll(() => c.from("vw_ads_por_tipo_dia").select("data,tipo,investimento,receita,impressoes,cliques,unidades").gte("data", data.de).lte("data", data.ate).order("data"), "ads tipo"),
+      // Funil por canal de venda (impressão → clique → conversão), previsto no plano revisado da Fase 1.
+      fetchAll(() => c.from("vw_ads_funil_canal_dia").select("data,canal,invest,receita_ads,impressoes,cliques,conversoes,base_conversao").gte("data", data.de).lte("data", data.ate).order("data"), "ads funil"),
+    ]);
+    return { tipos, funil };
   });
 
 export const getAffiliate = createServerFn({ method: "GET" })
@@ -203,7 +235,7 @@ export const getAffiliate = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const c = await db();
     const [dia, pub, canal] = await Promise.all([
-      fetchAll(() => c.from("vw_awin_dia").select("*").gte("data", data.de).lte("data", data.ate).order("data"), "awin dia"),
+      fetchAll(() => c.from("vw_awin_dia").select("data,pedidos,pedidos_recusados,venda,venda_aprovada,venda_pendente,venda_recusada,comissao,taxa_awin").gte("data", data.de).lte("data", data.ate).order("data"), "awin dia"),
       fetchAll(() => c.from("vw_awin_publisher_dia").select("publisher_id,publisher,pedidos,venda,comissao,taxa_awin").gte("data", data.de).lte("data", data.ate), "awin pub"),
       fetchAll(() => c.from("mv_afiliado_canal_dia").select("data,canal,rec,inv").gte("data", data.de).lte("data", data.ate).order("data"), "afiliado canal"),
     ]);
@@ -228,4 +260,12 @@ export const getCrm = createServerFn({ method: "GET" }).handler(async () => {
     origem: origem.data ?? [],
     cohort: cohort.data ?? [],
   } as Record<string, Record<string, unknown>[]>;
+});
+
+/* ---------------- Marketplace health ---------------- */
+// Resumo de Buy Box da Amazon (Plano Mestre cap. 9.5). Linha única com a contagem de ASINs.
+export const getMarketplaceSaude = createServerFn({ method: "GET" }).handler(async () => {
+  const c = await db();
+  const abb = await c.from("vw_abb_resumo").select("asins,ganha_bb,perdendo_concorrente,com_concorrente,em_risco,suprimida,atualizado").limit(1);
+  return { buybox: (abb.error ? null : abb.data?.[0] ?? null) as Record<string, unknown> | null };
 });

@@ -19,11 +19,11 @@ const GROUPS: { title?: string; items: Item[] }[] = [
   {
     title: "Canais",
     items: [
-      { to: "/em-breve/$modulo", params: { modulo: "media" }, label: "Media", icon: Megaphone },
-      { to: "/em-breve/$modulo", params: { modulo: "affiliate" }, label: "Affiliate", icon: Handshake },
+      { to: "/media", label: "Media", icon: Megaphone },
+      { to: "/affiliate", label: "Affiliate", icon: Handshake },
       { to: "/commerce", label: "Commerce", icon: Store },
       { to: "/marketplace", label: "Marketplace", icon: Boxes },
-      { to: "/em-breve/$modulo", params: { modulo: "crm" }, label: "CRM / Growth", icon: HeartHandshake },
+      { to: "/crm", label: "CRM / Growth", icon: HeartHandshake },
     ],
   },
   {

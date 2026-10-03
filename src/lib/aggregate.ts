@@ -84,3 +84,23 @@ export function custoMap(custos: Row[]) {
   }
   return m;
 }
+
+/** Monta a matriz de cohort (últimas 12 safras, até M12) a partir de mv_growth_cohort_mes. */
+export function buildCohort(rows: Row[]) {
+  const offsets = Array.from({ length: 13 }, (_, i) => i);
+  const bySafra = new Map<
+    string,
+    { safra: string; tamanho: number; pct: Record<number, number> }
+  >();
+  for (const r of rows) {
+    const safra = String(r["safra"]).slice(0, 7);
+    const off = Number(r["mes_offset"]);
+    if (!Number.isFinite(off) || off > 12) continue;
+    const cur = bySafra.get(safra) ?? { safra, tamanho: Number(r["clientes_safra"]) || 0, pct: {} };
+    const p = pct(r["clientes"], cur.tamanho);
+    if (p != null) cur.pct[off] = p;
+    bySafra.set(safra, cur);
+  }
+  const safras = [...bySafra.values()].sort((a, b) => b.safra.localeCompare(a.safra)).slice(0, 12);
+  return { safras, offsets };
+}

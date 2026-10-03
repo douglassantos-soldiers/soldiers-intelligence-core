@@ -23,9 +23,9 @@ describe("App routing", () => {
       "/pedidos",
       "/commerce",
       "/marketplace",
-      "/em-breve/media",
-      "/em-breve/affiliate",
-      "/em-breve/crm",
+      "/media",
+      "/affiliate",
+      "/crm",
       "/em-breve/ai",
     ];
     for (const path of paths) {

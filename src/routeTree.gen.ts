@@ -10,8 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AffiliateRouteImport } from './routes/affiliate'
 import { Route as CommerceRouteImport } from './routes/commerce'
+import { Route as CrmRouteImport } from './routes/crm'
 import { Route as MarketplaceRouteImport } from './routes/marketplace'
+import { Route as MediaRouteImport } from './routes/media'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesChaveRouteImport } from './routes/clientes.$chave'
 import { Route as EmBreveModuloRouteImport } from './routes/em-breve.$modulo'
@@ -25,14 +28,29 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AffiliateRoute = AffiliateRouteImport.update({
+  id: '/affiliate',
+  path: '/affiliate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CommerceRoute = CommerceRouteImport.update({
   id: '/commerce',
   path: '/commerce',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CrmRoute = CrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MarketplaceRoute = MarketplaceRouteImport.update({
   id: '/marketplace',
   path: '/marketplace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MediaRoute = MediaRouteImport.update({
+  id: '/media',
+  path: '/media',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesIndexRoute = ClientesIndexRouteImport.update({
@@ -73,8 +91,11 @@ const PedidosCanalIdRoute = PedidosCanalIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/affiliate': typeof AffiliateRoute
   '/commerce': typeof CommerceRoute
+  '/crm': typeof CrmRoute
   '/marketplace': typeof MarketplaceRoute
+  '/media': typeof MediaRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
@@ -85,8 +106,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/affiliate': typeof AffiliateRoute
   '/commerce': typeof CommerceRoute
+  '/crm': typeof CrmRoute
   '/marketplace': typeof MarketplaceRoute
+  '/media': typeof MediaRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
@@ -98,8 +122,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/affiliate': typeof AffiliateRoute
   '/commerce': typeof CommerceRoute
+  '/crm': typeof CrmRoute
   '/marketplace': typeof MarketplaceRoute
+  '/media': typeof MediaRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
@@ -112,8 +139,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/affiliate'
     | '/commerce'
+    | '/crm'
     | '/marketplace'
+    | '/media'
     | '/clientes/$chave'
     | '/em-breve/$modulo'
     | '/produtos/$sku'
@@ -124,8 +154,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/affiliate'
     | '/commerce'
+    | '/crm'
     | '/marketplace'
+    | '/media'
     | '/clientes/$chave'
     | '/em-breve/$modulo'
     | '/produtos/$sku'
@@ -136,8 +169,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/affiliate'
     | '/commerce'
+    | '/crm'
     | '/marketplace'
+    | '/media'
     | '/clientes/$chave'
     | '/em-breve/$modulo'
     | '/produtos/$sku'
@@ -149,8 +185,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AffiliateRoute: typeof AffiliateRoute
   CommerceRoute: typeof CommerceRoute
+  CrmRoute: typeof CrmRoute
   MarketplaceRoute: typeof MarketplaceRoute
+  MediaRoute: typeof MediaRoute
   ClientesChaveRoute: typeof ClientesChaveRoute
   EmBreveModuloRoute: typeof EmBreveModuloRoute
   ProdutosSkuRoute: typeof ProdutosSkuRoute
@@ -169,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/affiliate': {
+      id: '/affiliate'
+      path: '/affiliate'
+      fullPath: '/affiliate'
+      preLoaderRoute: typeof AffiliateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/commerce': {
       id: '/commerce'
       path: '/commerce'
@@ -176,11 +222,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CommerceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/crm': {
+      id: '/crm'
+      path: '/crm'
+      fullPath: '/crm'
+      preLoaderRoute: typeof CrmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/marketplace': {
       id: '/marketplace'
       path: '/marketplace'
       fullPath: '/marketplace'
       preLoaderRoute: typeof MarketplaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media': {
+      id: '/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof MediaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes/': {
@@ -237,8 +297,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AffiliateRoute: AffiliateRoute,
   CommerceRoute: CommerceRoute,
+  CrmRoute: CrmRoute,
   MarketplaceRoute: MarketplaceRoute,
+  MediaRoute: MediaRoute,
   ClientesChaveRoute: ClientesChaveRoute,
   EmBreveModuloRoute: EmBreveModuloRoute,
   ProdutosSkuRoute: ProdutosSkuRoute,

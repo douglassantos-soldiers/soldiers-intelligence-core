@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { custoHistorico, custoNaData, channelSummary, ratio } from "@/lib/aggregate";
+import { custoHistorico, custoNaData, channelSummary, ratio, buildCohort } from "@/lib/aggregate";
 import { canalPedido, canalVenda } from "@/domain/sources";
 
 const custos = [
@@ -92,5 +92,19 @@ describe("de-para de canal", () => {
     expect(canalVenda("Shopify")).toBe("Site");
     expect(canalPedido("Site")).toBe("Shopify");
     expect(canalVenda("Mercado Livre")).toBe("Mercado Livre");
+  });
+});
+
+describe("buildCohort", () => {
+  it("calcula % da safra que voltou em cada mês e ignora offsets > 12", () => {
+    const c = buildCohort([
+      { safra: "2026-01-01", mes_offset: 0, clientes_safra: 200, clientes: 200 },
+      { safra: "2026-01-01", mes_offset: 1, clientes_safra: 200, clientes: 30 },
+      { safra: "2026-01-01", mes_offset: 13, clientes_safra: 200, clientes: 5 },
+      { safra: "2026-02-01", mes_offset: 0, clientes_safra: 100, clientes: 100 },
+    ]);
+    expect(c.safras.map((s) => s.safra)).toEqual(["2026-02", "2026-01"]);
+    expect(c.safras[1]!.pct[1]).toBe(15);
+    expect(c.safras[1]!.pct[13]).toBeUndefined();
   });
 });
