@@ -14,4 +14,22 @@ describe("App routing", () => {
 
     expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
   });
+
+  it("todos os links do menu resolvem para uma página (sem 404)", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+    const paths = [
+      "/clientes",
+      "/produtos",
+      "/pedidos",
+      "/commerce",
+      "/marketplace",
+      "/em-breve/media",
+      "/em-breve/affiliate",
+      "/em-breve/crm",
+      "/em-breve/ai",
+    ];
+    for (const path of paths) {
+      expect(router.matchRoutes(path).at(-1)?.routeId, path).not.toBe(rootRouteId);
+    }
+  });
 });
