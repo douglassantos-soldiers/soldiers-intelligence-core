@@ -99,21 +99,13 @@ export const getCliente = createServerFn({ method: "GET" })
     const [perfil, origem, pedidos] = await Promise.all([
       c.from("mv_growth_cliente_perfil").select("*").eq("cliente_chave", data.chave).maybeSingle(),
       c.from("mv_growth_origem_cliente").select("*").eq("cliente_chave", data.chave).maybeSingle(),
-      c.from("fact_pedido_cliente").select("canal,pedido_id,data,valor,desconto,frete,status,itens,nome,sobrenome,email,cpf,telefone,uf,cidade").eq("cliente_chave", data.chave).order("data", { ascending: false }).limit(200),
+      // LGPD (Plano Mestre cap. 32): nunca selecionar e-mail, CPF, telefone ou endereço.
+      // O app só precisa do nome (exibido mascarado) e de UF/cidade.
+      c.from("fact_pedido_cliente").select("canal,pedido_id,data,valor,desconto,frete,status,itens,nome,sobrenome,uf,cidade").eq("cliente_chave", data.chave).order("data", { ascending: false }).limit(200),
     ]);
     const peds = check(pedidos, "pedidos") as Record<string, string>[];
     const ultimo = peds[0];
-    const digits = (s?: string) => (s ?? "").replace(/\D/g, "");
-    const contato = ultimo
-      ? {
-          nome: maskName(ultimo.nome, ultimo.sobrenome),
-          email: ultimo.email?.includes("@") ? `${ultimo.email.slice(0, 2)}***@${ultimo.email.split("@")[1]}` : null,
-          documento: digits(ultimo.cpf).length >= 11 ? `***.${digits(ultimo.cpf).slice(3, 6)}.***-**` : null,
-          telefone: digits(ultimo.telefone).length >= 4 ? `(**) *****-${digits(ultimo.telefone).slice(-4)}` : null,
-          uf: ultimo.uf,
-          cidade: ultimo.cidade,
-        }
-      : null;
+    const contato = ultimo ? { nome: maskName(ultimo.nome, ultimo.sobrenome), uf: ultimo.uf, cidade: ultimo.cidade } : null;
     let itens: Record<string, unknown>[] = [];
     if (peds.length) {
       const ids = [...new Set(peds.map((p) => p.pedido_id))].slice(0, 200);
@@ -127,7 +119,7 @@ export const getCliente = createServerFn({ method: "GET" })
       perfil: perfil.data ?? null,
       origem: origem.data ?? null,
       contato,
-      pedidos: peds.map(({ nome: _n, sobrenome: _s, email: _e, cpf: _c, telefone: _t, ...p }) => p),
+      pedidos: peds.map(({ nome: _n, sobrenome: _s, ...p }) => p),
       itens,
       custos,
     };

@@ -62,9 +62,6 @@ function Body({ d }: { d: Awaited<ReturnType<typeof getCliente>> }) {
         <div>
           <h1 className="font-display text-3xl font-bold md:text-4xl">{c?.nome ?? "Cliente"}</h1>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            {c?.email && <span>{c.email}</span>}
-            {c?.documento && <span className="font-mono">{c.documento}</span>}
-            {c?.telefone && <span className="font-mono">{c.telefone}</span>}
             <span>{[c?.cidade, c?.uf].filter(Boolean).join(" / ")}</span>
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
