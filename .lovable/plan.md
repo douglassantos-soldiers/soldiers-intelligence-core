@@ -35,8 +35,18 @@ Barra lateral
    - CRM: novos vs. recorrentes e base de clientes.
 7. **Em breve**: páginas curtas explicando o roadmap das próximas fases.
 
-## Direção visual
-Painel operacional escuro e tático: fundo grafite, destaque verde-oliva e âmbar, títulos em fonte condensada forte, números em fonte mono. Muitos dados por tela e sem gradientes roxos.
+## Direção visual (referências: soldiersnutrition.com.br + tela do Growth OS enviada)
+A identidade segue o site da Soldiers e a tela "Soldiers Growth OS" que você mandou:
+- **Cores**: fundo preto e quase preto (#000 / #121212), painéis em grafite (#202223), textos em branco e cinza. O destaque é o **amarelo Soldiers (#F6C800)**: aba ativa, item ativo do menu, status e botões principais. Verde (#00A650) indica alta e coisas positivas, laranja (#E69138) indica alertas.
+- **Logo**: quadrado amarelo com "S" + "SOLDIERS" em caixa alta, com o subtítulo "PLATFORM" em amarelo, no mesmo estilo do "GROWTH OS".
+- **Tipografia**: títulos de página em fonte condensada, grossa e em caixa alta (como "META ADS"). Textos em Poppins, a fonte do site. IDs e números em fonte mono.
+- **Layout**: o mesmo da sua tela.
+  - Menu lateral escuro com grupos em caixa alta (Aquisição, Clientes…) e um ponto amarelo nos canais.
+  - Abas em formato de pílula, com a ativa em amarelo.
+  - Barra de busca e filtros acima de tabelas densas.
+  - Etiquetas de status com contorno amarelo e botões de exportar CSV.
+- Botão para alternar entre tema escuro e claro, como o ícone de sol da sua tela. Escuro é o padrão.
+- Fotos de produto aparecem nas listas quando a tabela de produtos tiver imagem.
 
 ## Detalhes técnicos
 - Todas as leituras passam por funções no servidor que exigem login e conferem o papel em `app_papel`. Depois disso, elas consultam com acesso de servidor, porque várias tabelas não têm regras de leitura. O navegador nunca acessa essas tabelas direto.
