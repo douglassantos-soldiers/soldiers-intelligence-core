@@ -67,6 +67,9 @@ function Meta() {
             <Link to="/media" className="text-sm font-medium text-primary hover:underline">
               ← Media
             </Link>
+            <Link to="/media/meta/criativos" className="text-sm font-medium text-primary hover:underline">
+              Subir criativos →
+            </Link>
             <PeriodPills value={dias} onChange={setDias} />
           </div>
         }

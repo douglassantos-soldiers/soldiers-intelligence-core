@@ -30,6 +30,7 @@ import { Route as MediaMetaRouteImport } from './routes/media_.meta'
 import { Route as PedidosIndexRouteImport } from './routes/pedidos.index'
 import { Route as ProdutosIndexRouteImport } from './routes/produtos.index'
 import { Route as ProdutosSkuRouteImport } from './routes/produtos.$sku'
+import { Route as MediaMetaCriativosRouteImport } from './routes/media_.meta_.criativos'
 import { Route as PedidosCanalIdRouteImport } from './routes/pedidos.$canal.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -137,6 +138,11 @@ const ProdutosSkuRoute = ProdutosSkuRouteImport.update({
   path: '/produtos/$sku',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MediaMetaCriativosRoute = MediaMetaCriativosRouteImport.update({
+  id: '/media_/meta_/criativos',
+  path: '/media/meta/criativos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PedidosCanalIdRoute = PedidosCanalIdRouteImport.update({
   id: '/pedidos/$canal/$id',
   path: '/pedidos/$canal/$id',
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/clientes/': typeof ClientesIndexRoute
   '/pedidos/': typeof PedidosIndexRoute
   '/produtos/': typeof ProdutosIndexRoute
+  '/media/meta/criativos': typeof MediaMetaCriativosRoute
   '/pedidos/$canal/$id': typeof PedidosCanalIdRoute
 }
 export interface FileRoutesByTo {
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/clientes': typeof ClientesIndexRoute
   '/pedidos': typeof PedidosIndexRoute
   '/produtos': typeof ProdutosIndexRoute
+  '/media/meta/criativos': typeof MediaMetaCriativosRoute
   '/pedidos/$canal/$id': typeof PedidosCanalIdRoute
 }
 export interface FileRoutesById {
@@ -214,6 +222,7 @@ export interface FileRoutesById {
   '/clientes/': typeof ClientesIndexRoute
   '/pedidos/': typeof PedidosIndexRoute
   '/produtos/': typeof ProdutosIndexRoute
+  '/media_/meta_/criativos': typeof MediaMetaCriativosRoute
   '/pedidos/$canal/$id': typeof PedidosCanalIdRoute
 }
 export interface FileRouteTypes {
@@ -240,6 +249,7 @@ export interface FileRouteTypes {
     | '/clientes/'
     | '/pedidos/'
     | '/produtos/'
+    | '/media/meta/criativos'
     | '/pedidos/$canal/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -264,6 +274,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/pedidos'
     | '/produtos'
+    | '/media/meta/criativos'
     | '/pedidos/$canal/$id'
   id:
     | '__root__'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '/clientes/'
     | '/pedidos/'
     | '/produtos/'
+    | '/media_/meta_/criativos'
     | '/pedidos/$canal/$id'
   fileRoutesById: FileRoutesById
 }
@@ -313,6 +325,7 @@ export interface RootRouteChildren {
   ClientesIndexRoute: typeof ClientesIndexRoute
   PedidosIndexRoute: typeof PedidosIndexRoute
   ProdutosIndexRoute: typeof ProdutosIndexRoute
+  MediaMetaCriativosRoute: typeof MediaMetaCriativosRoute
   PedidosCanalIdRoute: typeof PedidosCanalIdRoute
 }
 
@@ -465,6 +478,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProdutosSkuRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/media_/meta_/criativos': {
+      id: '/media_/meta_/criativos'
+      path: '/media/meta/criativos'
+      fullPath: '/media/meta/criativos'
+      preLoaderRoute: typeof MediaMetaCriativosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pedidos/$canal/$id': {
       id: '/pedidos/$canal/$id'
       path: '/pedidos/$canal/$id'
@@ -497,6 +517,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClientesIndexRoute: ClientesIndexRoute,
   PedidosIndexRoute: PedidosIndexRoute,
   ProdutosIndexRoute: ProdutosIndexRoute,
+  MediaMetaCriativosRoute: MediaMetaCriativosRoute,
   PedidosCanalIdRoute: PedidosCanalIdRoute,
 }
 export const routeTree = rootRouteImport
