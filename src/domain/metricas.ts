@@ -123,6 +123,52 @@ export const METRICAS: Metrica[] = [
     versao: "1",
   },
   {
+    id: "acos",
+    nome: "ACoS",
+    modulo: "Media",
+    definicao:
+      "Investimento em anúncios de marketplace como % da venda que a própria plataforma atribui aos anúncios.",
+    formula: "Σ gasto ÷ Σ venda atribuída × 100",
+    fonte: "Amazon Ads (sales_14d), Mercado Ads (direta + indireta)",
+    tipoReceita: "reportada",
+    somavel: false,
+    versao: "1",
+    validoDesde: "2026-10-03",
+    observacao:
+      "Comparar com o TACoS do canal (gasto ÷ venda realizada) para ver o peso real da mídia.",
+  },
+  {
+    id: "poas",
+    nome: "POAS",
+    modulo: "Media",
+    definicao:
+      "Lucro sobre o investimento em anúncio: quanto de margem volta por R$ 1 investido. Abaixo de 1, o anúncio custa mais do que a margem que traz.",
+    formula: "margem da venda atribuída ÷ gasto (margem bruta = receita × (1 − custo ÷ preço))",
+    fonte: "vw_google_produto_dia + dim_custo_sku + stg_shopify_products_variant",
+    tipoReceita: "reportada",
+    somavel: false,
+    versao: "1",
+    validoDesde: "2026-10-03",
+    observacao:
+      "Versão 1 usa margem bruta (sem frete e taxas). É para comparar produtos, não é o lucro final.",
+  },
+  {
+    id: "contribuicao_marketplace",
+    nome: "Contribuição liquidada (marketplace)",
+    modulo: "Commerce",
+    definicao:
+      "O que sobra de um pedido de marketplace depois de todas as taxas, frete e descontos da loja e do custo do produto na data da venda. Só pedidos com repasse/extrato.",
+    formula:
+      "repasse do extrato (TikTok statement, Shopee escrow) − CMV na data; no Mercado Livre: receita − cupom da loja − tarifa − frete − afiliado − CMV",
+    fonte: "fact_tiktok_financeiro, fact_shopee_financeiro, ml_pedido + ml_pedido_item",
+    tipoReceita: "realizada",
+    somavel: true,
+    versao: "1",
+    validoDesde: "2026-10-03",
+    observacao:
+      "Desconto e cupom pagos pela plataforma não reduzem a receita da Soldiers. Antes de descontar Ads.",
+  },
+  {
     id: "receita_ads",
     nome: "Receita atribuída (mídia)",
     modulo: "Media",

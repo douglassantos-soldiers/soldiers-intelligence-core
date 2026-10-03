@@ -15,7 +15,7 @@ describe("catálogo de métricas", () => {
   });
 
   it("razões (ROAS, MER, TACoS, CTR) não são somáveis", () => {
-    for (const id of ["roas_midia", "retorno_aquisicao", "tacos", "ctr"]) {
+    for (const id of ["roas_midia", "retorno_aquisicao", "tacos", "ctr", "acos", "poas"]) {
       expect(METRICAS.find((m) => m.id === id)?.somavel).toBe(false);
     }
   });
