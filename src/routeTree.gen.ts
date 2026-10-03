@@ -10,33 +10,141 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CommerceRouteImport } from './routes/commerce'
+import { Route as MarketplaceRouteImport } from './routes/marketplace'
+import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
+import { Route as ClientesChaveRouteImport } from './routes/clientes.$chave'
+import { Route as PedidosIndexRouteImport } from './routes/pedidos.index'
+import { Route as ProdutosIndexRouteImport } from './routes/produtos.index'
+import { Route as ProdutosSkuRouteImport } from './routes/produtos.$sku'
+import { Route as PedidosCanalIdRouteImport } from './routes/pedidos.$canal.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CommerceRoute = CommerceRouteImport.update({
+  id: '/commerce',
+  path: '/commerce',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceRoute = MarketplaceRouteImport.update({
+  id: '/marketplace',
+  path: '/marketplace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientesIndexRoute = ClientesIndexRouteImport.update({
+  id: '/clientes/',
+  path: '/clientes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientesChaveRoute = ClientesChaveRouteImport.update({
+  id: '/clientes/$chave',
+  path: '/clientes/$chave',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PedidosIndexRoute = PedidosIndexRouteImport.update({
+  id: '/pedidos/',
+  path: '/pedidos/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProdutosIndexRoute = ProdutosIndexRouteImport.update({
+  id: '/produtos/',
+  path: '/produtos/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProdutosSkuRoute = ProdutosSkuRouteImport.update({
+  id: '/produtos/$sku',
+  path: '/produtos/$sku',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PedidosCanalIdRoute = PedidosCanalIdRouteImport.update({
+  id: '/pedidos/$canal/$id',
+  path: '/pedidos/$canal/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/commerce': typeof CommerceRoute
+  '/marketplace': typeof MarketplaceRoute
+  '/clientes/$chave': typeof ClientesChaveRoute
+  '/produtos/$sku': typeof ProdutosSkuRoute
+  '/clientes/': typeof ClientesIndexRoute
+  '/pedidos/': typeof PedidosIndexRoute
+  '/produtos/': typeof ProdutosIndexRoute
+  '/pedidos/$canal/$id': typeof PedidosCanalIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/commerce': typeof CommerceRoute
+  '/marketplace': typeof MarketplaceRoute
+  '/clientes/$chave': typeof ClientesChaveRoute
+  '/produtos/$sku': typeof ProdutosSkuRoute
+  '/clientes': typeof ClientesIndexRoute
+  '/pedidos': typeof PedidosIndexRoute
+  '/produtos': typeof ProdutosIndexRoute
+  '/pedidos/$canal/$id': typeof PedidosCanalIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/commerce': typeof CommerceRoute
+  '/marketplace': typeof MarketplaceRoute
+  '/clientes/$chave': typeof ClientesChaveRoute
+  '/produtos/$sku': typeof ProdutosSkuRoute
+  '/clientes/': typeof ClientesIndexRoute
+  '/pedidos/': typeof PedidosIndexRoute
+  '/produtos/': typeof ProdutosIndexRoute
+  '/pedidos/$canal/$id': typeof PedidosCanalIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/commerce'
+    | '/marketplace'
+    | '/clientes/$chave'
+    | '/produtos/$sku'
+    | '/clientes/'
+    | '/pedidos/'
+    | '/produtos/'
+    | '/pedidos/$canal/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/commerce'
+    | '/marketplace'
+    | '/clientes/$chave'
+    | '/produtos/$sku'
+    | '/clientes'
+    | '/pedidos'
+    | '/produtos'
+    | '/pedidos/$canal/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/commerce'
+    | '/marketplace'
+    | '/clientes/$chave'
+    | '/produtos/$sku'
+    | '/clientes/'
+    | '/pedidos/'
+    | '/produtos/'
+    | '/pedidos/$canal/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CommerceRoute: typeof CommerceRoute
+  MarketplaceRoute: typeof MarketplaceRoute
+  ClientesChaveRoute: typeof ClientesChaveRoute
+  ProdutosSkuRoute: typeof ProdutosSkuRoute
+  ClientesIndexRoute: typeof ClientesIndexRoute
+  PedidosIndexRoute: typeof PedidosIndexRoute
+  ProdutosIndexRoute: typeof ProdutosIndexRoute
+  PedidosCanalIdRoute: typeof PedidosCanalIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +156,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/commerce': {
+      id: '/commerce'
+      path: '/commerce'
+      fullPath: '/commerce'
+      preLoaderRoute: typeof CommerceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace': {
+      id: '/marketplace'
+      path: '/marketplace'
+      fullPath: '/marketplace'
+      preLoaderRoute: typeof MarketplaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clientes/': {
+      id: '/clientes/'
+      path: '/clientes'
+      fullPath: '/clientes/'
+      preLoaderRoute: typeof ClientesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clientes/$chave': {
+      id: '/clientes/$chave'
+      path: '/clientes/$chave'
+      fullPath: '/clientes/$chave'
+      preLoaderRoute: typeof ClientesChaveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pedidos/': {
+      id: '/pedidos/'
+      path: '/pedidos'
+      fullPath: '/pedidos/'
+      preLoaderRoute: typeof PedidosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/produtos/': {
+      id: '/produtos/'
+      path: '/produtos'
+      fullPath: '/produtos/'
+      preLoaderRoute: typeof ProdutosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/produtos/$sku': {
+      id: '/produtos/$sku'
+      path: '/produtos/$sku'
+      fullPath: '/produtos/$sku'
+      preLoaderRoute: typeof ProdutosSkuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pedidos/$canal/$id': {
+      id: '/pedidos/$canal/$id'
+      path: '/pedidos/$canal/$id'
+      fullPath: '/pedidos/$canal/$id'
+      preLoaderRoute: typeof PedidosCanalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CommerceRoute: CommerceRoute,
+  MarketplaceRoute: MarketplaceRoute,
+  ClientesChaveRoute: ClientesChaveRoute,
+  ProdutosSkuRoute: ProdutosSkuRoute,
+  ClientesIndexRoute: ClientesIndexRoute,
+  PedidosIndexRoute: PedidosIndexRoute,
+  ProdutosIndexRoute: ProdutosIndexRoute,
+  PedidosCanalIdRoute: PedidosCanalIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
