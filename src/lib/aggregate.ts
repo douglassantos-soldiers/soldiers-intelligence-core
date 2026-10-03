@@ -33,7 +33,47 @@ export function channelSummary(receita: Row[], pl: Row[]) {
 export const ratio = (a: unknown, b: unknown) => (n(b) ? n(a) / n(b) : null);
 export const pct = (a: unknown, b: unknown) => (n(b) ? (n(a) / n(b)) * 100 : null);
 
-// Custo vigente por SKU (última vigência)
+/* ---------------- Custo por vigência (Plano Mestre, princípio 14) ----------------
+ * dim_custo_sku guarda o custo com `vigencia_inicio`. A margem de um pedido deve usar
+ * o custo vigente NA DATA DO PEDIDO, não o último cadastrado. Senão, a margem histórica
+ * muda toda vez que o custo é atualizado. */
+export type CustoVigencia = { vig: string; custo: number };
+export type CustoHistorico = Map<string, CustoVigencia[]>;
+
+/** Agrupa as vigências por SKU, em ordem crescente de data. */
+export function custoHistorico(custos: Row[]): CustoHistorico {
+  const h: CustoHistorico = new Map();
+  for (const c of custos) {
+    const sku = String(c["sku"] ?? "");
+    if (!sku) continue;
+    const list = h.get(sku) ?? [];
+    list.push({ vig: String(c["vigencia_inicio"] ?? "").slice(0, 10), custo: n(c["custo_unitario"]) });
+    h.set(sku, list);
+  }
+  for (const list of h.values()) list.sort((a, b) => (a.vig < b.vig ? -1 : a.vig > b.vig ? 1 : 0));
+  return h;
+}
+
+/**
+ * Custo do SKU vigente em `data` (YYYY-MM-DD…): a maior vigência com início <= data.
+ * Sem data, devolve a vigência mais recente. Se o pedido é anterior à primeira vigência,
+ * usa a primeira e marca `estimado = true` (não há custo cadastrado para aquela época).
+ */
+export function custoNaData(h: CustoHistorico, sku: string, data?: unknown): (CustoVigencia & { estimado: boolean }) | undefined {
+  const list = h.get(sku);
+  if (!list?.length) return undefined;
+  const d = data ? String(data).slice(0, 10) : "";
+  if (!d) return { ...list[list.length - 1]!, estimado: false };
+  let found: CustoVigencia | undefined;
+  for (const v of list) {
+    if (v.vig <= d) found = v;
+    else break;
+  }
+  return found ? { ...found, estimado: false } : { ...list[0]!, estimado: true };
+}
+
+// Custo vigente por SKU (última vigência). Use só para exibir o "custo atual";
+// para margem de pedido/período use custoHistorico + custoNaData.
 export function custoMap(custos: Row[]) {
   const m = new Map<string, { custo: number; vig: string }>();
   for (const c of custos) {

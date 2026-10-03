@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { getCliente } from "@/lib/data.functions";
 import { Kpi, Panel, Loading, ErrorBox, Table, Td, StatusTag, Empty } from "@/components/kit";
 import { fmtBRL, fmtNum, fmtPct, fmtDate } from "@/lib/format";
-import { custoMap } from "@/lib/aggregate";
+import { custoHistorico, custoNaData } from "@/lib/aggregate";
 import { ACAO_LABEL, ACAO_TONE } from "@/domain/sources";
 
 export const Route = createFileRoute("/clientes/$chave")({
@@ -39,7 +39,8 @@ function Body({ d }: { d: Awaited<ReturnType<typeof getCliente>> }) {
   const p = (d.perfil ?? {}) as Record<string, string | number>;
   const o = (d.origem ?? {}) as Record<string, string | number>;
   const c = d.contato;
-  const custos = custoMap(d.custos as Record<string, unknown>[]);
+  // Custo vigente na data de cada item (não o último cadastrado).
+  const custos = custoHistorico(d.custos as Record<string, unknown>[]);
 
   const prodMap = new Map<string, { sku: string; produto: string; unidades: number; receita: number; cmv: number; temCusto: boolean }>();
   for (const i of d.itens as Record<string, string | number>[]) {
@@ -47,7 +48,7 @@ function Body({ d }: { d: Awaited<ReturnType<typeof getCliente>> }) {
     const cur = prodMap.get(sku) ?? { sku, produto: String(i.produto ?? ""), unidades: 0, receita: 0, cmv: 0, temCusto: custos.has(sku) };
     cur.unidades += Number(i.quantidade) || 0;
     cur.receita += Number(i.valor_total) || 0;
-    cur.cmv += (Number(i.quantidade) || 0) * (custos.get(sku)?.custo ?? 0);
+    cur.cmv += (Number(i["quantidade"]) || 0) * (custoNaData(custos, sku, i["data"])?.custo ?? 0);
     prodMap.set(sku, cur);
   }
   const produtos = [...prodMap.values()].sort((a, b) => b.receita - a.receita);

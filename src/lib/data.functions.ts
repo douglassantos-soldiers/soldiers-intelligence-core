@@ -132,7 +132,7 @@ export const getProdutos = createServerFn({ method: "GET" })
     const c = await db();
     const [rows, custos, ciclos, estoque] = await Promise.all([
       fetchAll(() => {
-        let q = c.from("mv_produto_dia").select("canal,sku,produto,unidades,pedidos,receita,invest_ads,receita_ads").gte("data", data.de).lte("data", data.ate);
+        let q = c.from("mv_produto_dia").select("data,canal,sku,produto,unidades,pedidos,receita,invest_ads,receita_ads").gte("data", data.de).lte("data", data.ate);
         if (data.canal) q = q.eq("canal", data.canal);
         return q.order("data");
       }, "produtos", 60000),
@@ -149,12 +149,13 @@ export const getProduto = createServerFn({ method: "GET" })
     const c = await db();
     const [serie, custo, ciclo, proximo, estoque] = await Promise.all([
       fetchAll(() => c.from("mv_produto_dia").select("data,canal,produto,unidades,pedidos,receita,invest_ads,receita_ads").eq("sku", data.sku).gte("data", data.de).lte("data", data.ate).order("data"), "serie"),
-      c.from("dim_custo_sku").select("*").eq("sku", data.sku).order("vigencia_inicio", { ascending: false }).limit(1),
+      // Todas as vigências: o CMV de cada dia usa o custo vigente naquela data.
+      c.from("dim_custo_sku").select("*").eq("sku", data.sku).order("vigencia_inicio", { ascending: false }),
       c.from("mv_growth_produto_ciclo").select("*").eq("sku", data.sku).limit(5),
       c.from("mv_growth_produto_proximo").select("sku_seguinte,produto_seguinte,ocorrencias,forca_pct,pos").eq("sku_origem", data.sku).order("ocorrencias", { ascending: false }).limit(8),
       c.from("dim_shopify_produto").select("*").eq("sku", data.sku).limit(1),
     ]);
-    return { serie, custo: custo.data?.[0] ?? null, ciclo: ciclo.data?.[0] ?? null, proximo: proximo.data ?? [], estoque: estoque.data?.[0] ?? null };
+    return { serie, custo: custo.data?.[0] ?? null, custos: (custo.data ?? []) as Record<string, unknown>[], ciclo: ciclo.data?.[0] ?? null, proximo: proximo.data ?? [], estoque: estoque.data?.[0] ?? null };
   });
 
 /* ---------------- Orders ---------------- */

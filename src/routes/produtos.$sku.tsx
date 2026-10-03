@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { getProduto } from "@/lib/data.functions";
 import { PeriodPills, Kpi, Panel, Loading, ErrorBox, Table, Td, Empty } from "@/components/kit";
 import { StackedArea, pivot } from "@/components/charts";
-import { sumBy } from "@/lib/aggregate";
+import { sumBy, custoHistorico, custoNaData } from "@/lib/aggregate";
 import { fmtBRL, fmtNum, fmtPct, fmtX, periodo } from "@/lib/format";
 
 export const Route = createFileRoute("/produtos/$sku")({
@@ -46,7 +46,9 @@ function Body({ sku, d }: { sku: string; d: Awaited<ReturnType<typeof getProduto
   const canais = sumBy(serie, "canal", ["receita", "unidades", "pedidos", "invest_ads", "receita_ads"]).sort((a, b) => Number(b.receita) - Number(a.receita));
   const t = canais.reduce((s, c) => ({ receita: s.receita + Number(c.receita), unidades: s.unidades + Number(c.unidades), ads: s.ads + Number(c.invest_ads), pedidos: s.pedidos + Number(c.pedidos) }), { receita: 0, unidades: 0, ads: 0, pedidos: 0 });
   const custo = d.custo ? Number((d.custo as Record<string, unknown>).custo_unitario) : null;
-  const cmv = custo != null ? custo * t.unidades : null;
+  // CMV do período: cada dia usa o custo vigente naquela data (não o último cadastrado).
+  const hist = custoHistorico(d.custos ?? []);
+  const cmv = custo != null ? serie.reduce((s, r) => s + (Number(r["unidades"]) || 0) * (custoNaData(hist, sku, r["data"])?.custo ?? 0), 0) : null;
   const margem = cmv != null ? t.receita - cmv - t.ads : null;
   const nomeTop = [...serie].sort((a, b) => Number(b.receita) - Number(a.receita))[0]?.produto as string | undefined;
   const ciclo = d.ciclo as Record<string, number> | null;

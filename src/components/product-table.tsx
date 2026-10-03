@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Table, Td, StatusTag, Empty } from "@/components/kit";
 import { fmtBRL, fmtNum, fmtPct, fmtX } from "@/lib/format";
-import { custoMap } from "@/lib/aggregate";
+import { custoMap, custoHistorico, custoNaData } from "@/lib/aggregate";
 
 type Row = Record<string, unknown>;
 export type ProdutoAgg = {
@@ -10,21 +10,25 @@ export type ProdutoAgg = {
 };
 
 export function aggregateProdutos(d: { rows: Row[]; custos: Row[]; ciclos: Row[]; estoque: Row[] }) {
-  const custos = custoMap(d.custos);
+  const custos = custoMap(d.custos); // custo atual (exibição)
+  const hist = custoHistorico(d.custos); // CMV usa o custo vigente em cada dia
   const ciclos = new Map(d.ciclos.map((c) => [String(c.sku), c]));
   const est = new Map(d.estoque.map((e) => [String(e.sku), e]));
-  const m = new Map<string, ProdutoAgg & { _best: number }>();
+  const m = new Map<string, ProdutoAgg & { _best: number; _cmv: number; _semCusto: boolean }>();
   for (const r of d.rows) {
     const sku = String(r.sku ?? "");
     if (!sku) continue;
     const rec = Number(r.receita) || 0;
-    const cur = m.get(sku) ?? { sku, produto: String(r.produto ?? ""), unidades: 0, pedidos: 0, receita: 0, invest_ads: 0, receita_ads: 0, canais: new Set<string>(), _best: -1 };
+    const cur = m.get(sku) ?? { sku, produto: String(r.produto ?? ""), unidades: 0, pedidos: 0, receita: 0, invest_ads: 0, receita_ads: 0, canais: new Set<string>(), _best: -1, _cmv: 0, _semCusto: false };
     cur.unidades += Number(r.unidades) || 0;
     cur.pedidos += Number(r.pedidos) || 0;
     cur.receita += rec;
     cur.invest_ads += Number(r.invest_ads) || 0;
     cur.receita_ads += Number(r.receita_ads) || 0;
     cur.canais.add(String(r.canal));
+    const cv = custoNaData(hist, sku, r["data"]);
+    if (cv) cur._cmv += cv.custo * (Number(r["unidades"]) || 0);
+    else cur._semCusto = true;
     if (rec > cur._best) { cur._best = rec; cur.produto = String(r.produto ?? cur.produto); }
     m.set(sku, cur);
   }
@@ -33,7 +37,7 @@ export function aggregateProdutos(d: { rows: Row[]; custos: Row[]; ciclos: Row[]
       const c = custos.get(p.sku);
       const ci = ciclos.get(p.sku);
       const e = est.get(p.sku);
-      const cmv = c ? c.custo * p.unidades : undefined;
+      const cmv = c && !p._semCusto ? p._cmv : undefined;
       return {
         ...p,
         custo: c?.custo,

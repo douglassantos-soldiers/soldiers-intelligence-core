@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft } from "lucide-react";
 import { getPedido } from "@/lib/data.functions";
 import { Kpi, Panel, Loading, ErrorBox, Table, Td, StatusTag, Empty } from "@/components/kit";
-import { custoMap } from "@/lib/aggregate";
+import { custoHistorico, custoNaData } from "@/lib/aggregate";
 import { fmtBRL, fmtBRL2, fmtNum, fmtPct, fmtDate } from "@/lib/format";
 
 export const Route = createFileRoute("/pedidos/$canal/$id")({
@@ -24,12 +24,15 @@ function Pedido() {
   const fn = useServerFn(getPedido);
   const q = useQuery({ queryKey: ["pedido", canal, id], queryFn: () => fn({ data: { canal, id } }) });
   const ped = q.data?.pedido as Record<string, string | number> | null | undefined;
-  const custos = custoMap((q.data?.custos ?? []) as Record<string, unknown>[]);
+  // Custo vigente na data do pedido (não o último cadastrado).
+  const custos = custoHistorico((q.data?.custos ?? []) as Record<string, unknown>[]);
+  const custoItem = (sku: unknown) => custoNaData(custos, String(sku), ped?.["data"]);
   const itens = (q.data?.itens ?? []) as Record<string, string | number>[];
-  const receita = itens.reduce((s, i) => s + (Number(i.valor_total) || 0), 0);
-  const cmv = itens.reduce((s, i) => s + (Number(i.quantidade) || 0) * (custos.get(String(i.sku))?.custo ?? 0), 0);
-  const taxa = itens.reduce((s, i) => s + (Number(i.sale_fee) || 0), 0);
-  const semCusto = itens.some((i) => !custos.has(String(i.sku)));
+  const receita = itens.reduce((s, i) => s + (Number(i["valor_total"]) || 0), 0);
+  const cmv = itens.reduce((s, i) => s + (Number(i["quantidade"]) || 0) * (custoItem(i["sku"])?.custo ?? 0), 0);
+  const taxa = itens.reduce((s, i) => s + (Number(i["sale_fee"]) || 0), 0);
+  const semCusto = itens.some((i) => !custoItem(i["sku"]));
+  const custoEstimado = itens.some((i) => custoItem(i["sku"])?.estimado);
 
   return (
     <>
@@ -53,13 +56,18 @@ function Pedido() {
             <Kpi label="Desconto" value={fmtBRL2(ped.desconto)} />
             <Kpi label="Frete" value={fmtBRL2(ped.frete)} />
             <Kpi label="Taxa do canal" value={fmtBRL2(taxa)} />
-            <Kpi label="CMV" value={fmtBRL2(cmv)} hint={semCusto ? "algum item sem custo" : undefined} tone={semCusto ? "warn" : undefined} />
+            <Kpi
+              label="CMV"
+              value={fmtBRL2(cmv)}
+              hint={semCusto ? "algum item sem custo" : custoEstimado ? "custo anterior à 1ª vigência (estimado)" : "custo vigente na data do pedido"}
+              tone={semCusto || custoEstimado ? "warn" : undefined}
+            />
             <Kpi label="Margem bruta" value={fmtBRL2(receita - cmv - taxa)} hint={receita ? fmtPct(((receita - cmv - taxa) / receita) * 100) : undefined} tone="up" />
           </div>
           <Panel title="Itens">
             <Table head={["Produto", "SKU", "Qtd.", "Preço unit.", "Total", "Taxa", "Custo unit.", "Margem"]}>
               {itens.map((i) => {
-                const c = custos.get(String(i.sku));
+                const c = custoItem(i["sku"]);
                 const tot = Number(i.valor_total) || 0;
                 return (
                   <tr key={String(i.linha)}>
@@ -69,7 +77,7 @@ function Pedido() {
                     <Td mono>{fmtBRL2(i.preco_unitario)}</Td>
                     <Td mono>{fmtBRL2(tot)}</Td>
                     <Td mono>{fmtBRL2(i.sale_fee)}</Td>
-                    <Td mono>{c ? fmtBRL2(c.custo) : "—"}</Td>
+                    <Td mono>{c ? <span title={`Vigência desde ${c.vig}${c.estimado ? " (estimado)" : ""}`}>{fmtBRL2(c.custo)}</span> : "—"}</Td>
                     <Td mono className="text-success">{c ? fmtBRL2(tot - c.custo * (Number(i.quantidade) || 0) - (Number(i.sale_fee) || 0)) : "—"}</Td>
                   </tr>
                 );
