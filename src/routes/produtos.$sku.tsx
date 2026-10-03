@@ -7,7 +7,7 @@ import { getProduto } from "@/lib/data.functions";
 import { PeriodPills, Kpi, Panel, Loading, ErrorBox, Table, Td, Empty } from "@/components/kit";
 import { StackedArea, pivot } from "@/components/charts";
 import { sumBy, custoHistorico, custoNaData } from "@/lib/aggregate";
-import { fmtBRL, fmtNum, fmtPct, fmtX, periodo } from "@/lib/format";
+import { fmtBRL, fmtNum, fmtPct, fmtX, fmtDate, periodo } from "@/lib/format";
 
 export const Route = createFileRoute("/produtos/$sku")({
   head: () => ({
@@ -103,6 +103,32 @@ function Body({ sku, d }: { sku: string; d: Awaited<ReturnType<typeof getProduto
           )}
         </Panel>
       </div>
+      <Panel title="Estoque por canal">
+        {/* Plano Mestre cap. 6.4: estoques de canais diferentes não são intercambiáveis,
+            por isso cada canal aparece separado e não existe "estoque total". */}
+        <Table head={["Canal", "Disponível", "Total no canal", "Registros", "Atualizado"]}>
+          <tr>
+            <Td>Site (Shopify)</Td>
+            <Td mono>{fmtNum(est?.["estoque"])}</Td>
+            <Td mono>{est?.["cobertura_dias"] != null ? `${fmtNum(est["cobertura_dias"])} dias de cobertura` : "—"}</Td>
+            <Td mono>{est ? 1 : 0}</Td>
+            <Td mono>{est?.["atualizado_em"] ? fmtDate(est["atualizado_em"]) : "—"}</Td>
+          </tr>
+          {(d.estoqueCanais ?? []).map((e) => (
+            <tr key={e.canal}>
+              <Td>{e.canal}</Td>
+              <Td mono>{e.registros ? fmtNum(e.disponivel) : "—"}</Td>
+              <Td mono>{e.registros ? fmtNum(e.total) : "—"}</Td>
+              <Td mono>{e.erro ? <span className="text-warning" title={e.erro}>erro</span> : fmtNum(e.registros)}</Td>
+              <Td mono>{e.atualizado ? fmtDate(e.atualizado) : "—"}</Td>
+            </tr>
+          ))}
+        </Table>
+        <p className="mt-3 text-xs text-muted-foreground">
+          O vínculo com cada marketplace é pelo SKU do vendedor. "—" significa que o SKU não foi encontrado no canal
+          (pode não ser vendido lá ou estar cadastrado com outro SKU).
+        </p>
+      </Panel>
     </div>
   );
 }
