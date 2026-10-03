@@ -19,7 +19,7 @@ export const Route = createFileRoute("/pedidos/")({
   component: Pedidos,
 });
 
-export function statusTone(s: string): "success" | "warn" | "danger" | "muted" | "primary" {
+function statusTone(s: string): "success" | "warn" | "danger" | "muted" | "primary" {
   const x = s.toLowerCase();
   if (/(cancel|refund|reject|return|lost|undeliver|expired)/.test(x)) return "danger";
   if (/(deliver|completed|paid|shipped)/.test(x)) return "success";
