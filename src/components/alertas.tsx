@@ -18,8 +18,17 @@ export function Alertas() {
 
   const estoque = d.estoque.filter((e) => Number(e["cobertura_dias"]) <= 21);
   const bb = d.buybox;
-  const amazonProblemas = (d.amazon ?? []).filter((a) => a.tipo === "problema").length;
-  const amazonOportunidades = (d.amazon ?? []).filter((a) => a.tipo === "oportunidade").length;
+  // Alertas dos marketplaces (Amazon e Mercado Livre), cada um com o link da sua tela.
+  const canais = [
+    ...(d.amazon ?? []).map((a) => ({ ...a, to: "/marketplace/amazon" as const, nome: "Amazon" })),
+    ...(d.mercadoLivre ?? []).map((a) => ({
+      ...a,
+      to: "/marketplace/mercado-livre" as const,
+      nome: "Mercado Livre",
+    })),
+  ];
+  const amazonProblemas = canais.filter((a) => a.tipo === "problema").length;
+  const amazonOportunidades = canais.filter((a) => a.tipo === "oportunidade").length;
   const acoes = d.acoes
     .filter((a) => ACOES_OPORTUNIDADE.includes(String(a["acao"])))
     .reduce<Record<string, { clientes: number; valor: number }>>((m, a) => {
@@ -65,15 +74,15 @@ export function Alertas() {
               </span>
             </li>
           )}
-          {(d.amazon ?? [])
+          {canais
             .filter((a) => a.tipo === "problema")
             .map((a) => (
               <li key={a.texto} className="flex items-start gap-2">
                 <StatusTag tone={a.tom}>{a.tag}</StatusTag>
                 <span>
                   {a.texto}{" "}
-                  <Link to="/marketplace/amazon" className="text-primary hover:underline">
-                    Ver Amazon
+                  <Link to={a.to} className="text-primary hover:underline">
+                    Ver {a.nome}
                   </Link>
                 </span>
               </li>
@@ -127,15 +136,15 @@ export function Alertas() {
               </span>
             </li>
           ))}
-          {(d.amazon ?? [])
+          {canais
             .filter((a) => a.tipo === "oportunidade")
             .map((a) => (
               <li key={a.texto} className="flex items-start gap-2">
                 <StatusTag tone={a.tom}>{a.tag}</StatusTag>
                 <span>
                   {a.texto}{" "}
-                  <Link to="/marketplace/amazon" className="text-primary hover:underline">
-                    Ver Amazon
+                  <Link to={a.to} className="text-primary hover:underline">
+                    Ver {a.nome}
                   </Link>
                 </span>
               </li>

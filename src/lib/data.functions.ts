@@ -10,6 +10,7 @@ import {
   influenciadoresSemVenda,
 } from "@/lib/affiliate";
 import { economiaTikTok, devolucoesPorMotivo, saudeListings, validadeToken } from "@/lib/tiktok";
+import { economiaML, anuncios360, diagnosticoAds, alertasML } from "@/lib/mercadolivre";
 import { resumoAmazon, asin360, termosAds, shareDeBusca, reposicaoFba, recompraAsin, organicoVsAds, vendasPorHora, novosParaMarca, alvosKeywords, alvosSd, classificaLances, alertasAmazon, amazonDoSku } from "@/lib/amazon";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,6 +32,16 @@ async function fetchAll<T = Record<string, unknown>>(make: () => Db, ctx: string
     const rows = check(await make().range(from, from + 999), ctx) as T[];
     out.push(...rows);
     if (rows.length < 1000) break;
+  }
+  return out;
+}
+
+// Busca por lista de IDs em lotes (para views sem coluna de data, como vw_ml_frete_pedido).
+async function fetchIn(c: Db, tabela: string, select: string, col: string, ids: (string | number)[], ctx: string, lote = 300) {
+  const out: Record<string, unknown>[] = [];
+  for (let i = 0; i < ids.length; i += lote) {
+    const r = await c.from(tabela).select(select).in(col, ids.slice(i, i + lote));
+    out.push(...((check(r, ctx) ?? []) as Record<string, unknown>[]));
   }
   return out;
 }
@@ -450,8 +461,16 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
   } catch {
     amazon = [];
   }
+  // Mercado Livre, últimos 14 dias (mesma regra da tela). Um erro aqui só esconde os alertas do ML.
+  let mercadoLivre: ReturnType<typeof alertasML> = [];
+  try {
+    mercadoLivre = (await dadosMercadoLivre({ de: new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10), ate: hoje })).alertas;
+  } catch {
+    mercadoLivre = [];
+  }
   return {
     amazon,
+    mercadoLivre,
     estoque: (estoque.data ?? []) as Record<string, unknown>[],
     problemasDados: problemasDados.length,
     buybox: (abb.data?.[0] ?? null) as Record<string, unknown> | null,
@@ -570,3 +589,41 @@ export const getAmazon = createServerFn({ method: "GET" })
       erros,
     };
   });
+
+
+// Mercado Livre (benchmarks/mercado-livre/ANALISE.md §4): economia real, anúncio 360° e Product Ads.
+// Só colunas sem dado do comprador (sem buyer_id). Cada bloco é independente.
+async function dadosMercadoLivre(data: { de: string; ate: string }) {
+    const c = await db();
+    const erros: Record<string, string> = {};
+    const safe = async (nome: string, p: Promise<Record<string, unknown>[]>) => {
+      try {
+        return await p;
+      } catch (e) {
+        erros[nome] = e instanceof Error ? e.message : String(e);
+        return [] as Record<string, unknown>[];
+      }
+    };
+    const [pedidos, itens, cupons, afiliados, custosR, adsItem, adsConta, anuncioDia, competicao, full] = await Promise.all([
+      safe("pedidos", fetchAll(() => c.from("ml_pedido").select("pedido_id,data_venda,status,total_amount,total_sale_fee").gte("data_venda", data.de).lte("data_venda", data.ate + "T23:59:59"), "ml pedidos", 120000)),
+      safe("itens", fetchAll(() => c.from("ml_pedido_item").select("pedido_id,item_id,seller_sku,title,quantity,unit_price").gte("data_venda", data.de).lte("data_venda", data.ate + "T23:59:59"), "ml itens", 150000)),
+      safe("cupons", fetchAll(() => c.from("ml_pedido_cupom").select("pedido_id,cupom_vendedor,cupom_meli").gte("data_venda", data.de).lte("data_venda", data.ate + "T23:59:59"), "ml cupons", 120000)),
+      safe("afiliados", fetchAll(() => c.from("ml_afiliado_venda").select("pedido_id,item_id,item_id_ml,comissao_pedido,casou_pedido").gte("data_venda", data.de).lte("data_venda", data.ate + "T23:59:59"), "ml afiliados", 60000)),
+      safe("custos", fetchAll(() => c.from("dim_custo_sku").select("sku,custo_unitario,vigencia_inicio"), "custos")),
+      safe("ads", fetchAll(() => c.from("vw_ml_pads_item_dia").select("date,item_id,title,cost,direct_amount,indirect_amount,organic_units_amount,lost_impression_share_by_budget,lost_impression_share_by_ad_rank,acos_benchmark").gte("date", data.de).lte("date", data.ate), "ml product ads", 120000)),
+      safe("adsConta", fetchAll(() => c.from("tab_ml_kpi_dia").select("data,invest_pads,invest_brand,invest_display").gte("data", data.de).lte("data", data.ate), "ml kpi dia")),
+      safe("anuncioDia", fetchAll(() => c.from("vw_ml_anuncio_dia").select("data,item_id,visitas,pedidos,unidades,faturamento").gte("data", data.de).lte("data", data.ate), "ml anuncio dia", 120000)),
+      safe("competicao", fetchAll(() => c.from("vw_ml_competicao").select("item_id,sku,nome,anuncio_status,preco_venda,price_to_win,buybox_status,situacao,health,estoque_disponivel"), "ml competicao")),
+      safe("full", fetchAll(() => c.from("dim_ml_produto").select("seller_sku,em_full,full_disponivel,cobertura_dias"), "ml full")),
+    ]);
+    const ids = [...new Set(pedidos.map((p) => p["pedido_id"] as number).filter((x) => x != null))];
+    const fretes = await safe("fretes", fetchIn(c, "vw_ml_frete_pedido", "pedido_id,frete_rateado", "pedido_id", ids, "ml frete"));
+    const economia = economiaML(pedidos, itens, fretes, cupons, afiliados, custosR, adsItem, adsConta, data.de, data.ate);
+    const ads = diagnosticoAds(adsItem, data.de, data.ate);
+    const anuncios = anuncios360(anuncioDia, competicao, full, economia.skus, data.de, data.ate);
+    return { economia: { ...economia, skus: economia.skus.slice(0, 80) }, anuncios, ads, alertas: alertasML({ anuncios, ads }), erros };
+}
+
+export const getMercadoLivre = createServerFn({ method: "GET" })
+  .inputValidator((d) => Periodo.parse(d))
+  .handler(async ({ data }) => dadosMercadoLivre(data));

@@ -16,6 +16,7 @@ import {
   alvosSd,
   classificaLances,
 } from "@/lib/amazon";
+import { economiaML, anuncios360, diagnosticoAds, alertasML } from "@/lib/mercadolivre";
 
 const AMZ_DE = "2026-09-01";
 const AMZ_ATE = "2026-09-30";
@@ -219,7 +220,116 @@ const amazonFixture = {
 
 // As telas chamam server functions via useServerFn. Aqui elas devolvem dados fixos,
 // para testar a renderização sem banco.
+const mlEcon = economiaML(
+  [
+    { pedido_id: 1, data_venda: "2026-09-05", status: "paid", total_sale_fee: 30 },
+    { pedido_id: 2, data_venda: "2026-09-06", status: "paid", total_sale_fee: 15 },
+  ],
+  [
+    {
+      pedido_id: 1,
+      item_id: "MLB1",
+      seller_sku: "CREA300",
+      title: "Creatina ML 300g",
+      quantity: 2,
+      unit_price: 100,
+    },
+    {
+      pedido_id: 2,
+      item_id: "MLB2",
+      seller_sku: "WHEY900",
+      title: "Whey ML 900g",
+      quantity: 1,
+      unit_price: 100,
+    },
+  ],
+  [
+    { pedido_id: 1, frete_rateado: 20 },
+    { pedido_id: 2, frete_rateado: 22 },
+  ],
+  [{ pedido_id: 1, cupom_vendedor: 10, cupom_meli: 25 }],
+  [],
+  [
+    { sku: "CREA300", custo_unitario: 30, vigencia_inicio: "2026-01-01" },
+    { sku: "WHEY900", custo_unitario: 70, vigencia_inicio: "2026-01-01" },
+  ],
+  [{ date: "2026-09-05", item_id: "MLB1", cost: 12 }],
+  [{ data: "2026-09-05", invest_pads: 12, invest_brand: 3, invest_display: 0 }],
+  "2026-09-01",
+  "2026-09-30",
+);
+const mlAnuncios = anuncios360(
+  [
+    {
+      data: "2026-09-05",
+      item_id: "MLB1",
+      visitas: 800,
+      pedidos: 40,
+      unidades: 40,
+      faturamento: 4000,
+    },
+    {
+      data: "2026-09-05",
+      item_id: "MLB2",
+      visitas: 900,
+      pedidos: 3,
+      unidades: 3,
+      faturamento: 300,
+    },
+  ],
+  [
+    {
+      item_id: "MLB1",
+      sku: "CREA300",
+      nome: "Creatina ML 300g",
+      preco_venda: 100,
+      price_to_win: 92,
+      buybox_status: "competing",
+      health: 0.9,
+    },
+    {
+      item_id: "MLB2",
+      sku: "WHEY900",
+      nome: "Whey ML 900g",
+      preco_venda: 100,
+      price_to_win: 70,
+      buybox_status: "competing",
+      health: 0.6,
+    },
+  ],
+  [{ seller_sku: "CREA300", em_full: true, full_disponivel: 30, cobertura_dias: 5 }],
+  mlEcon.skus,
+  "2026-09-01",
+  "2026-09-30",
+);
+const mlAds = diagnosticoAds(
+  [
+    {
+      date: "2026-09-05",
+      item_id: "MLB1",
+      title: "Creatina ML 300g",
+      cost: 100,
+      direct_amount: 1000,
+      indirect_amount: 0,
+      organic_units_amount: 500,
+      lost_impression_share_by_budget: 0.35,
+      lost_impression_share_by_ad_rank: 0.1,
+      acos_benchmark: 0.2,
+    },
+  ],
+  "2026-09-01",
+  "2026-09-30",
+);
+const mercadoLivreFixture = {
+  economia: mlEcon,
+  anuncios: mlAnuncios,
+  ads: mlAds,
+  alertas: alertasML({ anuncios: mlAnuncios, ads: mlAds }),
+  erros: {} as Record<string, string>,
+};
+
 const fixtures: Record<string, unknown> = {
+  ml: mercadoLivreFixture,
   amazon: amazonFixture,
   media: {
     amazonNtb: novosParaMarca(
@@ -411,6 +521,14 @@ const fixtures: Record<string, unknown> = {
       },
     ],
     problemasDados: 3,
+    mercadoLivre: [
+      {
+        tipo: "problema",
+        tag: "ML margem",
+        tom: "danger",
+        texto: "1 anúncio(s) com contribuição negativa no período.",
+      },
+    ],
     amazon: [
       {
         tipo: "problema",
@@ -580,6 +698,8 @@ describe("telas novas renderizam com dados", () => {
     expect(screen.queryByText("Aguardar")).toBeNull(); // "aguardar" não é oportunidade
     expect(screen.getByText("Amazon FBA")).toBeTruthy();
     expect(screen.getByText("Amazon busca")).toBeTruthy();
+    expect(screen.getByText("ML margem")).toBeTruthy();
+    expect(screen.getByText("Ver Mercado Livre")).toBeTruthy();
   });
 
   it("Affiliate Copilot: o que fazer hoje", async () => {
@@ -631,6 +751,25 @@ describe("telas novas renderizam com dados", () => {
     fireEvent.click(screen.getByText("Horários"));
     expect(screen.getByText("Melhores horários")).toBeTruthy();
     expect(screen.getByText("Dom 21h–22h")).toBeTruthy();
+  });
+
+  it("Mercado Livre: economia, anúncios e Product Ads", async () => {
+    current = "ml";
+    const { Route } = await import("@/routes/marketplace_.mercado-livre");
+    const C = Route.options.component!;
+    wrap(<C />);
+    expect(await screen.findByText("Para onde vai o dinheiro")).toBeTruthy();
+    expect(screen.getByText("Cupom pago pelo ML")).toBeTruthy();
+    expect(screen.getAllByText("Creatina ML 300g").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByText("Anúncios"));
+    expect(screen.getByText("perdendo o catálogo: ganhar ainda dá lucro")).toBeTruthy();
+    expect(screen.getByText("perdendo o catálogo: ganhar daria prejuízo")).toBeTruthy();
+    expect(screen.getByText("Full cobre 5 dias")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Product Ads"));
+    expect(screen.getByText("Onde está o gargalo")).toBeTruthy();
+    expect(screen.getByText("orçamento")).toBeTruthy();
   });
 
   it("Data Health mostra token com renovação parada", async () => {
