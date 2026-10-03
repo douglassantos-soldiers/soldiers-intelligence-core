@@ -416,3 +416,464 @@ export function recompraAsin(rows: Row[], { top = 10 } = {}) {
     .slice(0, top);
   return { mes, lista };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Busca orgânica × Ads (Brand Analytics cruzado com os search terms de Ads)
+
+export type OrganicoAds = {
+  termo: string;
+  rank: number | null;
+  clickShare: number;
+  variacaoPp: number | null;
+  custoAds: number;
+  vendasAtribuidas: number;
+  acosPct: number | null;
+};
+
+/**
+ * - anunciar: termos em que a Soldiers perdeu espaço orgânico (perdeu/saiu) e não investe em Ads;
+ * - reduzirLance: termos em que a Soldiers já tem click share alto (≥ dominanteMin %) e ainda
+ *   paga ≥ custoMin em Ads. HIPÓTESE a testar (reduzir aos poucos e medir): parte desse tráfego
+ *   viria pela busca orgânica.
+ */
+export function organicoVsAds(
+  brand: Row[],
+  termosRows: Row[],
+  de: string,
+  ate: string,
+  { dominanteMin = 30, custoMin = 50, top = 10 } = {},
+) {
+  const share = shareDeBusca(brand, { top: Infinity }).lista;
+  const ads = new Map<string, { custo: number; vendas: number }>();
+  for (const r of termosRows) {
+    const d = dia(r["data"]);
+    if (d < de || d > ate) continue;
+    const t = norm(r["search_term"]);
+    if (!t) continue;
+    const cur = ads.get(t) ?? { custo: 0, vendas: 0 };
+    cur.custo += n(r["cost"]);
+    cur.vendas += n(r["sales_14d"]);
+    ads.set(t, cur);
+  }
+  const lista: OrganicoAds[] = share.map((s) => {
+    const a = ads.get(s.termo);
+    return {
+      termo: s.termo,
+      rank: s.rank,
+      clickShare: s.clickShare,
+      variacaoPp: s.variacaoPp,
+      custoAds: a?.custo ?? 0,
+      vendasAtribuidas: a?.vendas ?? 0,
+      acosPct: a ? div(a.custo * 100, a.vendas) : null,
+    };
+  });
+  const status = new Map(share.map((s) => [s.termo, s.status]));
+  return {
+    anunciar: lista
+      .filter(
+        (t) =>
+          (status.get(t.termo) === "perdeu" || status.get(t.termo) === "saiu") && t.custoAds === 0,
+      )
+      .slice(0, top),
+    reduzirLance: lista
+      .filter((t) => t.clickShare >= dominanteMin && t.custoAds >= custoMin)
+      .sort((a, b) => b.custoAds - a.custoAds)
+      .slice(0, top),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Vendas por dia da semana × hora
+
+export const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
+
+/**
+ * Venda média por dia da semana e hora (fact_amazon_venda_hora). A média divide pelo número de
+ * dias daquele dia da semana no período, para não favorecer quem aparece mais vezes.
+ * HIPÓTESE: a coluna `hora` está no fuso de Brasília (validar com o time de dados).
+ */
+export function vendasPorHora(rows: Row[], de: string, ate: string, { top = 5 } = {}) {
+  const diasNoPeriodo = Array(7).fill(0) as number[];
+  for (let t = Date.parse(de + "T00:00:00Z"); t <= Date.parse(ate + "T00:00:00Z"); t += 86400000)
+    diasNoPeriodo[new Date(t).getUTCDay()]! += 1;
+  const venda = Array.from({ length: 7 }, () => Array(24).fill(0) as number[]);
+  const pedidos = Array.from({ length: 7 }, () => Array(24).fill(0) as number[]);
+  let total = 0;
+  for (const r of rows) {
+    const d = dia(r["data"]);
+    if (d < de || d > ate) continue;
+    const h = Math.trunc(n(r["hora"]));
+    if (h < 0 || h > 23) continue;
+    const dow = new Date(d + "T00:00:00Z").getUTCDay();
+    venda[dow]![h]! += n(r["venda"]);
+    pedidos[dow]![h]! += n(r["pedidos"]);
+    total += n(r["venda"]);
+  }
+  const celulas = [];
+  for (let dow = 0; dow < 7; dow++)
+    for (let h = 0; h < 24; h++) {
+      const dias = diasNoPeriodo[dow] || 1;
+      celulas.push({
+        dow,
+        hora: h,
+        vendaMedia: venda[dow]![h]! / dias,
+        pedidosMedia: pedidos[dow]![h]! / dias,
+      });
+    }
+  const max = Math.max(0, ...celulas.map((c) => c.vendaMedia));
+  const porHora = Array.from({ length: 24 }, (_, h) => ({
+    hora: h,
+    pct: total ? (venda.reduce((s, linha) => s + linha[h]!, 0) / total) * 100 : 0,
+  }));
+  return {
+    total,
+    max,
+    celulas,
+    porHora,
+    melhores: [...celulas]
+      .filter((c) => c.vendaMedia > 0)
+      .sort((a, b) => b.vendaMedia - a.vendaMedia)
+      .slice(0, top),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// New-to-brand (Sponsored Brands e Sponsored Display)
+
+/**
+ * Quanto da venda atribuída veio de cliente que não comprava a marca havia 12 meses (definição da
+ * Amazon) e quanto custou cada cliente novo. SD só reporta new-to-brand por clique.
+ */
+export function novosParaMarca(sb: Row[], sd: Row[], de: string, ate: string, { top = 10 } = {}) {
+  const noPeriodo = (r: Row) => dia(r["data"]) >= de && dia(r["data"]) <= ate;
+  const camp = new Map<
+    string,
+    {
+      campanha: string;
+      tipo: "SB" | "SD";
+      custo: number;
+      vendas: number;
+      ntbVendas: number;
+      ntbCompras: number;
+    }
+  >();
+  const add = (r: Row, tipo: "SB" | "SD", ntbV: string, ntbC: string) => {
+    const k = `${tipo}|${txt(r["campaign_id"])}`;
+    const cur = camp.get(k) ?? {
+      campanha: txt(r["campaign_name"]) || txt(r["campaign_id"]),
+      tipo,
+      custo: 0,
+      vendas: 0,
+      ntbVendas: 0,
+      ntbCompras: 0,
+    };
+    cur.custo += n(r["cost"]);
+    cur.vendas += n(r["sales"]);
+    cur.ntbVendas += n(r[ntbV]);
+    cur.ntbCompras += n(r[ntbC]);
+    camp.set(k, cur);
+  };
+  for (const r of sb) if (noPeriodo(r)) add(r, "SB", "ntb_sales", "ntb_purchases");
+  for (const r of sd) if (noPeriodo(r)) add(r, "SD", "ntb_sales_clicks", "ntb_purchases_clicks");
+
+  const lista = [...camp.values()].map((c) => ({
+    ...c,
+    pctNtb: div(c.ntbVendas * 100, c.vendas),
+    custoPorNovo: div(c.custo, c.ntbCompras),
+  }));
+  const tot = (tipo: "SB" | "SD") => {
+    const l = lista.filter((c) => c.tipo === tipo);
+    const custo = l.reduce((s, c) => s + c.custo, 0);
+    const vendas = l.reduce((s, c) => s + c.vendas, 0);
+    const ntbVendas = l.reduce((s, c) => s + c.ntbVendas, 0);
+    const ntbCompras = l.reduce((s, c) => s + c.ntbCompras, 0);
+    return {
+      custo,
+      vendas,
+      ntbVendas,
+      ntbCompras,
+      pctNtb: div(ntbVendas * 100, vendas),
+      custoPorNovo: div(custo, ntbCompras),
+    };
+  };
+  return {
+    sb: tot("SB"),
+    sd: tot("SD"),
+    campanhas: lista
+      .filter((c) => c.custo > 0)
+      .sort((a, b) => b.ntbVendas - a.ntbVendas)
+      .slice(0, top),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Lances: keywords (SP/SB) e alvos (SD)
+
+export type AlvoLance = {
+  alvo: string;
+  tipoMatch: string;
+  campanha: string;
+  custo: number;
+  cliques: number;
+  compras: number;
+  vendasAtribuidas: number;
+  acosPct: number | null;
+  cpc: number | null;
+  topoBuscaPct: number | null;
+  lanceSugerido: number | null;
+};
+
+type CamposAlvo = { alvo: string; match?: string; compras: string; vendas: string };
+
+function agregaAlvos(rows: Row[], de: string, ate: string, f: CamposAlvo) {
+  const m = new Map<string, AlvoLance & { _is: number; _isN: number }>();
+  for (const r of rows) {
+    const d = dia(r["data"]);
+    if (d < de || d > ate) continue;
+    const alvo = txt(r[f.alvo]);
+    if (!alvo) continue;
+    const match = f.match ? txt(r[f.match]) : "";
+    const campanha = txt(r["campaign_name"]) || txt(r["campaign_id"]);
+    const k = `${campanha}|${alvo.toLowerCase()}|${match}`;
+    const cur = m.get(k) ?? {
+      alvo,
+      tipoMatch: match,
+      campanha,
+      custo: 0,
+      cliques: 0,
+      compras: 0,
+      vendasAtribuidas: 0,
+      acosPct: null,
+      cpc: null,
+      topoBuscaPct: null,
+      lanceSugerido: null,
+      _is: 0,
+      _isN: 0,
+    };
+    cur.custo += n(r["cost"]);
+    cur.cliques += n(r["clicks"]);
+    cur.compras += n(r[f.compras]);
+    cur.vendasAtribuidas += n(r[f.vendas]);
+    if (r["top_search_is"] != null) {
+      cur._is += n(r["top_search_is"]);
+      cur._isN += 1;
+    }
+    m.set(k, cur);
+  }
+  const all = [...m.values()];
+  const fIS = escalaPct(all.filter((a) => a._isN).map((a) => a._is / a._isN));
+  return all.map(({ _is, _isN, ...a }) => ({
+    ...a,
+    acosPct: div(a.custo * 100, a.vendasAtribuidas),
+    cpc: div(a.custo, a.cliques),
+    topoBuscaPct: _isN ? (_is / _isN) * fIS : null,
+  }));
+}
+
+/**
+ * Classifica alvos pelo ACoS contra a referência do conjunto (custo ÷ venda atribuída dos alvos com venda):
+ * - subir: ACoS ≤ 70% da referência, ≥ comprasMin compras (e, se houver, pouca presença no topo da busca);
+ * - baixar: ACoS ≥ 150% da referência, com gasto ≥ custoMin;
+ * - pausar: gasto ≥ 2 × custoMin, ≥ 15 cliques e nenhuma compra.
+ * Lance sugerido = CPC atual × (ACoS ref ÷ ACoS do alvo), limitado a ±30%. Só recomendação.
+ */
+export function classificaLances(
+  alvos: AlvoLance[],
+  { custoMin = 30, comprasMin = 3, top = 12 } = {},
+) {
+  const comVenda = alvos.filter((a) => a.vendasAtribuidas > 0);
+  const ref = div(
+    comVenda.reduce((s, a) => s + a.custo, 0) * 100,
+    comVenda.reduce((s, a) => s + a.vendasAtribuidas, 0),
+  );
+  const sugere = (a: AlvoLance) =>
+    a.cpc != null && a.acosPct && ref != null
+      ? a.cpc * Math.min(1.3, Math.max(0.7, ref / a.acosPct))
+      : null;
+  const com = (a: AlvoLance) => ({ ...a, lanceSugerido: sugere(a) });
+  return {
+    acosReferenciaPct: ref,
+    subir:
+      ref == null
+        ? []
+        : alvos
+            .filter(
+              (a) =>
+                a.compras >= comprasMin &&
+                a.acosPct != null &&
+                a.acosPct <= ref * 0.7 &&
+                (a.topoBuscaPct == null || a.topoBuscaPct < 50),
+            )
+            .sort((a, b) => b.vendasAtribuidas - a.vendasAtribuidas)
+            .slice(0, top)
+            .map(com),
+    baixar:
+      ref == null
+        ? []
+        : alvos
+            .filter(
+              (a) =>
+                a.compras > 0 && a.custo >= custoMin && a.acosPct != null && a.acosPct >= ref * 1.5,
+            )
+            .sort((a, b) => b.custo - a.custo)
+            .slice(0, top)
+            .map(com),
+    pausar: alvos
+      .filter((a) => a.compras === 0 && a.custo >= custoMin * 2 && a.cliques >= 15)
+      .sort((a, b) => b.custo - a.custo)
+      .slice(0, top),
+  };
+}
+
+export const alvosKeywords = (rows: Row[], de: string, ate: string) =>
+  agregaAlvos(rows, de, ate, {
+    alvo: "keyword",
+    match: "match_type",
+    compras: "purchases_14d",
+    vendas: "sales_14d",
+  });
+export const alvosSd = (rows: Row[], de: string, ate: string) =>
+  agregaAlvos(
+    rows.map((r) => ({ ...r, _alvo: txt(r["targeting_text"]) || txt(r["targeting"]) })),
+    de,
+    ate,
+    { alvo: "_alvo", compras: "purchases", vendas: "sales" },
+  );
+
+// ---------------------------------------------------------------------------------------------
+// Command Center: problemas e oportunidades da Amazon
+
+export type AlertaAmazon = {
+  tipo: "problema" | "oportunidade";
+  tag: string;
+  tom: "danger" | "warn" | "success" | "primary";
+  texto: string;
+};
+
+/** Resume os sinais da Amazon em frases curtas para o Command Center. Nada é executado. */
+export function alertasAmazon(i: {
+  asins: Asin360[];
+  termos: ReturnType<typeof termosAds>;
+  share: ReturnType<typeof shareDeBusca>;
+  organico: ReturnType<typeof organicoVsAds>;
+  coberturaCritica?: number;
+}): AlertaAmazon[] {
+  const out: AlertaAmazon[] = [];
+  const brl = (v: number) => "R$ " + Math.round(v).toLocaleString("pt-BR");
+  const crit = i.coberturaCritica ?? 14;
+
+  const semBB = i.asins.filter((a) => a.ganhaBuyBox === false && a.vendas > 0);
+  if (semBB.length)
+    out.push({
+      tipo: "problema",
+      tag: "Amazon Buy Box",
+      tom: "danger",
+      texto: `${semBB.length} ASIN(s) que venderam ${brl(semBB.reduce((s, a) => s + a.vendas, 0))} em 14 dias estão sem a Buy Box. Maior: ${semBB[0]!.titulo}.`,
+    });
+  const ruptura = i.asins.filter(
+    (a) =>
+      a.vendas > 0 &&
+      (a.fbaDisponivel === 0 || (a.coberturaDias != null && a.coberturaDias < crit)),
+  );
+  if (ruptura.length)
+    out.push({
+      tipo: "problema",
+      tag: "Amazon FBA",
+      tom: "warn",
+      texto: `${ruptura.length} ASIN(s) com venda e menos de ${crit} dias de estoque no FBA. Maior: ${ruptura[0]!.titulo}.`,
+    });
+  if (i.termos.negativar.length)
+    out.push({
+      tipo: "problema",
+      tag: "Amazon Ads",
+      tom: "warn",
+      texto: `${i.termos.negativar.length} termo(s) de busca gastaram ${brl(i.termos.negativar.reduce((s, t) => s + t.custo, 0))} sem nenhuma venda. Avaliar negativar.`,
+    });
+  const perdeu = i.share.lista.filter((t) => t.status === "perdeu" || t.status === "saiu");
+  if (perdeu.length)
+    out.push({
+      tipo: "problema",
+      tag: "Amazon busca",
+      tom: "warn",
+      texto: `Perdemos espaço na busca em ${perdeu.length} termo(s) na última semana, como "${perdeu[0]!.termo}".`,
+    });
+  if (i.termos.promover.length)
+    out.push({
+      tipo: "oportunidade",
+      tag: "Amazon Ads",
+      tom: "success",
+      texto: `${i.termos.promover.length} termo(s) convertem barato e ainda não têm palavra-chave exata, como "${i.termos.promover[0]!.termo}".`,
+    });
+  if (i.organico.anunciar.length)
+    out.push({
+      tipo: "oportunidade",
+      tag: "Amazon busca",
+      tom: "primary",
+      texto: `${i.organico.anunciar.length} termo(s) perderam espaço orgânico e não têm anúncio, como "${i.organico.anunciar[0]!.termo}".`,
+    });
+  if (i.organico.reduzirLance.length)
+    out.push({
+      tipo: "oportunidade",
+      tag: "Amazon Ads",
+      tom: "primary",
+      texto: `${i.organico.reduzirLance.length} termo(s) em que já dominamos a busca e ainda pagamos ${brl(i.organico.reduzirLance.reduce((s, t) => s + t.custoAds, 0))} em Ads. Testar lance menor.`,
+    });
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Product 360: bloco Amazon de um SKU
+
+/** Resumo Amazon de um SKU: ASINs vinculados (reposição/estoque FBA) e Ads por produto. */
+export function amazonDoSku(
+  sku: string,
+  vinculos: Row[],
+  vendas: Row[],
+  buybox: Row[],
+  estoque: Row[],
+  reposicao: Row[],
+  cadastro: Row[],
+  adsProduto: Row[],
+  de: string,
+  ate: string,
+) {
+  const asins = new Set(
+    vinculos
+      .filter((r) => txt(r["sku"] ?? r["seller_sku"]) === sku)
+      .map((r) => txt(r["asin"]))
+      .filter(Boolean),
+  );
+  for (const r of adsProduto)
+    if (txt(r["sku"]) === sku && txt(r["asin"])) asins.add(txt(r["asin"]));
+  if (!asins.size) return null;
+  const so = (rows: Row[], k = "asin") => rows.filter((r) => asins.has(txt(r[k])));
+  const linhas = asin360(
+    so(vendas, "child_asin"),
+    so(buybox),
+    so(estoque),
+    so(reposicao),
+    so(cadastro),
+    de,
+    ate,
+  );
+  const ads = adsProduto.filter(
+    (r) =>
+      (asins.has(txt(r["asin"])) || txt(r["sku"]) === sku) &&
+      dia(r["data"]) >= de &&
+      dia(r["data"]) <= ate,
+  );
+  const custo = ads.reduce((s, r) => s + n(r["cost"]), 0);
+  const vendasAds = ads.reduce((s, r) => s + n(r["sales_14d"]), 0);
+  const vendasTot = linhas.reduce((s, a) => s + a.vendas, 0);
+  return {
+    asins: [...asins],
+    linhas,
+    vendas: vendasTot,
+    ads: {
+      custo,
+      vendasAtribuidas: vendasAds,
+      acosPct: div(custo * 100, vendasAds),
+      tacosPct: div(custo * 100, vendasTot),
+    },
+  };
+}

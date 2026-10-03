@@ -4,10 +4,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { getProduto } from "@/lib/data.functions";
-import { PeriodPills, Kpi, Panel, Loading, ErrorBox, Table, Td, Empty } from "@/components/kit";
+import type { amazonDoSku } from "@/lib/amazon";
+import { PeriodPills, Kpi, Panel, Loading, ErrorBox, Table, Td, Empty, StatusTag } from "@/components/kit";
 import { StackedArea, pivot } from "@/components/charts";
 import { sumBy, custoHistorico, custoNaData } from "@/lib/aggregate";
-import { fmtBRL, fmtNum, fmtPct, fmtX, fmtDate, periodo } from "@/lib/format";
+import { fmtBRL, fmtBRL2, fmtNum, fmtPct, fmtX, fmtDate, periodo } from "@/lib/format";
 
 export const Route = createFileRoute("/produtos/$sku")({
   head: () => ({
@@ -129,6 +130,73 @@ function Body({ sku, d }: { sku: string; d: Awaited<ReturnType<typeof getProduto
           (pode não ser vendido lá ou estar cadastrado com outro SKU).
         </p>
       </Panel>
+      <AmazonDoSku
+        a={(d as { amazon?: AmazonSku }).amazon ?? null}
+        erro={(d as { amazonErro?: string | null }).amazonErro ?? null}
+      />
     </div>
+  );
+}
+
+type AmazonSku = ReturnType<typeof amazonDoSku>;
+
+// Bloco Amazon do Product 360 (benchmarks/amazon/ANALISE.md §4): ASINs do SKU, Buy Box, conversão,
+// FBA e Ads do produto. Venda de Ads é atribuída pela Amazon; não somar com a receita.
+function AmazonDoSku({ a, erro }: { a: AmazonSku; erro: string | null }) {
+  if (erro)
+    return (
+      <Panel title="Amazon">
+        <Empty>Não foi possível ler os dados da Amazon: {erro}</Empty>
+      </Panel>
+    );
+  if (!a) return null;
+  return (
+    <Panel
+      title="Amazon"
+      right={
+        <Link to="/marketplace/amazon" className="text-sm font-medium text-primary hover:underline">
+          Ver Amazon →
+        </Link>
+      }
+    >
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi label="Vendas Amazon" value={fmtBRL(a.vendas)} hint={`${a.asins.length} ASIN(s)`} />
+        <Kpi label="Ads: investimento" value={fmtBRL(a.ads.custo)} />
+        <Kpi label="ACoS" value={fmtPct(a.ads.acosPct)} hint={`sobre ${fmtBRL(a.ads.vendasAtribuidas)} atribuídos`} />
+        <Kpi label="TACoS" value={fmtPct(a.ads.tacosPct)} hint="Ads ÷ venda do produto" />
+      </div>
+      {a.linhas.length ? (
+        <Table head={["ASIN", "Sessões", "Conversão", "Buy Box", "Preço / menor concorr.", "FBA", "Cobertura", "O que olhar"]}>
+          {a.linhas.map((x) => (
+            <tr key={x.asin}>
+              <Td mono>{x.asin}</Td>
+              <Td mono>{fmtNum(x.sessoes)}</Td>
+              <Td mono>{fmtPct(x.conversaoPct)}</Td>
+              <Td mono className={x.ganhaBuyBox === false ? "text-destructive" : ""}>{fmtPct(x.buyboxPct, 0)}</Td>
+              <Td mono>
+                {fmtBRL2(x.meuPreco)} / {fmtBRL2(x.menorConcorrente)}
+              </Td>
+              <Td mono>{fmtNum(x.fbaDisponivel)}</Td>
+              <Td mono>{x.coberturaDias == null ? "—" : `${fmtNum(x.coberturaDias)} d`}</Td>
+              <Td>
+                <div className="flex flex-wrap gap-1">
+                  {x.problemas.length ? (
+                    x.problemas.map((p) => (
+                      <StatusTag key={p} tone="warn">
+                        {p}
+                      </StatusTag>
+                    ))
+                  ) : (
+                    <StatusTag tone="success">ok</StatusTag>
+                  )}
+                </div>
+              </Td>
+            </tr>
+          ))}
+        </Table>
+      ) : (
+        <Empty>ASIN vinculado, mas sem vendas no período.</Empty>
+      )}
+    </Panel>
   );
 }

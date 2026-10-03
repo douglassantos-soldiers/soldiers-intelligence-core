@@ -7,6 +7,14 @@ import {
   shareDeBusca,
   reposicaoFba,
   recompraAsin,
+  organicoVsAds,
+  vendasPorHora,
+  novosParaMarca,
+  alvosKeywords,
+  alvosSd,
+  classificaLances,
+  alertasAmazon,
+  amazonDoSku,
 } from "@/lib/amazon";
 
 const DE = "2026-09-01";
@@ -263,5 +271,233 @@ describe("reposicaoFba e recompraAsin", () => {
       ["B", 20],
       ["A", 10],
     ]);
+  });
+});
+
+
+describe("organicoVsAds", () => {
+  const brand = [
+    { semana_fim: "2026-09-20", termo: "creatina", nosso: true, click_share: 0.4, rank_busca: 2 },
+    { semana_fim: "2026-09-27", termo: "creatina", nosso: true, click_share: 0.45, rank_busca: 2 },
+    { semana_fim: "2026-09-20", termo: "whey", nosso: true, click_share: 0.2, rank_busca: 1 },
+    { semana_fim: "2026-09-27", termo: "whey", nosso: true, click_share: 0.05, rank_busca: 1 },
+    { semana_fim: "2026-09-20", termo: "bcaa", nosso: true, click_share: 0.2, rank_busca: 9 },
+    { semana_fim: "2026-09-27", termo: "bcaa", nosso: true, click_share: 0.1, rank_busca: 9 },
+  ];
+  const termos = [
+    { data: "2026-09-10", search_term: "Creatina", cost: 300, sales_14d: 3000 },
+    { data: "2026-09-10", search_term: "bcaa", cost: 20, sales_14d: 0 },
+  ];
+  const r = organicoVsAds(brand, termos, DE, ATE);
+  it("anunciar: perdeu espaço e não tem Ads", () => {
+    expect(r.anunciar.map((t) => t.termo)).toEqual(["whey"]);
+  });
+  it("reduzir lance: domina a busca e ainda paga", () => {
+    expect(r.reduzirLance).toHaveLength(1);
+    expect(r.reduzirLance[0]).toMatchObject({ termo: "creatina", custoAds: 300, acosPct: 10 });
+  });
+});
+
+describe("vendasPorHora", () => {
+  // 2026-09-06 e 2026-09-13 são domingos; 2026-09-07 é segunda.
+  const r = vendasPorHora(
+    [
+      { data: "2026-09-06", hora: 20, venda: 300, pedidos: 3 },
+      { data: "2026-09-13", hora: 20, venda: 100, pedidos: 1 },
+      { data: "2026-09-07", hora: 9, venda: 50, pedidos: 1 },
+      { data: "2026-09-07", hora: 25, venda: 999 },
+    ],
+    "2026-09-06",
+    "2026-09-13",
+  );
+  it("média por dia da semana divide pelo número de domingos do período", () => {
+    const dom20 = r.celulas.find((c) => c.dow === 0 && c.hora === 20)!;
+    expect(dom20.vendaMedia).toBe(200);
+    expect(r.melhores[0]).toMatchObject({ dow: 0, hora: 20 });
+    expect(r.total).toBe(450);
+    expect(r.porHora[20]!.pct).toBeCloseTo((400 / 450) * 100, 6);
+  });
+});
+
+describe("novosParaMarca", () => {
+  const r = novosParaMarca(
+    [
+      {
+        data: "2026-09-02",
+        campaign_id: "1",
+        campaign_name: "SB Marca",
+        cost: 200,
+        sales: 1000,
+        ntb_sales: 600,
+        ntb_purchases: 8,
+      },
+    ],
+    [
+      {
+        data: "2026-09-02",
+        campaign_id: "9",
+        campaign_name: "SD Retarget",
+        cost: 100,
+        sales: 500,
+        ntb_sales_clicks: 50,
+        ntb_purchases_clicks: 1,
+      },
+    ],
+    DE,
+    ATE,
+  );
+  it("calcula % de venda de cliente novo e custo por cliente novo", () => {
+    expect(r.sb).toMatchObject({ pctNtb: 60, custoPorNovo: 25 });
+    expect(r.sd).toMatchObject({ pctNtb: 10, custoPorNovo: 100 });
+    expect(r.campanhas[0]!.campanha).toBe("SB Marca");
+  });
+});
+
+describe("classificaLances", () => {
+  const kw = alvosKeywords(
+    [
+      {
+        data: "2026-09-02",
+        campaign_name: "C",
+        keyword: "creatina",
+        match_type: "EXACT",
+        cost: 100,
+        clicks: 100,
+        purchases_14d: 10,
+        sales_14d: 1000,
+        top_search_is: 0.2,
+      },
+      {
+        data: "2026-09-02",
+        campaign_name: "C",
+        keyword: "whey",
+        match_type: "BROAD",
+        cost: 300,
+        clicks: 150,
+        purchases_14d: 2,
+        sales_14d: 600,
+      },
+      {
+        data: "2026-09-02",
+        campaign_name: "C",
+        keyword: "pre treino",
+        match_type: "PHRASE",
+        cost: 80,
+        clicks: 40,
+        purchases_14d: 0,
+        sales_14d: 0,
+      },
+      {
+        data: "2026-09-02",
+        campaign_name: "C",
+        keyword: "glutamina",
+        match_type: "EXACT",
+        cost: 100,
+        clicks: 50,
+        purchases_14d: 4,
+        sales_14d: 400,
+        top_search_is: 0.9,
+      },
+    ],
+    DE,
+    ATE,
+  );
+  const r = classificaLances(kw);
+  it("referência = custo ÷ venda dos alvos com venda", () => {
+    expect(r.acosReferenciaPct).toBe(25); // 500 / 2000
+  });
+  it("subir só quem tem ACoS baixo e pouca presença no topo; lance limitado a +30%", () => {
+    expect(r.subir.map((a) => a.alvo)).toEqual(["creatina"]);
+    expect(r.subir[0]!.topoBuscaPct).toBe(20);
+    expect(r.subir[0]!.lanceSugerido).toBeCloseTo(1.3, 6); // cpc 1 × min(1,3; 25/10)
+  });
+  it("baixar ACoS alto e pausar gasto sem venda", () => {
+    expect(r.baixar.map((a) => a.alvo)).toEqual(["whey"]);
+    expect(r.baixar[0]!.lanceSugerido).toBeCloseTo(2 * 0.7, 6); // cpc 2 × max(0,7; 25/50)
+    expect(r.pausar.map((a) => a.alvo)).toEqual(["pre treino"]);
+  });
+  it("alvos de SD usam o texto do alvo", () => {
+    const sd = alvosSd(
+      [
+        {
+          data: "2026-09-02",
+          campaign_id: "1",
+          targeting: "asin=B0X",
+          targeting_text: "Concorrente X",
+          cost: 10,
+          clicks: 5,
+          purchases: 1,
+          sales: 100,
+        },
+      ],
+      DE,
+      ATE,
+    );
+    expect(sd[0]).toMatchObject({ alvo: "Concorrente X", acosPct: 10 });
+  });
+});
+
+describe("alertasAmazon", () => {
+  it("transforma os sinais em problemas e oportunidades", () => {
+    const asins = asin360(
+      [
+        {
+          data: "2026-09-02",
+          child_asin: "B1",
+          vendas: 1000,
+          unidades: 10,
+          sessoes: 100,
+          buybox_pct: 50,
+        },
+      ],
+      [{ asin: "B1", ganho_buybox: false }],
+      [{ asin: "B1", fulfillable: 0 }],
+      [],
+      [{ asin: "B1", titulo: "Creatina" }],
+      DE,
+      ATE,
+    );
+    const vazio = { acosReferenciaPct: null, custoTotal: 0, negativar: [], promover: [] };
+    const a = alertasAmazon({
+      asins,
+      termos: vazio,
+      share: { semana: null, semanaAnterior: null, termos: 0, perderam: 0, lista: [] },
+      organico: { anunciar: [], reduzirLance: [] },
+    });
+    expect(a.map((x) => [x.tipo, x.tag])).toEqual([
+      ["problema", "Amazon Buy Box"],
+      ["problema", "Amazon FBA"],
+    ]);
+    expect(a[0]!.texto).toContain("Creatina");
+  });
+});
+
+describe("amazonDoSku", () => {
+  it("acha os ASINs do SKU e calcula ACoS/TACoS só deles", () => {
+    const r = amazonDoSku(
+      "CREA300",
+      [
+        { sku: "CREA300", asin: "B1" },
+        { seller_sku: "OUTRO", asin: "B9" },
+      ],
+      [
+        { data: "2026-09-02", child_asin: "B1", vendas: 1000, unidades: 10, sessoes: 100 },
+        { data: "2026-09-02", child_asin: "B9", vendas: 5000, unidades: 50, sessoes: 500 },
+      ],
+      [],
+      [],
+      [],
+      [],
+      [
+        { data: "2026-09-02", asin: "B1", sku: "CREA300", cost: 100, sales_14d: 400 },
+        { data: "2026-09-02", asin: "B9", sku: "OUTRO", cost: 999, sales_14d: 999 },
+      ],
+      DE,
+      ATE,
+    )!;
+    expect(r.asins).toEqual(["B1"]);
+    expect(r.vendas).toBe(1000);
+    expect(r.ads).toMatchObject({ custo: 100, acosPct: 25, tacosPct: 10 });
+    expect(amazonDoSku("NADA", [], [], [], [], [], [], [], DE, ATE)).toBeNull();
   });
 });

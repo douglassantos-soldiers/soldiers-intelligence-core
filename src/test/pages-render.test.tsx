@@ -1,48 +1,219 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { resumoAmazon, asin360, termosAds, shareDeBusca, reposicaoFba, recompraAsin } from "@/lib/amazon";
+import {
+  resumoAmazon,
+  asin360,
+  termosAds,
+  shareDeBusca,
+  reposicaoFba,
+  recompraAsin,
+  organicoVsAds,
+  vendasPorHora,
+  novosParaMarca,
+  alvosKeywords,
+  alvosSd,
+  classificaLances,
+} from "@/lib/amazon";
 
 const AMZ_DE = "2026-09-01";
 const AMZ_ATE = "2026-09-30";
 const amazonFixture = {
   resumo: resumoAmazon(
-    [{ data: "2026-09-02", vendas: 20000, unidades: 200, sessoes: 4000, buybox_pct: 0.86, unidades_devolvidas: 4 }],
+    [
+      {
+        data: "2026-09-02",
+        vendas: 20000,
+        unidades: 200,
+        sessoes: 4000,
+        buybox_pct: 0.86,
+        unidades_devolvidas: 4,
+      },
+    ],
     [{ data: "2026-09-02", ad_type: "SP", cost: 1500, sales_14d: 7500, clicks: 900 }],
     AMZ_DE,
     AMZ_ATE,
   ),
   asins: asin360(
     [
-      { data: "2026-09-02", child_asin: "B0CREA", vendas: 12000, unidades: 120, sessoes: 1500, buybox_pct: 1 },
-      { data: "2026-09-02", child_asin: "B0WHEY", vendas: 8000, unidades: 80, sessoes: 2500, buybox_pct: 0.7 },
+      {
+        data: "2026-09-02",
+        child_asin: "B0CREA",
+        vendas: 12000,
+        unidades: 120,
+        sessoes: 1500,
+        buybox_pct: 1,
+      },
+      {
+        data: "2026-09-02",
+        child_asin: "B0WHEY",
+        vendas: 8000,
+        unidades: 80,
+        sessoes: 2500,
+        buybox_pct: 0.7,
+      },
     ],
-    [{ asin: "B0WHEY", ganho_buybox: false, concorrente_no_bb: true, meu_preco: 199.9, menor_preco_concorrente: 189.9 }],
+    [
+      {
+        asin: "B0WHEY",
+        ganho_buybox: false,
+        concorrente_no_bb: true,
+        meu_preco: 199.9,
+        menor_preco_concorrente: 189.9,
+      },
+    ],
     [{ asin: "B0CREA", seller_sku: "CREA300", fulfillable: 90 }],
-    [{ asin: "B0CREA", sku: "CREA300", em_fba: true, cobertura_dias: 8, titulo: "Creatina Amazon 300g", fba_disponivel: 90 }],
+    [
+      {
+        asin: "B0CREA",
+        sku: "CREA300",
+        em_fba: true,
+        cobertura_dias: 8,
+        titulo: "Creatina Amazon 300g",
+        fba_disponivel: 90,
+      },
+    ],
     [{ asin: "B0WHEY", titulo: "Whey Amazon 900g", tem_aplus: true }],
     AMZ_DE,
     AMZ_ATE,
   ),
   termos: termosAds(
     [
-      { data: "2026-09-02", campaign_name: "C", search_term: "pre treino barato", keyword_text: "pre treino", match_type: "BROAD", cost: 80, clicks: 40, purchases_14d: 0, sales_14d: 0 },
-      { data: "2026-09-02", campaign_name: "C", search_term: "creatina monohidratada", keyword_text: "creatina", match_type: "BROAD", cost: 50, clicks: 30, purchases_14d: 6, sales_14d: 900 },
-      { data: "2026-09-02", campaign_name: "C", search_term: "whey", keyword_text: "whey", match_type: "BROAD", cost: 300, clicks: 100, purchases_14d: 3, sales_14d: 400 },
+      {
+        data: "2026-09-02",
+        campaign_name: "C",
+        search_term: "pre treino barato",
+        keyword_text: "pre treino",
+        match_type: "BROAD",
+        cost: 80,
+        clicks: 40,
+        purchases_14d: 0,
+        sales_14d: 0,
+      },
+      {
+        data: "2026-09-02",
+        campaign_name: "C",
+        search_term: "creatina monohidratada",
+        keyword_text: "creatina",
+        match_type: "BROAD",
+        cost: 50,
+        clicks: 30,
+        purchases_14d: 6,
+        sales_14d: 900,
+      },
+      {
+        data: "2026-09-02",
+        campaign_name: "C",
+        search_term: "whey",
+        keyword_text: "whey",
+        match_type: "BROAD",
+        cost: 300,
+        clicks: 100,
+        purchases_14d: 3,
+        sales_14d: 400,
+      },
     ],
     AMZ_DE,
     AMZ_ATE,
   ),
   share: shareDeBusca([
-    { semana_fim: "2026-09-20", termo: "creatina", nosso: true, click_share: 0.2, conversion_share: 0.25, rank_busca: 4 },
-    { semana_fim: "2026-09-27", termo: "creatina", nosso: true, click_share: 0.12, conversion_share: 0.15, rank_busca: 4 },
+    {
+      semana_fim: "2026-09-20",
+      termo: "creatina",
+      nosso: true,
+      click_share: 0.2,
+      conversion_share: 0.25,
+      rank_busca: 4,
+    },
+    {
+      semana_fim: "2026-09-27",
+      termo: "creatina",
+      nosso: true,
+      click_share: 0.12,
+      conversion_share: 0.15,
+      rank_busca: 4,
+    },
   ]),
   reposicao: reposicaoFba(
-    [{ sku: "CREA300", asin: "B0CREA", titulo: "Creatina Amazon 300g", em_fba: true, fba_disponivel: 90, cobertura_dias: 8, enviar_30d: 300, alerta: "repor" }],
+    [
+      {
+        sku: "CREA300",
+        asin: "B0CREA",
+        titulo: "Creatina Amazon 300g",
+        em_fba: true,
+        fba_disponivel: 90,
+        cobertura_dias: 8,
+        enviar_30d: 300,
+        alerta: "repor",
+      },
+    ],
     [{ seller_sku: "CREA300", imprestavel_total: 3 }],
   ),
-  recompra: recompraAsin([{ asin: "B0CREA", mes_fim: "2026-09-30", clientes_unicos: 300, pct_clientes_repetem: 0.18, receita_recompra: 4000 }]),
+  recompra: recompraAsin([
+    {
+      asin: "B0CREA",
+      mes_fim: "2026-09-30",
+      clientes_unicos: 300,
+      pct_clientes_repetem: 0.18,
+      receita_recompra: 4000,
+    },
+  ]),
+  organico: organicoVsAds(
+    [
+      { semana_fim: "2026-09-20", termo: "whey", nosso: true, click_share: 0.2, rank_busca: 1 },
+      { semana_fim: "2026-09-27", termo: "whey", nosso: true, click_share: 0.05, rank_busca: 1 },
+      {
+        semana_fim: "2026-09-27",
+        termo: "creatina pura",
+        nosso: true,
+        click_share: 0.5,
+        rank_busca: 3,
+      },
+    ],
+    [{ data: "2026-09-02", search_term: "creatina pura", cost: 400, sales_14d: 2000 }],
+    AMZ_DE,
+    AMZ_ATE,
+  ),
+  horas: vendasPorHora(
+    [
+      { data: "2026-09-06", hora: 21, venda: 900, pedidos: 9 },
+      { data: "2026-09-07", hora: 9, venda: 100, pedidos: 1 },
+    ],
+    AMZ_DE,
+    AMZ_ATE,
+  ),
+  lances: {
+    keywords: classificaLances(
+      alvosKeywords(
+        [
+          {
+            data: "2026-09-02",
+            campaign_name: "SP Creatina",
+            keyword: "creatina 1kg",
+            match_type: "EXACT",
+            cost: 100,
+            clicks: 100,
+            purchases_14d: 10,
+            sales_14d: 1000,
+          },
+          {
+            data: "2026-09-02",
+            campaign_name: "SP Whey",
+            keyword: "whey protein",
+            match_type: "BROAD",
+            cost: 300,
+            clicks: 150,
+            purchases_14d: 2,
+            sales_14d: 600,
+          },
+        ],
+        AMZ_DE,
+        AMZ_ATE,
+      ),
+    ),
+    sd: classificaLances(alvosSd([], AMZ_DE, AMZ_ATE)),
+  },
   erros: { brand: "timeout" },
 };
 
@@ -51,6 +222,22 @@ const amazonFixture = {
 const fixtures: Record<string, unknown> = {
   amazon: amazonFixture,
   media: {
+    amazonNtb: novosParaMarca(
+      [
+        {
+          data: "2026-09-02",
+          campaign_id: "1",
+          campaign_name: "SB Marca Soldiers",
+          cost: 200,
+          sales: 1000,
+          ntb_sales: 600,
+          ntb_purchases: 8,
+        },
+      ],
+      [],
+      "2026-09-01",
+      "2026-09-30",
+    ),
     tipos: [
       {
         data: "2026-09-01",
@@ -224,6 +411,20 @@ const fixtures: Record<string, unknown> = {
       },
     ],
     problemasDados: 3,
+    amazon: [
+      {
+        tipo: "problema",
+        tag: "Amazon FBA",
+        tom: "warn",
+        texto: "2 ASIN(s) com venda e menos de 14 dias de estoque no FBA.",
+      },
+      {
+        tipo: "oportunidade",
+        tag: "Amazon busca",
+        tom: "primary",
+        texto: "1 termo(s) perderam espaço orgânico e não têm anúncio.",
+      },
+    ],
     buybox: { perdendo_concorrente: 2, suprimida: 1, em_risco: 4 },
     acoes: [
       { acao: "recompra", clientes: 30, valor_esperado: 3000 },
@@ -335,6 +536,8 @@ describe("telas novas renderizam com dados", () => {
     expect(await screen.findByText("Por tipo de campanha")).toBeTruthy();
     expect(screen.getByText("Funil por canal de venda")).toBeTruthy();
     expect(screen.getAllByText("3,67x").length).toBeGreaterThan(0); // ROAS mídia = 550 / 150
+    expect(screen.getByText("Amazon Ads: clientes novos para a marca")).toBeTruthy();
+    expect(screen.getAllByText("60%").length).toBeGreaterThan(0); // 600 de 1000 de clientes novos
   });
 
   it("Affiliate", async () => {
@@ -375,6 +578,8 @@ describe("telas novas renderizam com dados", () => {
     expect(screen.getByText("Whey 900g")).toBeTruthy();
     expect(screen.getByText("Recompra")).toBeTruthy();
     expect(screen.queryByText("Aguardar")).toBeNull(); // "aguardar" não é oportunidade
+    expect(screen.getByText("Amazon FBA")).toBeTruthy();
+    expect(screen.getByText("Amazon busca")).toBeTruthy();
   });
 
   it("Affiliate Copilot: o que fazer hoje", async () => {
@@ -408,11 +613,24 @@ describe("telas novas renderizam com dados", () => {
     wrap(<C />);
     expect(await screen.findByText("ASIN 360°")).toBeTruthy();
     expect(screen.getByText("concorrente com a Buy Box")).toBeTruthy();
-    expect(screen.getByText("pre treino barato")).toBeTruthy();
-    expect(screen.getByText("creatina monohidratada")).toBeTruthy();
-    expect(screen.getByText("perdeu")).toBeTruthy();
+    expect(screen.getByText("Reposição FBA")).toBeTruthy();
     expect(screen.getByText(/Não foi possível ler: Brand Analytics/)).toBeTruthy();
     expect(screen.getByText("TACoS")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Ads"));
+    expect(screen.getByText("pre treino barato")).toBeTruthy();
+    expect(screen.getByText("creatina monohidratada")).toBeTruthy();
+    expect(screen.getByText("creatina 1kg")).toBeTruthy(); // subir lance
+    expect(screen.getByText("whey protein")).toBeTruthy(); // baixar lance
+
+    fireEvent.click(screen.getByText("Busca"));
+    expect(screen.getByText("perdeu")).toBeTruthy();
+    expect(screen.getByText("Busca orgânica × Ads")).toBeTruthy();
+    expect(screen.getAllByText("creatina pura").length).toBeGreaterThan(0); // domina e paga
+
+    fireEvent.click(screen.getByText("Horários"));
+    expect(screen.getByText("Melhores horários")).toBeTruthy();
+    expect(screen.getByText("Dom 21h–22h")).toBeTruthy();
   });
 
   it("Data Health mostra token com renovação parada", async () => {

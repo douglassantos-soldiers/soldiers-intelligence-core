@@ -18,6 +18,8 @@ export function Alertas() {
 
   const estoque = d.estoque.filter((e) => Number(e["cobertura_dias"]) <= 21);
   const bb = d.buybox;
+  const amazonProblemas = (d.amazon ?? []).filter((a) => a.tipo === "problema").length;
+  const amazonOportunidades = (d.amazon ?? []).filter((a) => a.tipo === "oportunidade").length;
   const acoes = d.acoes
     .filter((a) => ACOES_OPORTUNIDADE.includes(String(a["acao"])))
     .reduce<Record<string, { clientes: number; valor: number }>>((m, a) => {
@@ -63,6 +65,19 @@ export function Alertas() {
               </span>
             </li>
           )}
+          {(d.amazon ?? [])
+            .filter((a) => a.tipo === "problema")
+            .map((a) => (
+              <li key={a.texto} className="flex items-start gap-2">
+                <StatusTag tone={a.tom}>{a.tag}</StatusTag>
+                <span>
+                  {a.texto}{" "}
+                  <Link to="/marketplace/amazon" className="text-primary hover:underline">
+                    Ver Amazon
+                  </Link>
+                </span>
+              </li>
+            ))}
           {d.problemasDados > 0 && (
             <li className="flex items-start gap-2">
               <StatusTag tone="warn">Dados</StatusTag>
@@ -76,7 +91,8 @@ export function Alertas() {
           )}
           {!estoque.length &&
             !(bb && Number(bb["perdendo_concorrente"]) + Number(bb["suprimida"]) > 0) &&
-            !d.problemasDados && <Empty>Nenhum problema detectado.</Empty>}
+            !d.problemasDados &&
+            !amazonProblemas && <Empty>Nenhum problema detectado.</Empty>}
         </ul>
       </Panel>
 
@@ -111,7 +127,20 @@ export function Alertas() {
               </span>
             </li>
           ))}
-          {!Object.keys(acoes).length && !d.skusEmAlta.length && (
+          {(d.amazon ?? [])
+            .filter((a) => a.tipo === "oportunidade")
+            .map((a) => (
+              <li key={a.texto} className="flex items-start gap-2">
+                <StatusTag tone={a.tom}>{a.tag}</StatusTag>
+                <span>
+                  {a.texto}{" "}
+                  <Link to="/marketplace/amazon" className="text-primary hover:underline">
+                    Ver Amazon
+                  </Link>
+                </span>
+              </li>
+            ))}
+          {!Object.keys(acoes).length && !d.skusEmAlta.length && !amazonOportunidades && (
             <Empty>Nenhuma oportunidade destacada.</Empty>
           )}
         </ul>

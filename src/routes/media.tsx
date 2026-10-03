@@ -16,6 +16,7 @@ import {
 } from "@/components/kit";
 import { StackedArea, pivot } from "@/components/charts";
 import { getMedia } from "@/lib/data.functions";
+import type { novosParaMarca } from "@/lib/amazon";
 import { sumBy, total, ratio, pct } from "@/lib/aggregate";
 import { fmtBRL, fmtBRL2, fmtNum, fmtPct, fmtX } from "@/lib/format";
 import { periodo } from "@/lib/format";
@@ -54,17 +55,23 @@ function Media() {
       />
       {q.isLoading && <Loading />}
       {q.error && <ErrorBox error={q.error} />}
-      {q.data && <Body tipos={q.data.tipos} funil={q.data.funil} />}
+      {q.data && (
+        <Body tipos={q.data.tipos} funil={q.data.funil} amazonNtb={(q.data as { amazonNtb?: Ntb }).amazonNtb ?? null} />
+      )}
     </>
   );
 }
 
+type Ntb = ReturnType<typeof novosParaMarca> | null;
+
 function Body({
   tipos,
   funil,
+  amazonNtb,
 }: {
   tipos: Record<string, unknown>[];
   funil: Record<string, unknown>[];
+  amazonNtb: Ntb;
 }) {
   const t = total(tipos, TIPO_FIELDS);
   const porTipo = sumBy(tipos, "tipo", TIPO_FIELDS).sort(
@@ -165,6 +172,74 @@ function Body({
           </p>
         </Panel>
       </div>
+
+      {amazonNtb && <AmazonNtb n={amazonNtb} />}
     </div>
+  );
+}
+
+// Amazon Ads: clientes novos para a marca (Plano Mestre cap. 10; benchmarks/amazon/ANALISE.md §4 item 5).
+// "Novo para a marca" é a definição da Amazon (sem compra da marca nos 12 meses anteriores).
+function AmazonNtb({ n }: { n: NonNullable<Ntb> }) {
+  return (
+    <Panel
+      title="Amazon Ads: clientes novos para a marca"
+      right={<CsvButton name="amazon-novos-para-marca" rows={n.campanhas} />}
+    >
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi
+          label="Sponsored Brands: venda de novos"
+          value={fmtPct(n.sb.pctNtb, 0)}
+          hint={`${fmtBRL(n.sb.ntbVendas)} de ${fmtBRL(n.sb.vendas)} atribuídos`}
+        />
+        <Kpi
+          label="SB: custo por cliente novo"
+          value={fmtBRL2(n.sb.custoPorNovo)}
+          hint={`${fmtNum(n.sb.ntbCompras)} compras de novos`}
+        />
+        <Kpi
+          label="Sponsored Display: venda de novos"
+          value={fmtPct(n.sd.pctNtb, 0)}
+          hint={`${fmtBRL(n.sd.ntbVendas)} de ${fmtBRL(n.sd.vendas)} (só por clique)`}
+        />
+        <Kpi
+          label="SD: custo por cliente novo"
+          value={fmtBRL2(n.sd.custoPorNovo)}
+          hint={`${fmtNum(n.sd.ntbCompras)} compras de novos`}
+        />
+      </div>
+      {n.campanhas.length ? (
+        <Table
+          head={[
+            "Campanha",
+            "Tipo",
+            "Investido",
+            "Vendas atrib.",
+            "De clientes novos",
+            "% novos",
+            "Custo por novo",
+          ]}
+        >
+          {n.campanhas.map((c) => (
+            <tr key={`${c.tipo}|${c.campanha}`}>
+              <Td className="max-w-[280px] truncate">{c.campanha}</Td>
+              <Td>{c.tipo}</Td>
+              <Td mono>{fmtBRL(c.custo)}</Td>
+              <Td mono>{fmtBRL(c.vendas)}</Td>
+              <Td mono>{fmtBRL(c.ntbVendas)}</Td>
+              <Td mono>{fmtPct(c.pctNtb, 0)}</Td>
+              <Td mono>{fmtBRL2(c.custoPorNovo)}</Td>
+            </tr>
+          ))}
+        </Table>
+      ) : (
+        <Empty />
+      )}
+      <p className="mt-3 text-xs text-muted-foreground">
+        Venda atribuída pela Amazon, não somar com a receita. Cliente novo para a marca, segundo a
+        Amazon, é quem não comprou Soldiers na Amazon nos 12 meses anteriores: não é o mesmo
+        conceito de cliente novo do CRM.
+      </p>
+    </Panel>
   );
 }
