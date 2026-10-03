@@ -19,7 +19,8 @@ export function total(rows: Row[], fields: string[]) {
 }
 
 export const RECEITA_FIELDS = ["faturamento", "pedidos", "invest_ads", "receita_ads", "invest_afiliados", "invest_aquisicao"];
-export const PL_FIELDS = ["receita_bruta", "custo_canal", "ads", "imposto", "cmv", "margem_contribuicao"];
+// det_taxa + det_frete + det_afiliado detalham custo_canal (vw/mv_pl_canal_dia).
+export const PL_FIELDS = ["receita_bruta", "custo_canal", "det_taxa", "det_frete", "det_afiliado", "ads", "imposto", "cmv", "margem_contribuicao"];
 
 export function channelSummary(receita: Row[], pl: Row[]) {
   const r = sumBy(receita, "canal", RECEITA_FIELDS);

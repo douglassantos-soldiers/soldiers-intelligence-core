@@ -46,8 +46,15 @@ function Body({ data }: { data: Awaited<ReturnType<typeof getOverview>> }) {
         <Kpi label="Receita" value={fmtBRL(t.faturamento)} />
         <Kpi label="Pedidos" value={fmtNum(t.pedidos)} hint={`Ticket ${fmtBRL(ratio(t.faturamento, t.pedidos))}`} />
         <Kpi label="Margem de contribuição" value={fmtBRL(pl.margem_contribuicao)} hint={`${fmtPct(pct(pl.margem_contribuicao, pl.receita_bruta))} da receita`} tone="up" />
-        <Kpi label="Investimento aquisição" value={fmtBRL(t.invest_aquisicao)} hint={`Ads ${fmtBRL(t.invest_ads)} · Afil. ${fmtBRL(t.invest_afiliados)}`} />
-        <Kpi label="ROAS total" value={fmtX(ratio(t.faturamento, t.invest_aquisicao))} hint={`TACoS ${fmtPct(pct(t.invest_aquisicao, t.faturamento))}`} tone="warn" />
+        <Kpi label="Investimento aquisição" value={fmtBRL(t.invest_aquisicao)} hint={`Ads ${fmtBRL(t["invest_ads"])} · Afil. ${fmtBRL(t["invest_afiliados"])}`} />
+        {/* Media e Affiliate separados (Plano Mestre, princípio 4): ROAS mídia usa só ads;
+            o retorno de aquisição (MER) usa ads + afiliados sobre a receita total. */}
+        <Kpi
+          label="ROAS mídia"
+          value={fmtX(ratio(t["receita_ads"], t["invest_ads"]))}
+          hint={`Retorno aquisição (MER) ${fmtX(ratio(t.faturamento, t.invest_aquisicao))} · TACoS ${fmtPct(pct(t.invest_aquisicao, t.faturamento))}`}
+          tone="warn"
+        />
         <Kpi label="Clientes novos" value={fmtNum(nr.clientes_novos)} hint={`${fmtNum(nr.clientes_recorrentes)} recorrentes`} />
       </div>
 
@@ -57,22 +64,29 @@ function Body({ data }: { data: Awaited<ReturnType<typeof getOverview>> }) {
 
       <div className="grid gap-6 xl:grid-cols-3">
         <Panel title="Canais" className="xl:col-span-2">
-          <Table head={["Canal", "Receita", "Share", "Pedidos", "Invest.", "ROAS", "CMV", "Margem contrib.", "Margem %"]}>
+          <Table head={["Canal", "Receita", "Share", "Pedidos", "Invest. ads", "Invest. afil.", "ROAS mídia", "Retorno aquis.", "Custo canal", "CMV", "Margem contrib.", "Margem %"]}>
             {canais.map((c) => (
               <tr key={String(c.canal)}>
                 <Td><span className="font-medium">{c.canal}</span></Td>
                 <Td mono>{fmtBRL(c.faturamento)}</Td>
                 <Td mono>{fmtPct(pct(c.faturamento, t.faturamento))}</Td>
                 <Td mono>{fmtNum(c.pedidos)}</Td>
-                <Td mono>{fmtBRL(c.invest_aquisicao)}</Td>
+                <Td mono>{fmtBRL(c["invest_ads"])}</Td>
+                <Td mono>{fmtBRL(c["invest_afiliados"])}</Td>
+                <Td mono>{fmtX(ratio(c["receita_ads"], c["invest_ads"]))}</Td>
                 <Td mono>{fmtX(ratio(c.faturamento, c.invest_aquisicao))}</Td>
+                <Td mono>
+                  <span title={`Taxas ${fmtBRL(c["det_taxa"])} · Frete ${fmtBRL(c["det_frete"])} · Afiliado ${fmtBRL(c["det_afiliado"])}`}>{fmtBRL(c.custo_canal)}</span>
+                </Td>
                 <Td mono>{fmtBRL(c.cmv)}</Td>
                 <Td mono className="text-success">{fmtBRL(c.margem_contribuicao)}</Td>
                 <Td mono>{fmtPct(pct(c.margem_contribuicao, c.receita_bruta))}</Td>
               </tr>
             ))}
           </Table>
-          <p className="mt-3 text-xs text-muted-foreground">Margem = receita − custo do canal − ads − imposto − CMV (fonte: P&L por canal já calculado no banco).</p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Margem = receita − custo do canal (taxas, frete, afiliado) − ads − imposto − CMV (fonte: P&L por canal já calculado no banco). ROAS mídia = receita atribuída a ads ÷ investimento em ads (receita atribuída, não somar com a receita). Retorno aquisição (MER) = receita ÷ (ads + afiliados). Passe o mouse no custo do canal para ver o detalhe.
+          </p>
         </Panel>
         <Panel title="Novos vs. recorrentes">
           <div className="space-y-4">

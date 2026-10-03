@@ -41,7 +41,7 @@ export const getOverview = createServerFn({ method: "GET" })
     const c = await db();
     const [rc, pl, nr] = await Promise.all([
       fetchAll(() => c.from("vw_receita_consolidada").select("data,canal,faturamento,pedidos,invest_ads,receita_ads,invest_afiliados,invest_aquisicao").gte("data", data.de).lte("data", data.ate).order("data"), "receita"),
-      fetchAll(() => c.from("mv_pl_canal_dia").select("data,canal,receita_bruta,custo_canal,ads,imposto,cmv,margem_contribuicao,cmv_cobertura_pct").gte("data", data.de).lte("data", data.ate).order("data"), "p&l"),
+      fetchAll(() => c.from("mv_pl_canal_dia").select("data,canal,receita_bruta,custo_canal,det_taxa,det_frete,det_afiliado,ads,imposto,cmv,margem_contribuicao,cmv_cobertura_pct").gte("data", data.de).lte("data", data.ate).order("data"), "p&l"),
       c.rpc("growth_novos_recorrentes", { p_de: data.de, p_ate: data.ate }),
     ]);
     return { receita: rc, pl, novosRecorrentes: (nr.error ? [] : nr.data) as Record<string, number>[] };

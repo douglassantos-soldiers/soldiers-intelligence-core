@@ -17,7 +17,7 @@ export function ChannelView({ canais, dias, setDias }: { canais: readonly string
   const pl = (ov.data?.pl ?? []).filter((r) => sel.includes(String(r.canal)));
   const resumo = channelSummary(rec, pl);
   const t = resumo.reduce<Record<string, number>>((s, c) => {
-    for (const k of ["faturamento", "pedidos", "invest_ads", "receita_ads", "invest_afiliados", "invest_aquisicao", "margem_contribuicao", "receita_bruta", "cmv", "custo_canal"]) s[k] = (s[k] ?? 0) + (Number(c[k]) || 0);
+    for (const k of ["faturamento", "pedidos", "invest_ads", "receita_ads", "invest_afiliados", "invest_aquisicao", "margem_contribuicao", "receita_bruta", "cmv", "custo_canal", "det_taxa", "det_frete", "det_afiliado"]) s[k] = (s[k] ?? 0) + (Number(c[k]) || 0);
     return s;
   }, {});
   const chart = pivot(rec, "faturamento");
@@ -38,15 +38,15 @@ export function ChannelView({ canais, dias, setDias }: { canais: readonly string
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             <Kpi label="Receita" value={fmtBRL(t.faturamento)} />
             <Kpi label="Pedidos" value={fmtNum(t.pedidos)} hint={`Ticket ${fmtBRL(ratio(t.faturamento, t.pedidos))}`} />
-            <Kpi label="Custo do canal" value={fmtBRL(t.custo_canal)} hint={`${fmtPct(pct(t.custo_canal, t.receita_bruta))} (taxas, frete, afiliado)`} />
-            <Kpi label="Ads" value={fmtBRL(t.invest_ads)} hint={`ROAS ads ${fmtX(ratio(t.receita_ads, t.invest_ads))}`} />
+            <Kpi label="Custo do canal" value={fmtBRL(t.custo_canal)} hint={`${fmtPct(pct(t.custo_canal, t.receita_bruta))} · Taxas ${fmtBRL(t["det_taxa"])} · Frete ${fmtBRL(t["det_frete"])} · Afil. ${fmtBRL(t["det_afiliado"])}`} />
+            <Kpi label="Ads" value={fmtBRL(t["invest_ads"])} hint={`ROAS ads ${fmtX(ratio(t["receita_ads"], t["invest_ads"]))}`} />
             <Kpi label="TACoS" value={fmtPct(pct(t.invest_aquisicao, t.faturamento))} tone="warn" />
             <Kpi label="Margem contrib." value={fmtBRL(t.margem_contribuicao)} hint={fmtPct(pct(t.margem_contribuicao, t.receita_bruta))} tone="up" />
           </div>
           <div className="grid gap-6 xl:grid-cols-3">
             <Panel title="Receita diária" className="xl:col-span-2"><StackedArea data={chart.data} keys={chart.series} /></Panel>
             <Panel title="Margem por canal">
-              <Bars data={resumo.map((c) => ({ canal: c.canal, Margem: c.margem_contribuicao, Ads: c.invest_ads, CMV: c.cmv }))} x="canal" keys={["CMV", "Ads", "Margem"]} />
+              <Bars data={resumo.map((c) => ({ canal: c.canal, Margem: c.margem_contribuicao, Ads: c["invest_ads"], CMV: c.cmv }))} x="canal" keys={["CMV", "Ads", "Margem"]} />
             </Panel>
           </div>
         </>
