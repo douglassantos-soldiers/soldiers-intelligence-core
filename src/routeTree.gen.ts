@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CommerceRouteImport } from './routes/commerce'
+import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesChaveRouteImport } from './routes/clientes.$chave'
 import { Route as PedidosIndexRouteImport } from './routes/pedidos.index'
@@ -20,6 +22,16 @@ import { Route as PedidosCanalIdRouteImport } from './routes/pedidos.$canal.$id'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommerceRoute = CommerceRouteImport.update({
+  id: '/commerce',
+  path: '/commerce',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceRoute = MarketplaceRouteImport.update({
+  id: '/marketplace',
+  path: '/marketplace',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesIndexRoute = ClientesIndexRouteImport.update({
@@ -55,6 +67,8 @@ const PedidosCanalIdRoute = PedidosCanalIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/commerce': typeof CommerceRoute
+  '/marketplace': typeof MarketplaceRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
@@ -64,6 +78,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/commerce': typeof CommerceRoute
+  '/marketplace': typeof MarketplaceRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes': typeof ClientesIndexRoute
@@ -74,6 +90,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/commerce': typeof CommerceRoute
+  '/marketplace': typeof MarketplaceRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
@@ -85,6 +103,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/commerce'
+    | '/marketplace'
     | '/clientes/$chave'
     | '/produtos/$sku'
     | '/clientes/'
@@ -94,6 +114,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/commerce'
+    | '/marketplace'
     | '/clientes/$chave'
     | '/produtos/$sku'
     | '/clientes'
@@ -103,6 +125,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/commerce'
+    | '/marketplace'
     | '/clientes/$chave'
     | '/produtos/$sku'
     | '/clientes/'
@@ -113,6 +137,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CommerceRoute: typeof CommerceRoute
+  MarketplaceRoute: typeof MarketplaceRoute
   ClientesChaveRoute: typeof ClientesChaveRoute
   ProdutosSkuRoute: typeof ProdutosSkuRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
@@ -128,6 +154,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/commerce': {
+      id: '/commerce'
+      path: '/commerce'
+      fullPath: '/commerce'
+      preLoaderRoute: typeof CommerceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace': {
+      id: '/marketplace'
+      path: '/marketplace'
+      fullPath: '/marketplace'
+      preLoaderRoute: typeof MarketplaceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes/': {
@@ -177,6 +217,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CommerceRoute: CommerceRoute,
+  MarketplaceRoute: MarketplaceRoute,
   ClientesChaveRoute: ClientesChaveRoute,
   ProdutosSkuRoute: ProdutosSkuRoute,
   ClientesIndexRoute: ClientesIndexRoute,
