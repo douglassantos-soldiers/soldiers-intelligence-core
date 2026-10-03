@@ -187,7 +187,7 @@ describe("tela de subida de criativos", () => {
     expect(await screen.findByDisplayValue("LOTE-TESTE_IMG_LIVRE_001")).toBeTruthy();
     expect(screen.getByDisplayValue("LOTE-TESTE_IMG_LIVRE_002")).toBeTruthy();
     expect(screen.getByText(/1 arquivo\(s\) ignorado\(s\)/)).toBeTruthy();
-    expect(screen.getAllByText("sem texto principal").length).toBe(2);
+    expect(screen.getAllByText(/sem texto principal/).length).toBe(2);
 
     const planilha = container.querySelector('input[accept=".csv,text/csv"]') as HTMLInputElement;
     const csv = new File(

@@ -754,12 +754,12 @@ function Montagem({ d }: { d: LoteD }) {
           <Table
             head={[
               "Arquivo",
+              "Situação",
               "Nome do criativo",
               "Texto principal",
               "Título",
               "Botão",
               "Link",
-              "Situação",
             ]}
           >
             {visiveis.map((l) => {
@@ -773,7 +773,9 @@ function Montagem({ d }: { d: LoteD }) {
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {l.tipo} · {l.largura && l.altura ? `${l.largura}×${l.altura}` : "?"} ·{" "}
-                      {(l.bytes / 1048576).toFixed(1)} MB
+                      {l.bytes >= 1048576
+                        ? `${(l.bytes / 1048576).toFixed(1)} MB`
+                        : `${Math.max(1, Math.round(l.bytes / 1024))} KB`}
                     </div>
                     {l.tipo === "video" && (
                       <label className="cursor-pointer text-xs text-primary hover:underline">
@@ -787,7 +789,26 @@ function Montagem({ d }: { d: LoteD }) {
                       </label>
                     )}
                   </Td>
-                  <Td>
+                  <Td className="min-w-[260px]">
+                    <ul className="space-y-1 text-xs">
+                      {l.upload === "enviando" && <li className="text-primary">subindo…</li>}
+                      {l.upload === "erro" && <li className="text-destructive">falhou ao subir</li>}
+                      {val.erros.map((x) => (
+                        <li key={x} className="text-destructive">
+                          ✕ {x}
+                        </li>
+                      ))}
+                      {val.avisos.map((x) => (
+                        <li key={x} className="text-warning">
+                          ! {x}
+                        </li>
+                      ))}
+                      {!val.erros.length && !val.avisos.length && l.upload !== "erro" && (
+                        <li className="text-success">✓ ok</li>
+                      )}
+                    </ul>
+                  </Td>
+                  <Td className="min-w-[230px]">
                     <input
                       className={campo}
                       value={l.nomeCriativo}
@@ -802,14 +823,14 @@ function Montagem({ d }: { d: LoteD }) {
                       onChange={(e) => muda(l.chave, "textoPrincipal", e.target.value)}
                     />
                   </Td>
-                  <Td>
+                  <Td className="min-w-[170px]">
                     <input
                       className={campo}
                       value={l.titulo}
                       onChange={(e) => muda(l.chave, "titulo", e.target.value)}
                     />
                   </Td>
-                  <Td>
+                  <Td className="min-w-[150px]">
                     <select
                       className={campo}
                       value={l.cta}
@@ -830,31 +851,12 @@ function Montagem({ d }: { d: LoteD }) {
                       ))}
                     </select>
                   </Td>
-                  <Td className="min-w-[220px]">
+                  <Td className="min-w-[280px]">
                     <input
                       className={campo}
                       value={l.link}
                       onChange={(e) => muda(l.chave, "link", e.target.value)}
                     />
-                  </Td>
-                  <Td className="min-w-[220px]">
-                    <div className="flex flex-wrap gap-1">
-                      {l.upload === "enviando" && <StatusTag tone="primary">subindo…</StatusTag>}
-                      {l.upload === "erro" && <StatusTag tone="danger">falhou ao subir</StatusTag>}
-                      {val.erros.map((x) => (
-                        <StatusTag key={x} tone="danger">
-                          {x}
-                        </StatusTag>
-                      ))}
-                      {val.avisos.map((x) => (
-                        <StatusTag key={x} tone="warn">
-                          {x}
-                        </StatusTag>
-                      ))}
-                      {!val.erros.length && !val.avisos.length && l.upload !== "erro" && (
-                        <StatusTag tone="success">ok</StatusTag>
-                      )}
-                    </div>
                   </Td>
                 </tr>
               );
