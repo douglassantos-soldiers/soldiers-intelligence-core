@@ -1,12 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { getOverview } from "@/lib/data.functions";
+import type { getOverview } from "@/lib/data.functions";
 import { PageHeader, PeriodPills, Kpi, Panel, Loading, ErrorBox, Table, Td } from "@/components/kit";
 import { StackedArea, pivot } from "@/components/charts";
 import { channelSummary, total, ratio, pct, RECEITA_FIELDS, PL_FIELDS } from "@/lib/aggregate";
-import { fmtBRL, fmtNum, fmtPct, fmtX, periodo } from "@/lib/format";
+import { fmtBRL, fmtNum, fmtPct, fmtX } from "@/lib/format";
+import { useOverview } from "@/lib/queries";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -19,12 +18,6 @@ export const Route = createFileRoute("/")({
   }),
   component: CommandCenter,
 });
-
-export function useOverview(dias: string) {
-  const fn = useServerFn(getOverview);
-  const p = periodo(dias);
-  return useQuery({ queryKey: ["overview", p], queryFn: () => fn({ data: p }) });
-}
 
 function CommandCenter() {
   const [dias, setDias] = useState("30");
