@@ -124,3 +124,30 @@ export function semaforoFrescor(dias: number | null): Semaforo {
   if (dias <= 3) return "atencao";
   return "critico";
 }
+
+/**
+ * SKUs com receita crescendo: compara os últimos `janela` dias com os `janela` dias
+ * anteriores. Exige receita mínima no período atual para não destacar ruído.
+ */
+export function skusEmAlta(rows: Row[], fim: string, janela = 14, receitaMin = 1000, top = 5) {
+  const end = new Date(fim.slice(0, 10) + "T00:00:00Z").getTime();
+  const corte = new Date(end - (janela - 1) * 86400000).toISOString().slice(0, 10);
+  const inicio = new Date(end - (2 * janela - 1) * 86400000).toISOString().slice(0, 10);
+  const m = new Map<string, { sku: string; produto: string; atual: number; anterior: number }>();
+  for (const r of rows) {
+    const d = String(r["data"] ?? "").slice(0, 10);
+    if (d < inicio || d > fim.slice(0, 10)) continue;
+    const sku = String(r["sku"] ?? "");
+    if (!sku) continue;
+    const cur = m.get(sku) ?? { sku, produto: String(r["produto"] ?? ""), atual: 0, anterior: 0 };
+    if (d >= corte) cur.atual += n(r["receita"]);
+    else cur.anterior += n(r["receita"]);
+    m.set(sku, cur);
+  }
+  return [...m.values()]
+    .filter((x) => x.atual >= receitaMin && x.anterior > 0)
+    .map((x) => ({ ...x, variacao: ((x.atual - x.anterior) / x.anterior) * 100 }))
+    .filter((x) => x.variacao > 0)
+    .sort((a, b) => b.atual - b.anterior - (a.atual - a.anterior))
+    .slice(0, top);
+}

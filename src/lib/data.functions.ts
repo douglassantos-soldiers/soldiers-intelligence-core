@@ -2,6 +2,7 @@
 // Todas as leituras do app passam por aqui (ponto único para adicionar proteção depois).
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { skusEmAlta } from "@/lib/aggregate";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = any;
@@ -361,4 +362,28 @@ export const getDataHealth = createServerFn({ method: "GET" }).handler(async () 
   const afiliadoMl = await c.from("vw_ml_afiliado_saude").select("canal,situacao,ultimo_dia_ok,dias_atraso,dias_erro,dias_pendentes,pct_casou_ml_pedido").limit(5);
 
   return { fontes, filas, logs, problemas, afiliadoMl: (afiliadoMl.data ?? []) as Record<string, unknown>[] };
+});
+
+/* ---------------- Command Center: problemas e oportunidades (cap. 28) ---------------- */
+export const getAlertas = createServerFn({ method: "GET" }).handler(async () => {
+  const c = await db();
+  const hoje = new Date().toISOString().slice(0, 10);
+  const desde = new Date(Date.now() - 27 * 86400000).toISOString().slice(0, 10);
+  const [estoque, saude, abb, acoes, prod] = await Promise.all([
+    // Estoque do site com menor cobertura (só SKUs com venda: media_diaria > 0).
+    c.from("dim_shopify_produto").select("sku,title,estoque,cobertura_dias,alerta,media_diaria").gt("media_diaria", 0).order("cobertura_dias", { ascending: true }).limit(5),
+    Promise.all(["vw_saude_shopify", "vw_saude_ml", "vw_saude_amazon"].map((v) => c.from(v).select("canal,severidade"))),
+    c.from("vw_abb_resumo").select("perdendo_concorrente,suprimida,em_risco").limit(1),
+    c.from("mv_growth_acao_resumo").select("acao,clientes,valor_esperado"),
+    fetchAll(() => c.from("mv_produto_dia").select("data,sku,produto,receita").gte("data", desde).lte("data", hoje), "produtos 28d", 60000),
+  ]);
+  const problemasDados = saude.flatMap((r) => (r.data ?? []) as Record<string, unknown>[]);
+  return {
+    estoque: (estoque.data ?? []) as Record<string, unknown>[],
+    problemasDados: problemasDados.length,
+    buybox: (abb.data?.[0] ?? null) as Record<string, unknown> | null,
+    acoes: (acoes.data ?? []) as Record<string, unknown>[],
+    // Calculado no servidor para não mandar 28 dias de linhas por SKU ao navegador.
+    skusEmAlta: skusEmAlta(prod, hoje),
+  };
 });

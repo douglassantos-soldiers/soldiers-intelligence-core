@@ -8,6 +8,7 @@ import {
   buildCohort,
   diasDesde,
   semaforoFrescor,
+  skusEmAlta,
 } from "@/lib/aggregate";
 import { canalPedido, canalVenda } from "@/domain/sources";
 
@@ -129,5 +130,21 @@ describe("Data Health: frescor", () => {
     expect(semaforoFrescor(3)).toBe("atencao");
     expect(semaforoFrescor(4)).toBe("critico");
     expect(semaforoFrescor(null)).toBe("sem_dado");
+  });
+});
+
+describe("skusEmAlta", () => {
+  it("compara 14 dias com os 14 anteriores e ignora SKU pequeno", () => {
+    const rows = [
+      { data: "2026-09-10", sku: "A", produto: "Creatina", receita: 1000 },
+      { data: "2026-09-25", sku: "A", produto: "Creatina", receita: 3000 },
+      { data: "2026-09-10", sku: "B", produto: "Whey", receita: 5000 },
+      { data: "2026-09-25", sku: "B", produto: "Whey", receita: 4000 },
+      { data: "2026-09-10", sku: "C", produto: "Coqueteleira", receita: 10 },
+      { data: "2026-09-25", sku: "C", produto: "Coqueteleira", receita: 900 },
+    ];
+    const r = skusEmAlta(rows, "2026-10-01");
+    expect(r.map((x) => x.sku)).toEqual(["A"]);
+    expect(r[0]!.variacao).toBe(200);
   });
 });

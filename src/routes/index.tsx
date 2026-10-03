@@ -6,6 +6,7 @@ import { StackedArea, pivot } from "@/components/charts";
 import { channelSummary, total, ratio, pct, RECEITA_FIELDS, PL_FIELDS } from "@/lib/aggregate";
 import { fmtBRL, fmtNum, fmtPct, fmtX } from "@/lib/format";
 import { useOverview } from "@/lib/queries";
+import { Alertas } from "@/components/alertas";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,7 +29,12 @@ function CommandCenter() {
       <PageHeader title="Command Center" subtitle="Todos os canais, uma inteligência. Receita, margem e aquisição consolidadas." right={<PeriodPills value={dias} onChange={setDias} />} />
       {q.isLoading && <Loading />}
       {q.error && <ErrorBox error={q.error} />}
-      {q.data && <Body data={q.data} />}
+      {q.data && (
+        <div className="space-y-6">
+          <Alertas />
+          <Body data={q.data} />
+        </div>
+      )}
     </>
   );
 }

@@ -156,6 +156,27 @@ const fixtures: Record<string, unknown> = {
     ],
     afiliadoMl: [],
   },
+  alertas: {
+    estoque: [
+      {
+        sku: "CREA300",
+        title: "Creatina 300g",
+        estoque: 120,
+        cobertura_dias: 5,
+        alerta: "ruptura",
+        media_diaria: 24,
+      },
+    ],
+    problemasDados: 3,
+    buybox: { perdendo_concorrente: 2, suprimida: 1, em_risco: 4 },
+    acoes: [
+      { acao: "recompra", clientes: 30, valor_esperado: 3000 },
+      { acao: "aguardar", clientes: 500, valor_esperado: 0 },
+    ],
+    skusEmAlta: [
+      { sku: "WHEY900", produto: "Whey 900g", atual: 9000, anterior: 6000, variacao: 50 },
+    ],
+  },
 };
 let current = "media";
 
@@ -223,5 +244,15 @@ describe("telas novas renderizam com dados", () => {
     expect(screen.getByText("Atrasado")).toBeTruthy(); // Meta Ads parado desde janeiro
     expect(screen.getByText("Em dia")).toBeTruthy();
     expect(screen.getByText("pedido sem custo")).toBeTruthy();
+  });
+
+  it("Command Center: problemas e oportunidades", async () => {
+    current = "alertas";
+    const { Alertas } = await import("@/components/alertas");
+    wrap(<Alertas />);
+    expect(await screen.findByText("Creatina 300g")).toBeTruthy();
+    expect(screen.getByText("Whey 900g")).toBeTruthy();
+    expect(screen.getByText("Recompra")).toBeTruthy();
+    expect(screen.queryByText("Aguardar")).toBeNull(); // "aguardar" não é oportunidade
   });
 });
