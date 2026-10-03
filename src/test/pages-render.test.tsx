@@ -155,6 +155,18 @@ const fixtures: Record<string, unknown> = {
       },
     ],
     afiliadoMl: [],
+    tokens: [
+      {
+        integracao: "TikTok Shop",
+        conta: "shop1",
+        expiraEm: "2026-09-01",
+        atualizadoEm: "2026-08-25",
+        dias: -30,
+        semRenovar: 38,
+        nivel: "expirado",
+      },
+    ],
+    tokensErro: null,
   },
   alertas: {
     estoque: [
@@ -199,6 +211,48 @@ const fixtures: Record<string, unknown> = {
     ],
     influenciadoresErro: null,
     mix30d: { gmv: 100000, video: 62000, live: 30000, card: 8000, pedidos: 900 },
+  },
+  tiktok: {
+    economia: {
+      pedidos: 120,
+      receitaItens: 18000,
+      descontoPlataforma: 900,
+      descontoVendedor: 400,
+      amostras: { pedidos: 6, custoProduto: 310 },
+      liquidacao: { liquidados: 90, pctLiquidado: 75, emAbertoValor: 4500, prazoMedianoDias: 18 },
+      liquidado: {
+        repasse: 11000,
+        cmv: 5200,
+        contribuicao: 5800,
+        margemPct: 52.7,
+        custos: [
+          { chave: "comissao_plataforma", label: "Comissão TikTok", valor: 1300 },
+          { chave: "comissao_afiliado_ads", label: "Comissão de afiliado (anúncios)", valor: 240 },
+        ],
+      },
+      itensSemCusto: 3,
+      skus: [
+        {
+          sku: "CREA300",
+          produto: "Creatina 300g",
+          unidades: 80,
+          receita: 7200,
+          repasse: 5900,
+          cmv: 3040,
+          contribuicao: 2860,
+        },
+      ],
+    },
+    devolucoes: [{ motivo: "Produto danificado", devolucoes: 4, valor: 360 }],
+    listings: {
+      anuncios: 12,
+      comProblema: 1,
+      semEstoque: 1,
+      foraDeVenda: 0,
+      lista: [
+        { product_id: "1", titulo: "Whey 900g", problemas: ["1 SKU sem estoque"], health: 70 },
+      ],
+    },
   },
 };
 let current = "media";
@@ -289,5 +343,25 @@ describe("telas novas renderizam com dados", () => {
     expect(screen.getByText("+205%")).toBeTruthy();
     expect(screen.getByText("Lia Souza")).toBeTruthy();
     expect(screen.getByText("62%")).toBeTruthy(); // vídeo = 62% das vendas atribuídas
+  });
+
+  it("TikTok Shop: economia", async () => {
+    current = "tiktok";
+    const { Route } = await import("@/routes/marketplace_.tiktok");
+    const C = Route.options.component!;
+    wrap(<C />);
+    expect(await screen.findByText("Para onde vai o dinheiro (pedidos liquidados)")).toBeTruthy();
+    expect(screen.getByText("75%")).toBeTruthy();
+    expect(screen.getByText("Creatina 300g")).toBeTruthy();
+    expect(screen.getByText("Produto danificado")).toBeTruthy();
+    expect(screen.getByText("Media × Affiliate")).toBeTruthy();
+  });
+
+  it("Data Health mostra token com renovação parada", async () => {
+    current = "health";
+    const { Route } = await import("@/routes/data-health");
+    const C = Route.options.component!;
+    wrap(<C />);
+    expect(await screen.findByText("Expirado: renovação parou")).toBeTruthy();
   });
 });

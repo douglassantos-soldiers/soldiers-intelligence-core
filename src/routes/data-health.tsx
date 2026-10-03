@@ -193,6 +193,51 @@ function Body({ d }: { d: D }) {
         </Panel>
       </div>
 
+      <Panel title="Tokens das integrações">
+        {d.tokensErro ? (
+          <Empty>Não foi possível ler a validade dos tokens: {d.tokensErro}</Empty>
+        ) : d.tokens.length ? (
+          <Table head={["Integração", "Conta", "Situação", "Válido até", "Última renovação"]}>
+            {d.tokens.map((t, i) => (
+              <tr key={i}>
+                <Td>{t.integracao}</Td>
+                <Td mono>{t.conta}</Td>
+                <Td>
+                  <StatusTag
+                    tone={
+                      t.nivel === "expirado"
+                        ? "danger"
+                        : t.nivel === "atencao"
+                          ? "warn"
+                          : t.nivel === "ok"
+                            ? "success"
+                            : "muted"
+                    }
+                  >
+                    {t.nivel === "expirado"
+                      ? "Expirado: renovação parou"
+                      : t.nivel === "atencao"
+                        ? `Sem renovar há ${t.semRenovar} dias`
+                        : t.nivel === "ok"
+                          ? "Ok"
+                          : "Sem data de validade"}
+                  </StatusTag>
+                </Td>
+                <Td mono>{t.expiraEm ? fmtDate(t.expiraEm) : "—"}</Td>
+                <Td mono>{t.atualizadoEm ? fmtDate(t.atualizadoEm) : "—"}</Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Empty>Nenhum token cadastrado.</Empty>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Só as datas são lidas; o token nunca sai do banco. A autorização anual da loja TikTok é
+          renovada no Seller Center e o TikTok avisa 30 dias antes (webhook de expiração, quando o
+          conector estiver ativo).
+        </p>
+      </Panel>
+
       <Panel title="Problemas abertos (detectados pelo banco)">
         {problemas.length ? (
           <Table

@@ -9,6 +9,7 @@ import {
   creatorsParaReativar,
   influenciadoresSemVenda,
 } from "@/lib/affiliate";
+import { economiaTikTok, devolucoesPorMotivo, saudeListings, validadeToken } from "@/lib/tiktok";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = any;
@@ -368,7 +369,19 @@ export const getDataHealth = createServerFn({ method: "GET" }).handler(async () 
   const problemas = saude.flatMap((r) => (r.data ?? []) as Record<string, unknown>[]);
   const afiliadoMl = await c.from("vw_ml_afiliado_saude").select("canal,situacao,ultimo_dia_ok,dias_atraso,dias_erro,dias_pendentes,pct_casou_ml_pedido").limit(5);
 
-  return { fontes, filas, logs, problemas, afiliadoMl: (afiliadoMl.data ?? []) as Record<string, unknown>[] };
+  // 5) Validade dos tokens das integrações: só colunas de data, nunca o token.
+  const [ttAuth, metaCred] = await Promise.all([
+    c.from("tiktok_auth").select("shop_id,expires_at,updated_at"),
+    c.from("meta_credentials").select("ad_account_id,token_expira_em,atualizado_em"),
+  ]);
+  const tokens = [
+    ...((ttAuth.data ?? []) as Record<string, unknown>[]).map((r) => ({ integracao: "TikTok Shop", conta: String(r["shop_id"] ?? "—"), expiraEm: (r["expires_at"] as string) ?? null, atualizadoEm: (r["updated_at"] as string) ?? null, ...validadeToken(r["expires_at"], r["updated_at"]) })),
+    ...((metaCred.data ?? []) as Record<string, unknown>[]).map((r) => ({ integracao: "Meta Ads", conta: String(r["ad_account_id"] ?? "—"), expiraEm: (r["token_expira_em"] as string) ?? null, atualizadoEm: (r["atualizado_em"] as string) ?? null, // Token de system user da Meta pode não expirar: aqui só vale a data de validade.
+      ...validadeToken(r["token_expira_em"], null) })),
+  ];
+  const tokensErro = ttAuth.error?.message ?? metaCred.error?.message ?? null;
+
+  return { fontes, filas, logs, problemas, afiliadoMl: (afiliadoMl.data ?? []) as Record<string, unknown>[], tokens, tokensErro };
 });
 
 /* ---------------- Command Center: problemas e oportunidades (cap. 28) ---------------- */
@@ -431,3 +444,27 @@ export const getAffiliateHoje = createServerFn({ method: "GET" }).handler(async 
     mix30d: { gmv: sum("gmv"), video: sum("gmv_video"), live: sum("gmv_live"), card: sum("gmv_card"), pedidos: sum("pedidos") },
   };
 });
+
+/* ---------------- TikTok Shop: economia (Plano Mestre cap. 14; benchmarks/tiktok-shop) ----------------
+ * Lucro real por pedido a partir do extrato, estimado × liquidado, descontos do TikTok × Soldiers,
+ * amostras, devoluções e saúde dos anúncios. LGPD: de tiktok_pedido só saem colunas sem dado pessoal
+ * (nada de e-mail, telefone, CPF ou endereço). Tokens nunca são lidos. */
+export const getTikTokEconomia = createServerFn({ method: "GET" })
+  .inputValidator((d) => Periodo.parse(d))
+  .handler(async ({ data }) => {
+    const c = await db();
+    const [pedidos, itens, fin, custos, devs, produtos] = await Promise.all([
+      fetchAll(() => c.from("tiktok_pedido").select("order_id,create_dia,status,is_sample_order").gte("create_dia", data.de).lte("create_dia", data.ate), "tiktok pedidos", 60000),
+      fetchAll(() => c.from("tiktok_pedido_item").select("order_id,create_dia,status,seller_sku,product_name,sale_price,platform_discount,seller_discount").gte("create_dia", data.de).lte("create_dia", data.ate), "tiktok itens", 90000),
+      // Todas as linhas de extrato dos pedidos do período, inclusive estornos em extratos posteriores.
+      fetchAll(() => c.from("fact_tiktok_financeiro").select("order_id,order_dia,statement_dia,settlement,comissao_plataforma,comissao_afiliado,comissao_afiliado_ads,comissao_parceiro,taxa_referral,taxa_transacao,frete_custo,imposto,reembolso").gte("order_dia", data.de).lte("order_dia", data.ate), "tiktok extrato", 90000),
+      c.from("dim_custo_sku").select("sku,custo_unitario,vigencia_inicio"),
+      fetchAll(() => c.from("fact_tiktok_devolucao").select("dia,motivo,valor_reembolso,status").gte("dia", data.de).lte("dia", data.ate), "tiktok devolucoes"),
+      c.from("dim_tiktok_produto").select("product_id,titulo,status,nao_a_venda,skus_sem_estoque,faltas,tem_peso,tem_dimensoes,health,estoque_total"),
+    ]);
+    return {
+      economia: economiaTikTok(pedidos, itens, fin, (custos.data ?? []) as Record<string, unknown>[], data.de, data.ate),
+      devolucoes: devolucoesPorMotivo(devs, data.de, data.ate),
+      listings: saudeListings((produtos.data ?? []) as Record<string, unknown>[]),
+    };
+  });

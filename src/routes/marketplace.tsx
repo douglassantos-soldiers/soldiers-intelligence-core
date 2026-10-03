@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -29,6 +29,14 @@ export const Route = createFileRoute("/marketplace")({
         <PageHeader
           title="Marketplace"
           subtitle="Operação e economia por marketplace: receita, taxas, ads, CMV e margem."
+          right={
+            <Link
+              to="/marketplace/tiktok"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              TikTok Shop: economia →
+            </Link>
+          }
         />
         <SaudeAmazon />
         <ChannelView canais={MARKETPLACES} dias={dias} setDias={setDias} />
