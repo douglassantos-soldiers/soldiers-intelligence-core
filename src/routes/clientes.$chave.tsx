@@ -6,7 +6,7 @@ import { getCliente } from "@/lib/data.functions";
 import { Kpi, Panel, Loading, ErrorBox, Table, Td, StatusTag, Empty } from "@/components/kit";
 import { fmtBRL, fmtNum, fmtPct, fmtDate } from "@/lib/format";
 import { custoHistorico, custoNaData } from "@/lib/aggregate";
-import { ACAO_LABEL, ACAO_TONE } from "@/domain/sources";
+import { ACAO_LABEL, ACAO_TONE, canalVenda } from "@/domain/sources";
 
 export const Route = createFileRoute("/clientes/$chave")({
   head: () => ({
@@ -54,7 +54,7 @@ function Body({ d }: { d: Awaited<ReturnType<typeof getCliente>> }) {
   const produtos = [...prodMap.values()].sort((a, b) => b.receita - a.receita);
   const receitaItens = produtos.reduce((s, x) => s + x.receita, 0);
   const cmv = produtos.reduce((s, x) => s + x.cmv, 0);
-  const canais = [...new Set((d.pedidos as Record<string, string>[]).map((x) => x.canal))];
+  const canais = [...new Set((d.pedidos as Record<string, string>[]).map((x) => canalVenda(String(x["canal"]))))];
   const proxima = p.ultima_compra && p.ritmo_dias ? new Date(new Date(String(p.ultima_compra)).getTime() + Number(p.ritmo_dias) * 86400000).toISOString() : null;
 
   return (
@@ -125,7 +125,7 @@ function Body({ d }: { d: Awaited<ReturnType<typeof getCliente>> }) {
           {(d.pedidos as Record<string, string | number>[]).map((x) => (
             <tr key={`${x.canal}-${x.pedido_id}`}>
               <Td mono>{fmtDate(x.data)}</Td>
-              <Td>{x.canal}</Td>
+              <Td>{canalVenda(String(x["canal"]))}</Td>
               <Td mono><Link to="/pedidos/$canal/$id" params={{ canal: String(x.canal), id: String(x.pedido_id) }} className="hover:text-primary">{x.pedido_id}</Link></Td>
               <Td mono>{fmtBRL(x.valor)}</Td>
               <Td mono>{fmtBRL(x.desconto)}</Td>

@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { getPedidos } from "@/lib/data.functions";
 import { PageHeader, PeriodPills, Pills, Panel, Loading, ErrorBox, Table, Td, SearchBox, StatusTag, CsvButton, Empty } from "@/components/kit";
-import { CANAIS_PEDIDO } from "@/domain/sources";
+import { CANAIS_PEDIDO, canalVenda } from "@/domain/sources";
 import { fmtBRL, fmtNum, fmtDate, periodo } from "@/lib/format";
 
 export const Route = createFileRoute("/pedidos/")({
@@ -46,7 +46,7 @@ function Pedidos() {
     <>
       <PageHeader title="Orders" subtitle="Pedidos com cliente unificado. Escolha o canal e o período." right={<PeriodPills value={dias} onChange={(v) => { setDias(v); setPage(0); }} />} />
       <div className="mb-4">
-        <Pills value={canal} onChange={(v) => { setCanal(v); setPage(0); }} options={CANAIS_PEDIDO.map((c) => ({ id: c, label: c }))} />
+        <Pills value={canal} onChange={(v) => { setCanal(v); setPage(0); }} options={CANAIS_PEDIDO.map((c) => ({ id: c, label: canalVenda(c) }))} />
       </div>
       <form className="mb-4 flex flex-wrap gap-3" onSubmit={(e) => { e.preventDefault(); setBuscaAtiva(busca); setPage(0); }}>
         <SearchBox value={busca} onChange={setBusca} placeholder="Buscar pelo número do pedido (Enter)" />

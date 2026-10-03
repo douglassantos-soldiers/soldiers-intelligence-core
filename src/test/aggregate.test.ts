@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { custoHistorico, custoNaData, channelSummary, ratio } from "@/lib/aggregate";
+import { canalPedido, canalVenda } from "@/domain/sources";
 
 const custos = [
   { sku: "CREA300", custo_unitario: 40, vigencia_inicio: "2026-01-01" },
@@ -38,10 +39,39 @@ describe("custoNaData (custo vigente na data do pedido)", () => {
 
 describe("channelSummary (mídia e afiliado separados)", () => {
   const receita = [
-    { canal: "Site", faturamento: 1000, pedidos: 10, invest_ads: 100, receita_ads: 400, invest_afiliados: 50, invest_aquisicao: 150 },
-    { canal: "Site", faturamento: 500, pedidos: 5, invest_ads: 50, receita_ads: 200, invest_afiliados: 0, invest_aquisicao: 50 },
+    {
+      canal: "Site",
+      faturamento: 1000,
+      pedidos: 10,
+      invest_ads: 100,
+      receita_ads: 400,
+      invest_afiliados: 50,
+      invest_aquisicao: 150,
+    },
+    {
+      canal: "Site",
+      faturamento: 500,
+      pedidos: 5,
+      invest_ads: 50,
+      receita_ads: 200,
+      invest_afiliados: 0,
+      invest_aquisicao: 50,
+    },
   ];
-  const pl = [{ canal: "Site", receita_bruta: 1500, custo_canal: 120, det_taxa: 60, det_frete: 40, det_afiliado: 20, ads: 150, imposto: 90, cmv: 600, margem_contribuicao: 540 }];
+  const pl = [
+    {
+      canal: "Site",
+      receita_bruta: 1500,
+      custo_canal: 120,
+      det_taxa: 60,
+      det_frete: 40,
+      det_afiliado: 20,
+      ads: 150,
+      imposto: 90,
+      cmv: 600,
+      margem_contribuicao: 540,
+    },
+  ];
   const [site] = channelSummary(receita, pl);
 
   it("ROAS mídia usa só ads; retorno de aquisição usa ads + afiliados", () => {
@@ -51,6 +81,16 @@ describe("channelSummary (mídia e afiliado separados)", () => {
 
   it("soma o detalhe do custo do canal", () => {
     expect(site!["det_taxa"]).toBe(60);
-    expect(Number(site!["det_taxa"]) + Number(site!["det_frete"]) + Number(site!["det_afiliado"])).toBe(site!["custo_canal"]);
+    expect(
+      Number(site!["det_taxa"]) + Number(site!["det_frete"]) + Number(site!["det_afiliado"]),
+    ).toBe(site!["custo_canal"]);
+  });
+});
+
+describe("de-para de canal", () => {
+  it("Shopify (pedido) ↔ Site (views consolidadas)", () => {
+    expect(canalVenda("Shopify")).toBe("Site");
+    expect(canalPedido("Site")).toBe("Shopify");
+    expect(canalVenda("Mercado Livre")).toBe("Mercado Livre");
   });
 });

@@ -93,7 +93,7 @@ function Body({ data }: { data: Awaited<ReturnType<typeof getOverview>> }) {
             <Split label="Clientes" a={nr.clientes_novos} b={nr.clientes_recorrentes} fmt={fmtNum} />
             <Split label="Pedidos" a={nr.pedidos_novos} b={nr.pedidos_recorrentes} fmt={fmtNum} />
             <Split label="Receita" a={nr.receita_novos} b={nr.receita_recorrentes} fmt={fmtBRL} />
-            <Link to="/crm" className="inline-block text-sm font-medium text-primary hover:underline">Ver CRM / Growth →</Link>
+            <Link to="/clientes" className="inline-block text-sm font-medium text-primary hover:underline">Ver Customer 360 →</Link>
           </div>
         </Panel>
       </div>

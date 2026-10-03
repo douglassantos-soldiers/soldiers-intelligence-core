@@ -19,6 +19,23 @@ export const MARKETPLACES = ["Mercado Livre", "Amazon", "Shopee", "TikTok"] as c
 // Canais presentes no nível de pedido (fact_pedido_cliente).
 export const CANAIS_PEDIDO = ["Shopify", "Mercado Livre", "Amazon", "TikTok"] as const;
 
+// De-para de canal: o mesmo canal tem nomes diferentes conforme a fonte.
+// O site é "Site" nas views consolidadas (vw_receita_consolidada, mv_pl_canal_dia,
+// mv_produto_dia) e "Shopify" no nível de pedido (fact_pedido_cliente).
+// As consultas continuam usando o nome de cada fonte; na tela usamos sempre o
+// nome de canal de venda, para Orders, Customer 360 e Command Center baterem.
+const PEDIDO_PARA_VENDA: Record<string, string> = { Shopify: "Site" };
+const VENDA_PARA_PEDIDO: Record<string, string> = { Site: "Shopify" };
+
+/** Nome do canal como aparece nas views consolidadas ("Shopify" → "Site"). */
+export function canalVenda(canalPedido: string): string {
+  return PEDIDO_PARA_VENDA[canalPedido] ?? canalPedido;
+}
+/** Nome do canal como aparece em fact_pedido_cliente ("Site" → "Shopify"). */
+export function canalPedido(canalVendaNome: string): string {
+  return VENDA_PARA_PEDIDO[canalVendaNome] ?? canalVendaNome;
+}
+
 export const ACAO_TONE: Record<string, "primary" | "success" | "warn" | "danger" | "muted"> = {
   recompra: "success",
   segunda_compra: "primary",

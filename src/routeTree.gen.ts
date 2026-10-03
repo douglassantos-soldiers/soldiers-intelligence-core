@@ -14,6 +14,7 @@ import { Route as CommerceRouteImport } from './routes/commerce'
 import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesChaveRouteImport } from './routes/clientes.$chave'
+import { Route as EmBreveModuloRouteImport } from './routes/em-breve.$modulo'
 import { Route as PedidosIndexRouteImport } from './routes/pedidos.index'
 import { Route as ProdutosIndexRouteImport } from './routes/produtos.index'
 import { Route as ProdutosSkuRouteImport } from './routes/produtos.$sku'
@@ -44,6 +45,11 @@ const ClientesChaveRoute = ClientesChaveRouteImport.update({
   path: '/clientes/$chave',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmBreveModuloRoute = EmBreveModuloRouteImport.update({
+  id: '/em-breve/$modulo',
+  path: '/em-breve/$modulo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PedidosIndexRoute = PedidosIndexRouteImport.update({
   id: '/pedidos/',
   path: '/pedidos/',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/commerce': typeof CommerceRoute
   '/marketplace': typeof MarketplaceRoute
   '/clientes/$chave': typeof ClientesChaveRoute
+  '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
   '/pedidos/': typeof PedidosIndexRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/commerce': typeof CommerceRoute
   '/marketplace': typeof MarketplaceRoute
   '/clientes/$chave': typeof ClientesChaveRoute
+  '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes': typeof ClientesIndexRoute
   '/pedidos': typeof PedidosIndexRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/commerce': typeof CommerceRoute
   '/marketplace': typeof MarketplaceRoute
   '/clientes/$chave': typeof ClientesChaveRoute
+  '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
   '/pedidos/': typeof PedidosIndexRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/commerce'
     | '/marketplace'
     | '/clientes/$chave'
+    | '/em-breve/$modulo'
     | '/produtos/$sku'
     | '/clientes/'
     | '/pedidos/'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/commerce'
     | '/marketplace'
     | '/clientes/$chave'
+    | '/em-breve/$modulo'
     | '/produtos/$sku'
     | '/clientes'
     | '/pedidos'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/commerce'
     | '/marketplace'
     | '/clientes/$chave'
+    | '/em-breve/$modulo'
     | '/produtos/$sku'
     | '/clientes/'
     | '/pedidos/'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   CommerceRoute: typeof CommerceRoute
   MarketplaceRoute: typeof MarketplaceRoute
   ClientesChaveRoute: typeof ClientesChaveRoute
+  EmBreveModuloRoute: typeof EmBreveModuloRoute
   ProdutosSkuRoute: typeof ProdutosSkuRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
   PedidosIndexRoute: typeof PedidosIndexRoute
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientesChaveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/em-breve/$modulo': {
+      id: '/em-breve/$modulo'
+      path: '/em-breve/$modulo'
+      fullPath: '/em-breve/$modulo'
+      preLoaderRoute: typeof EmBreveModuloRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pedidos/': {
       id: '/pedidos/'
       path: '/pedidos'
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   CommerceRoute: CommerceRoute,
   MarketplaceRoute: MarketplaceRoute,
   ClientesChaveRoute: ClientesChaveRoute,
+  EmBreveModuloRoute: EmBreveModuloRoute,
   ProdutosSkuRoute: ProdutosSkuRoute,
   ClientesIndexRoute: ClientesIndexRoute,
   PedidosIndexRoute: PedidosIndexRoute,
