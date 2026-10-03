@@ -10,6 +10,7 @@ import {
   influenciadoresSemVenda,
 } from "@/lib/affiliate";
 import { economiaTikTok, devolucoesPorMotivo, saudeListings, validadeToken } from "@/lib/tiktok";
+import { resumoAmazon, asin360, termosAds, shareDeBusca, reposicaoFba, recompraAsin } from "@/lib/amazon";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = any;
@@ -466,5 +467,47 @@ export const getTikTokEconomia = createServerFn({ method: "GET" })
       economia: economiaTikTok(pedidos, itens, fin, (custos.data ?? []) as Record<string, unknown>[], data.de, data.ate),
       devolucoes: devolucoesPorMotivo(devs, data.de, data.ate),
       listings: saudeListings((produtos.data ?? []) as Record<string, unknown>[]),
+    };
+  });
+
+// Amazon (Plano Mestre caps. 9, 10, 13, 17; benchmarks/amazon/ANALISE.md §4): só dados já coletados.
+// Cada bloco lê sua tabela de forma independente: se uma fila parou, o resto da tela continua.
+const menosDiasIso = (iso: string, d: number) =>
+  new Date(Date.parse(iso + "T00:00:00Z") - d * 86400000).toISOString().slice(0, 10);
+
+export const getAmazon = createServerFn({ method: "GET" })
+  .inputValidator((d) => Periodo.parse(d))
+  .handler(async ({ data }) => {
+    const c = await db();
+    const erros: Record<string, string> = {};
+    const safe = async (nome: string, p: Promise<Record<string, unknown>[]>) => {
+      try {
+        return await p;
+      } catch (e) {
+        erros[nome] = e instanceof Error ? e.message : String(e);
+        return [] as Record<string, unknown>[];
+      }
+    };
+
+    const [trafego, ads, vendas, buybox, estoque, reposicao, cadastro, termos, brand, recompra] = await Promise.all([
+      safe("trafego", fetchAll(() => c.from("fact_amazon_venda_trafego_dia").select("data,vendas,unidades,sessoes,buybox_pct,unidades_devolvidas,em_consolidacao").gte("data", data.de).lte("data", data.ate), "amazon trafego")),
+      safe("ads", fetchAll(() => c.from("fact_amazon_ads_campanha_dia").select("data,ad_type,cost,sales_14d,clicks").gte("data", data.de).lte("data", data.ate), "amazon ads", 90000)),
+      safe("vendas", fetchAll(() => c.from("fact_amazon_venda_asin_dia").select("data,child_asin,vendas,unidades,sessoes,buybox_pct").gte("data", data.de).lte("data", data.ate), "amazon asin", 90000)),
+      safe("buybox", fetchAll(() => c.from("dim_amazon_buybox").select("asin,ganho_buybox,concorrente_no_bb,meu_preco,menor_preco_concorrente"), "amazon buybox")),
+      safe("estoque", fetchAll(() => c.from("dim_amazon_estoque_sp").select("asin,seller_sku,fulfillable,imprestavel_total"), "amazon estoque")),
+      safe("reposicao", fetchAll(() => c.from("dim_amazon_reposicao").select("sku,asin,titulo,em_fba,fba_disponivel,fba_a_caminho,media_diaria,cobertura_dias,enviar_30d,alerta"), "amazon reposicao")),
+      safe("cadastro", fetchAll(() => c.from("dim_amazon_cadastro").select("asin,titulo,faltas,tem_aplus,health"), "amazon cadastro")),
+      safe("termos", fetchAll(() => c.from("fact_amazon_ads_search_term_dia").select("data,campaign_name,search_term,keyword_text,match_type,cost,clicks,purchases_14d,sales_14d").gte("data", data.de).lte("data", data.ate), "amazon search terms", 120000)),
+      safe("brand", fetchAll(() => c.from("fact_amazon_brand_search_term").select("semana_fim,termo,nosso,click_share,conversion_share,rank_busca").gte("semana_fim", menosDiasIso(data.ate, 35)), "amazon brand analytics", 60000)),
+      safe("recompra", fetchAll(() => c.from("fact_amazon_recompra_asin").select("asin,mes_fim,clientes_unicos,pct_clientes_repetem,receita_recompra").gte("mes_fim", menosDiasIso(data.ate, 100)), "amazon recompra")),
+    ]);
+    return {
+      resumo: resumoAmazon(trafego, ads, data.de, data.ate),
+      asins: asin360(vendas, buybox, estoque, reposicao, cadastro, data.de, data.ate).slice(0, 60),
+      termos: termosAds(termos, data.de, data.ate),
+      share: shareDeBusca(brand),
+      reposicao: reposicaoFba(reposicao, estoque),
+      recompra: recompraAsin(recompra),
+      erros,
     };
   });

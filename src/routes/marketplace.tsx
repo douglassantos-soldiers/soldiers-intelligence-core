@@ -30,12 +30,20 @@ export const Route = createFileRoute("/marketplace")({
           title="Marketplace"
           subtitle="Operação e economia por marketplace: receita, taxas, ads, CMV e margem."
           right={
-            <Link
-              to="/marketplace/tiktok"
-              className="text-sm font-medium text-primary hover:underline"
-            >
-              TikTok Shop: economia →
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                to="/marketplace/amazon"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Amazon: ASIN 360° →
+              </Link>
+              <Link
+                to="/marketplace/tiktok"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                TikTok Shop: economia →
+              </Link>
+            </div>
           }
         />
         <SaudeAmazon />

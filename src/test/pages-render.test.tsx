@@ -2,10 +2,54 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { resumoAmazon, asin360, termosAds, shareDeBusca, reposicaoFba, recompraAsin } from "@/lib/amazon";
+
+const AMZ_DE = "2026-09-01";
+const AMZ_ATE = "2026-09-30";
+const amazonFixture = {
+  resumo: resumoAmazon(
+    [{ data: "2026-09-02", vendas: 20000, unidades: 200, sessoes: 4000, buybox_pct: 0.86, unidades_devolvidas: 4 }],
+    [{ data: "2026-09-02", ad_type: "SP", cost: 1500, sales_14d: 7500, clicks: 900 }],
+    AMZ_DE,
+    AMZ_ATE,
+  ),
+  asins: asin360(
+    [
+      { data: "2026-09-02", child_asin: "B0CREA", vendas: 12000, unidades: 120, sessoes: 1500, buybox_pct: 1 },
+      { data: "2026-09-02", child_asin: "B0WHEY", vendas: 8000, unidades: 80, sessoes: 2500, buybox_pct: 0.7 },
+    ],
+    [{ asin: "B0WHEY", ganho_buybox: false, concorrente_no_bb: true, meu_preco: 199.9, menor_preco_concorrente: 189.9 }],
+    [{ asin: "B0CREA", seller_sku: "CREA300", fulfillable: 90 }],
+    [{ asin: "B0CREA", sku: "CREA300", em_fba: true, cobertura_dias: 8, titulo: "Creatina Amazon 300g", fba_disponivel: 90 }],
+    [{ asin: "B0WHEY", titulo: "Whey Amazon 900g", tem_aplus: true }],
+    AMZ_DE,
+    AMZ_ATE,
+  ),
+  termos: termosAds(
+    [
+      { data: "2026-09-02", campaign_name: "C", search_term: "pre treino barato", keyword_text: "pre treino", match_type: "BROAD", cost: 80, clicks: 40, purchases_14d: 0, sales_14d: 0 },
+      { data: "2026-09-02", campaign_name: "C", search_term: "creatina monohidratada", keyword_text: "creatina", match_type: "BROAD", cost: 50, clicks: 30, purchases_14d: 6, sales_14d: 900 },
+      { data: "2026-09-02", campaign_name: "C", search_term: "whey", keyword_text: "whey", match_type: "BROAD", cost: 300, clicks: 100, purchases_14d: 3, sales_14d: 400 },
+    ],
+    AMZ_DE,
+    AMZ_ATE,
+  ),
+  share: shareDeBusca([
+    { semana_fim: "2026-09-20", termo: "creatina", nosso: true, click_share: 0.2, conversion_share: 0.25, rank_busca: 4 },
+    { semana_fim: "2026-09-27", termo: "creatina", nosso: true, click_share: 0.12, conversion_share: 0.15, rank_busca: 4 },
+  ]),
+  reposicao: reposicaoFba(
+    [{ sku: "CREA300", asin: "B0CREA", titulo: "Creatina Amazon 300g", em_fba: true, fba_disponivel: 90, cobertura_dias: 8, enviar_30d: 300, alerta: "repor" }],
+    [{ seller_sku: "CREA300", imprestavel_total: 3 }],
+  ),
+  recompra: recompraAsin([{ asin: "B0CREA", mes_fim: "2026-09-30", clientes_unicos: 300, pct_clientes_repetem: 0.18, receita_recompra: 4000 }]),
+  erros: { brand: "timeout" },
+};
 
 // As telas chamam server functions via useServerFn. Aqui elas devolvem dados fixos,
 // para testar a renderização sem banco.
 const fixtures: Record<string, unknown> = {
+  amazon: amazonFixture,
   media: {
     tipos: [
       {
@@ -355,6 +399,20 @@ describe("telas novas renderizam com dados", () => {
     expect(screen.getByText("Creatina 300g")).toBeTruthy();
     expect(screen.getByText("Produto danificado")).toBeTruthy();
     expect(screen.getByText("Media × Affiliate")).toBeTruthy();
+  });
+
+  it("Amazon: ASIN 360°, termos e reposição", async () => {
+    current = "amazon";
+    const { Route } = await import("@/routes/marketplace_.amazon");
+    const C = Route.options.component!;
+    wrap(<C />);
+    expect(await screen.findByText("ASIN 360°")).toBeTruthy();
+    expect(screen.getByText("concorrente com a Buy Box")).toBeTruthy();
+    expect(screen.getByText("pre treino barato")).toBeTruthy();
+    expect(screen.getByText("creatina monohidratada")).toBeTruthy();
+    expect(screen.getByText("perdeu")).toBeTruthy();
+    expect(screen.getByText(/Não foi possível ler: Brand Analytics/)).toBeTruthy();
+    expect(screen.getByText("TACoS")).toBeTruthy();
   });
 
   it("Data Health mostra token com renovação parada", async () => {

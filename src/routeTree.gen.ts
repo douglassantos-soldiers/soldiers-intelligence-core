@@ -21,6 +21,7 @@ import { Route as AfiliadosHojeRouteImport } from './routes/afiliados.hoje'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesChaveRouteImport } from './routes/clientes.$chave'
 import { Route as EmBreveModuloRouteImport } from './routes/em-breve.$modulo'
+import { Route as MarketplaceAmazonRouteImport } from './routes/marketplace_.amazon'
 import { Route as MarketplaceTiktokRouteImport } from './routes/marketplace_.tiktok'
 import { Route as PedidosIndexRouteImport } from './routes/pedidos.index'
 import { Route as ProdutosIndexRouteImport } from './routes/produtos.index'
@@ -87,6 +88,11 @@ const EmBreveModuloRoute = EmBreveModuloRouteImport.update({
   path: '/em-breve/$modulo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MarketplaceAmazonRoute = MarketplaceAmazonRouteImport.update({
+  id: '/marketplace_/amazon',
+  path: '/marketplace/amazon',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MarketplaceTiktokRoute = MarketplaceTiktokRouteImport.update({
   id: '/marketplace_/tiktok',
   path: '/marketplace/tiktok',
@@ -125,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
+  '/marketplace/amazon': typeof MarketplaceAmazonRoute
   '/marketplace/tiktok': typeof MarketplaceTiktokRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
+  '/marketplace/amazon': typeof MarketplaceAmazonRoute
   '/marketplace/tiktok': typeof MarketplaceTiktokRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes': typeof ClientesIndexRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
+  '/marketplace_/amazon': typeof MarketplaceAmazonRoute
   '/marketplace_/tiktok': typeof MarketplaceTiktokRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
     | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/em-breve/$modulo'
+    | '/marketplace/amazon'
     | '/marketplace/tiktok'
     | '/produtos/$sku'
     | '/clientes/'
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/em-breve/$modulo'
+    | '/marketplace/amazon'
     | '/marketplace/tiktok'
     | '/produtos/$sku'
     | '/clientes'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/em-breve/$modulo'
+    | '/marketplace_/amazon'
     | '/marketplace_/tiktok'
     | '/produtos/$sku'
     | '/clientes/'
@@ -243,6 +255,7 @@ export interface RootRouteChildren {
   AfiliadosHojeRoute: typeof AfiliadosHojeRoute
   ClientesChaveRoute: typeof ClientesChaveRoute
   EmBreveModuloRoute: typeof EmBreveModuloRoute
+  MarketplaceAmazonRoute: typeof MarketplaceAmazonRoute
   MarketplaceTiktokRoute: typeof MarketplaceTiktokRoute
   ProdutosSkuRoute: typeof ProdutosSkuRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
@@ -337,6 +350,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmBreveModuloRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/marketplace_/amazon': {
+      id: '/marketplace_/amazon'
+      path: '/marketplace/amazon'
+      fullPath: '/marketplace/amazon'
+      preLoaderRoute: typeof MarketplaceAmazonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/marketplace_/tiktok': {
       id: '/marketplace_/tiktok'
       path: '/marketplace/tiktok'
@@ -387,6 +407,7 @@ const rootRouteChildren: RootRouteChildren = {
   AfiliadosHojeRoute: AfiliadosHojeRoute,
   ClientesChaveRoute: ClientesChaveRoute,
   EmBreveModuloRoute: EmBreveModuloRoute,
+  MarketplaceAmazonRoute: MarketplaceAmazonRoute,
   MarketplaceTiktokRoute: MarketplaceTiktokRoute,
   ProdutosSkuRoute: ProdutosSkuRoute,
   ClientesIndexRoute: ClientesIndexRoute,
