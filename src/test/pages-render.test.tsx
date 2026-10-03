@@ -16,6 +16,14 @@ import {
   alvosSd,
   classificaLances,
 } from "@/lib/amazon";
+import {
+  economiaShopee,
+  cancelamentosShopee,
+  adsShopee,
+  adsPorHora,
+  produtosShopee,
+  livesShopee,
+} from "@/lib/shopee";
 import { economiaML, anuncios360, diagnosticoAds, alertasML } from "@/lib/mercadolivre";
 
 const AMZ_DE = "2026-09-01";
@@ -328,7 +336,126 @@ const mercadoLivreFixture = {
   erros: {} as Record<string, string>,
 };
 
+const shpEcon = economiaShopee(
+  [{ order_sn: "A", create_dia: "2026-09-05", order_status: "COMPLETED" }],
+  [
+    {
+      order_sn: "A",
+      create_dia: "2026-09-05",
+      model_sku: "CREA300",
+      item_name: "Creatina Shopee 300g",
+      model_quantity_purchased: 2,
+      model_discounted_price: 80,
+    },
+  ],
+  [
+    {
+      order_sn: "A",
+      escrow_amount: 130,
+      commission_fee: -16,
+      service_fee: -8,
+      shopee_discount: 6,
+      voucher_from_seller: 4,
+    },
+  ],
+  [{ sku: "CREA300", custo_unitario: 30, vigencia_inicio: "2026-01-01" }],
+  [{ data: "2026-09-05", expense: 20 }],
+  "2026-09-01",
+  "2026-09-30",
+);
+const shopeeFixture = {
+  economia: shpEcon,
+  ads: adsShopee(
+    [
+      {
+        data: "2026-09-05",
+        campaign_id: 1,
+        ad_type: "auto",
+        expense: 100,
+        direct_gmv: 200,
+        broad_gmv: 300,
+        clicks: 40,
+      },
+    ],
+    [{ campaign_id: 1, ad_name: "GMV Max Whey", roas_target: 5 }],
+    "2026-09-01",
+    "2026-09-30",
+  ),
+  horas: adsPorHora(
+    [
+      { data: "2026-09-06", hora: 3, expense: 50, direct_gmv: 20 },
+      { data: "2026-09-06", hora: 21, expense: 50, direct_gmv: 600 },
+      { data: "2026-09-07", hora: 12, expense: 100, direct_gmv: 300 },
+    ],
+    "2026-09-01",
+    "2026-09-30",
+  ),
+  produtos: produtosShopee(
+    [
+      {
+        data: "2026-09-05",
+        item_id: "1",
+        title: "Creatina Shopee 300g",
+        seller_sku: "CREA300",
+        visitas: 500,
+        pedidos: 20,
+        unidades_vendidas: 25,
+        receita: 2000,
+      },
+    ],
+    [{ item_id: "1", estoque_total: 30, dias_de_cobertura: 6, media_diaria: 5 }],
+    [{ item_id: "1", nome: "Creatina Shopee 300g", fotos: 7, tem_dimensoes: true }],
+    [],
+    "2026-09-01",
+    "2026-09-30",
+  ),
+  lives: livesShopee(
+    [
+      {
+        sessao_id: 7,
+        titulo: "Live de setembro",
+        inicio: "2026-09-10T20:00:00Z",
+        duracao_seg: 3600,
+        espectadores: 800,
+        pedidos_confirmados: 16,
+        vendas_confirmadas: 1600,
+      },
+    ],
+    [
+      {
+        sessao_id: 7,
+        item_id: 1,
+        cliques: 200,
+        atc: 50,
+        pedidos_confirmados: 12,
+        vendas_confirmadas: 1200,
+      },
+    ],
+    [{ item_id: "1", nome: "Creatina Shopee 300g" }],
+    "2026-09-01",
+    "2026-09-30",
+  ),
+  cancelamentos: cancelamentosShopee(
+    [
+      {
+        order_sn: "C",
+        create_dia: "2026-09-07",
+        order_status: "CANCELLED",
+        cancel_reason: "Fora de estoque",
+        cancel_by: "seller",
+        total_amount: 90,
+      },
+    ],
+    [],
+    "2026-09-01",
+    "2026-09-30",
+  ),
+  alertas: [],
+  erros: {} as Record<string, string>,
+};
+
 const fixtures: Record<string, unknown> = {
+  shopee: shopeeFixture,
   ml: mercadoLivreFixture,
   amazon: amazonFixture,
   media: {
@@ -770,6 +897,30 @@ describe("telas novas renderizam com dados", () => {
     fireEvent.click(screen.getByText("Product Ads"));
     expect(screen.getByText("Onde está o gargalo")).toBeTruthy();
     expect(screen.getByText("orçamento")).toBeTruthy();
+  });
+
+  it("Shopee: economia, Ads, produtos, lives e cancelamentos", async () => {
+    current = "shopee";
+    const { Route } = await import("@/routes/marketplace_.shopee");
+    const C = Route.options.component!;
+    wrap(<C />);
+    expect(await screen.findByText("Para onde vai o dinheiro (pedidos liquidados)")).toBeTruthy();
+    expect(screen.getByText("Comissão Shopee")).toBeTruthy();
+    expect(screen.getByText("Quem pagou os descontos")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Ads"));
+    expect(screen.getByText("GMV Max Whey")).toBeTruthy();
+    expect(screen.getByText("Horários para reduzir verba")).toBeTruthy();
+    expect(screen.getByText("3h–4h")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Produtos"));
+    expect(screen.getByText("estoque cobre 6 dias")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Lives"));
+    expect(screen.getByText("Live de setembro")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Cancelamentos"));
+    expect(screen.getByText("Fora de estoque")).toBeTruthy();
   });
 
   it("Data Health mostra token com renovação parada", async () => {

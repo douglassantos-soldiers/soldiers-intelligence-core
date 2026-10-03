@@ -10,6 +10,7 @@ import {
   influenciadoresSemVenda,
 } from "@/lib/affiliate";
 import { economiaTikTok, devolucoesPorMotivo, saudeListings, validadeToken } from "@/lib/tiktok";
+import { economiaShopee, cancelamentosShopee, adsShopee, adsPorHora, produtosShopee, livesShopee, alertasShopee } from "@/lib/shopee";
 import { economiaML, anuncios360, diagnosticoAds, alertasML } from "@/lib/mercadolivre";
 import { resumoAmazon, asin360, termosAds, shareDeBusca, reposicaoFba, recompraAsin, organicoVsAds, vendasPorHora, novosParaMarca, alvosKeywords, alvosSd, classificaLances, alertasAmazon, amazonDoSku } from "@/lib/amazon";
 
@@ -468,9 +469,16 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
   } catch {
     mercadoLivre = [];
   }
+  let shopee: ReturnType<typeof alertasShopee> = [];
+  try {
+    shopee = (await dadosShopee({ de: new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10), ate: hoje })).alertas;
+  } catch {
+    shopee = [];
+  }
   return {
     amazon,
     mercadoLivre,
+    shopee,
     estoque: (estoque.data ?? []) as Record<string, unknown>[],
     problemasDados: problemasDados.length,
     buybox: (abb.data?.[0] ?? null) as Record<string, unknown> | null,
@@ -627,3 +635,53 @@ async function dadosMercadoLivre(data: { de: string; ate: string }) {
 export const getMercadoLivre = createServerFn({ method: "GET" })
   .inputValidator((d) => Periodo.parse(d))
   .handler(async ({ data }) => dadosMercadoLivre(data));
+
+
+// Shopee (benchmarks/shopee/ANALISE.md §4): economia pelo escrow, Ads, produtos, lives e cancelamentos.
+// Sem buyer_user_id, buyer_username nem invoice_access_key (LGPD). Cada bloco é independente.
+async function dadosShopee(data: { de: string; ate: string }) {
+  const c = await db();
+  const erros: Record<string, string> = {};
+  const safe = async (nome: string, p: Promise<Record<string, unknown>[]>) => {
+    try {
+      return await p;
+    } catch (e) {
+      erros[nome] = e instanceof Error ? e.message : String(e);
+      return [] as Record<string, unknown>[];
+    }
+  };
+  const [pedidos, itens, fin, custosR, adsDia, adsCamp, adsHora, itemDia, estoque, produtos, metricas, sessoes] = await Promise.all([
+    safe("pedidos", fetchAll(() => c.from("shopee_pedido").select("order_sn,create_dia,order_status,cancel_reason,cancel_by,total_amount").gte("create_dia", data.de).lte("create_dia", data.ate), "shopee pedidos", 120000)),
+    safe("itens", fetchAll(() => c.from("shopee_pedido_item").select("order_sn,create_dia,order_status,item_id,item_name,item_sku,model_sku,model_quantity_purchased,cancelled_qty,returned_qty,model_discounted_price").gte("create_dia", data.de).lte("create_dia", data.ate), "shopee itens", 150000)),
+    safe("financeiro", fetchAll(() => c.from("fact_shopee_financeiro").select("order_sn,escrow_amount,commission_fee,service_fee,seller_transaction_fee,campaign_fee,comissao_afiliado,fbs_fee,seller_return_refund,reverse_shipping_fee,escrow_tax,withholding_tax,shopee_discount,voucher_from_shopee,seller_discount,voucher_from_seller,coins,actual_shipping_fee,shopee_shipping_rebate,buyer_paid_shipping_fee").gte("create_dia", data.de).lte("create_dia", data.ate), "shopee escrow", 120000)),
+    safe("custos", fetchAll(() => c.from("dim_custo_sku").select("sku,custo_unitario,vigencia_inicio"), "custos")),
+    safe("adsDia", fetchAll(() => c.from("fact_shopee_ads_campanha_dia").select("data,campaign_id,ad_type,expense,direct_gmv,broad_gmv,direct_order,clicks").gte("data", data.de).lte("data", data.ate), "shopee ads", 60000)),
+    safe("adsCamp", fetchAll(() => c.from("dim_shopee_ads_campanha").select("campaign_id,ad_name,ad_type,roas_target,campaign_status"), "shopee campanhas")),
+    safe("adsHora", fetchAll(() => c.from("fact_shopee_ads_hora").select("data,hora,expense,direct_gmv").gte("data", data.de).lte("data", data.ate), "shopee ads hora", 60000)),
+    safe("itemDia", fetchAll(() => c.from("vw_shopee_item_dia").select("data,item_id,title,seller_sku,visitas,pedidos,unidades_vendidas,receita").gte("data", data.de).lte("data", data.ate), "shopee item dia", 120000)),
+    safe("estoque", fetchAll(() => c.from("vw_shopee_estoque").select("item_id,estoque_total,dias_de_cobertura,media_diaria"), "shopee estoque")),
+    safe("produtos", fetchAll(() => c.from("dim_shopee_produto").select("item_id,item_sku,nome,fotos,tem_dimensoes,rating"), "shopee produtos")),
+    safe("metricas", fetchAll(() => c.from("shopee_item_metricas_dia").select("data,item_id,rating,comentarios").gte("data", data.de).lte("data", data.ate), "shopee metricas", 60000)),
+    safe("lives", fetchAll(() => c.from("live_shopee_sessao").select("sessao_id,titulo,inicio,duracao_seg,espectadores,pedidos_confirmados,vendas_confirmadas").gte("inicio", data.de).lte("inicio", data.ate + "T23:59:59"), "shopee lives")),
+  ]);
+  const sessaoIds = sessoes.map((s) => s["sessao_id"] as number).filter((x) => x != null);
+  const produtosLive = await safe("produtosLive", fetchIn(c, "live_shopee_produto", "sessao_id,item_id,cliques,atc,pedidos_confirmados,vendas_confirmadas", "sessao_id", sessaoIds, "shopee live produtos"));
+  const economia = economiaShopee(pedidos, itens, fin, custosR, adsDia, data.de, data.ate);
+  const ads = adsShopee(adsDia, adsCamp, data.de, data.ate);
+  const horas = adsPorHora(adsHora, data.de, data.ate);
+  const prods = produtosShopee(itemDia, estoque, produtos, metricas, data.de, data.ate);
+  return {
+    economia: { ...economia, skus: economia.skus.slice(0, 80) },
+    ads,
+    horas,
+    produtos: prods,
+    lives: livesShopee(sessoes, produtosLive, produtos, data.de, data.ate),
+    cancelamentos: cancelamentosShopee(pedidos, itens, data.de, data.ate),
+    alertas: alertasShopee({ produtos: prods, skus: economia.skus, ads, horas }),
+    erros,
+  };
+}
+
+export const getShopee = createServerFn({ method: "GET" })
+  .inputValidator((d) => Periodo.parse(d))
+  .handler(async ({ data }) => dadosShopee(data));

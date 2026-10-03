@@ -23,6 +23,7 @@ import { Route as ClientesChaveRouteImport } from './routes/clientes.$chave'
 import { Route as EmBreveModuloRouteImport } from './routes/em-breve.$modulo'
 import { Route as MarketplaceAmazonRouteImport } from './routes/marketplace_.amazon'
 import { Route as MarketplaceMercadoLivreRouteImport } from './routes/marketplace_.mercado-livre'
+import { Route as MarketplaceShopeeRouteImport } from './routes/marketplace_.shopee'
 import { Route as MarketplaceTiktokRouteImport } from './routes/marketplace_.tiktok'
 import { Route as PedidosIndexRouteImport } from './routes/pedidos.index'
 import { Route as ProdutosIndexRouteImport } from './routes/produtos.index'
@@ -99,6 +100,11 @@ const MarketplaceMercadoLivreRoute = MarketplaceMercadoLivreRouteImport.update({
   path: '/marketplace/mercado-livre',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MarketplaceShopeeRoute = MarketplaceShopeeRouteImport.update({
+  id: '/marketplace_/shopee',
+  path: '/marketplace/shopee',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MarketplaceTiktokRoute = MarketplaceTiktokRouteImport.update({
   id: '/marketplace_/tiktok',
   path: '/marketplace/tiktok',
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/marketplace/amazon': typeof MarketplaceAmazonRoute
   '/marketplace/mercado-livre': typeof MarketplaceMercadoLivreRoute
+  '/marketplace/shopee': typeof MarketplaceShopeeRoute
   '/marketplace/tiktok': typeof MarketplaceTiktokRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
@@ -160,6 +167,7 @@ export interface FileRoutesByTo {
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/marketplace/amazon': typeof MarketplaceAmazonRoute
   '/marketplace/mercado-livre': typeof MarketplaceMercadoLivreRoute
+  '/marketplace/shopee': typeof MarketplaceShopeeRoute
   '/marketplace/tiktok': typeof MarketplaceTiktokRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes': typeof ClientesIndexRoute
@@ -182,6 +190,7 @@ export interface FileRoutesById {
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/marketplace_/amazon': typeof MarketplaceAmazonRoute
   '/marketplace_/mercado-livre': typeof MarketplaceMercadoLivreRoute
+  '/marketplace_/shopee': typeof MarketplaceShopeeRoute
   '/marketplace_/tiktok': typeof MarketplaceTiktokRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/em-breve/$modulo'
     | '/marketplace/amazon'
     | '/marketplace/mercado-livre'
+    | '/marketplace/shopee'
     | '/marketplace/tiktok'
     | '/produtos/$sku'
     | '/clientes/'
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/em-breve/$modulo'
     | '/marketplace/amazon'
     | '/marketplace/mercado-livre'
+    | '/marketplace/shopee'
     | '/marketplace/tiktok'
     | '/produtos/$sku'
     | '/clientes'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/em-breve/$modulo'
     | '/marketplace_/amazon'
     | '/marketplace_/mercado-livre'
+    | '/marketplace_/shopee'
     | '/marketplace_/tiktok'
     | '/produtos/$sku'
     | '/clientes/'
@@ -269,6 +281,7 @@ export interface RootRouteChildren {
   EmBreveModuloRoute: typeof EmBreveModuloRoute
   MarketplaceAmazonRoute: typeof MarketplaceAmazonRoute
   MarketplaceMercadoLivreRoute: typeof MarketplaceMercadoLivreRoute
+  MarketplaceShopeeRoute: typeof MarketplaceShopeeRoute
   MarketplaceTiktokRoute: typeof MarketplaceTiktokRoute
   ProdutosSkuRoute: typeof ProdutosSkuRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
@@ -377,6 +390,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarketplaceMercadoLivreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/marketplace_/shopee': {
+      id: '/marketplace_/shopee'
+      path: '/marketplace/shopee'
+      fullPath: '/marketplace/shopee'
+      preLoaderRoute: typeof MarketplaceShopeeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/marketplace_/tiktok': {
       id: '/marketplace_/tiktok'
       path: '/marketplace/tiktok'
@@ -429,6 +449,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmBreveModuloRoute: EmBreveModuloRoute,
   MarketplaceAmazonRoute: MarketplaceAmazonRoute,
   MarketplaceMercadoLivreRoute: MarketplaceMercadoLivreRoute,
+  MarketplaceShopeeRoute: MarketplaceShopeeRoute,
   MarketplaceTiktokRoute: MarketplaceTiktokRoute,
   ProdutosSkuRoute: ProdutosSkuRoute,
   ClientesIndexRoute: ClientesIndexRoute,

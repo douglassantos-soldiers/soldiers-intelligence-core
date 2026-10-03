@@ -26,6 +26,7 @@ describe("App routing", () => {
       "/marketplace/tiktok",
       "/marketplace/amazon",
       "/marketplace/mercado-livre",
+      "/marketplace/shopee",
       "/data-health",
       "/glossario",
       "/media",

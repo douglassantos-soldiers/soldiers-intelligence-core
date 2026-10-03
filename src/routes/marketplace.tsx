@@ -32,6 +32,12 @@ export const Route = createFileRoute("/marketplace")({
           right={
             <div className="flex items-center gap-4">
               <Link
+                to="/marketplace/shopee"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Shopee: economia →
+              </Link>
+              <Link
                 to="/marketplace/mercado-livre"
                 className="text-sm font-medium text-primary hover:underline"
               >

@@ -27,6 +27,7 @@ const GROUPS: { title?: string; items: Item[] }[] = [
       { to: "/marketplace/tiktok", label: "TikTok Shop: economia", icon: Receipt },
       { to: "/marketplace/amazon", label: "Amazon: ASIN 360°", icon: Boxes },
       { to: "/marketplace/mercado-livre", label: "Mercado Livre: economia", icon: Receipt },
+      { to: "/marketplace/shopee", label: "Shopee: economia", icon: Receipt },
       { to: "/crm", label: "CRM / Growth", icon: HeartHandshake },
     ],
   },
