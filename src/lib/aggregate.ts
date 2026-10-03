@@ -87,7 +87,8 @@ export function custoMap(custos: Row[]) {
 
 /** Monta a matriz de cohort (últimas 12 safras, até M12) a partir de mv_growth_cohort_mes. */
 export function buildCohort(rows: Row[]) {
-  const offsets = Array.from({ length: 13 }, (_, i) => i);
+  // M0 é sempre 100% (a própria safra); a matriz mostra a partir de M1.
+  const offsets = Array.from({ length: 12 }, (_, i) => i + 1);
   const bySafra = new Map<
     string,
     { safra: string; tamanho: number; pct: Record<number, number> }

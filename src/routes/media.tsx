@@ -17,7 +17,7 @@ import {
 import { StackedArea, pivot } from "@/components/charts";
 import { getMedia } from "@/lib/data.functions";
 import { sumBy, total, ratio, pct } from "@/lib/aggregate";
-import { fmtBRL, fmtNum, fmtPct, fmtX } from "@/lib/format";
+import { fmtBRL, fmtBRL2, fmtNum, fmtPct, fmtX } from "@/lib/format";
 import { periodo } from "@/lib/format";
 
 // Media OS (Plano Mestre cap. 7). Só mídia paga: afiliados ficam em /affiliate (princípio 4).
@@ -90,14 +90,14 @@ function Body({
           value={fmtPct(pct(t["cliques"], t["impressoes"]), 2)}
           hint={`${fmtNum(t["cliques"])} cliques`}
         />
-        <Kpi label="CPC" value={fmtBRL(ratio(t["investimento"], t["cliques"]))} />
+        <Kpi label="CPC" value={fmtBRL2(ratio(t["investimento"], t["cliques"]))} />
       </div>
 
       <Panel title="Investimento diário por tipo de campanha">
         {serie.data.length ? <StackedArea data={serie.data} keys={serie.series} /> : <Empty />}
       </Panel>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6 2xl:grid-cols-2">
         <Panel
           title="Por tipo de campanha"
           right={<CsvButton name="media-por-tipo" rows={porTipo} />}
@@ -115,7 +115,7 @@ function Body({
                 <Td mono>{fmtX(ratio(r["receita"], r["investimento"]))}</Td>
                 <Td mono>{fmtNum(r["cliques"])}</Td>
                 <Td mono>{fmtPct(pct(r["cliques"], r["impressoes"]), 2)}</Td>
-                <Td mono>{fmtBRL(ratio(r["investimento"], r["cliques"]))}</Td>
+                <Td mono>{fmtBRL2(ratio(r["investimento"], r["cliques"]))}</Td>
                 <Td mono>{fmtNum(r["unidades"])}</Td>
               </tr>
             ))}
@@ -151,7 +151,7 @@ function Body({
                   <Td mono>{fmtNum(r["conversoes"])}</Td>
                   <Td mono>{fmtPct(pct(r["cliques"], r["impressoes"]), 2)}</Td>
                   <Td mono>{fmtPct(pct(r["conversoes"], r["cliques"]), 2)}</Td>
-                  <Td mono>{fmtBRL(ratio(r["invest"], r["conversoes"]))}</Td>
+                  <Td mono>{fmtBRL2(ratio(r["invest"], r["conversoes"]))}</Td>
                   <Td mono>{fmtX(ratio(r["receita_ads"], r["invest"]))}</Td>
                 </tr>
               ))}

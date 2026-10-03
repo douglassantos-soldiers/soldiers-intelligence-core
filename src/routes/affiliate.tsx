@@ -118,7 +118,7 @@ function Body({
         )}
       </Panel>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6 2xl:grid-cols-2">
         <Panel title="Por canal" right={<CsvButton name="afiliados-por-canal" rows={canais} />}>
           <Table head={["Canal", "Vendas atrib.", "Investimento", "Retorno", "Custo %"]}>
             {canais.map((r) => (

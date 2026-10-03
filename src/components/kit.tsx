@@ -39,7 +39,7 @@ export function Kpi({ label, value, hint, tone }: { label: string; value: ReactN
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
-      <div className="mt-2 font-mono text-2xl font-semibold text-card-foreground">{value}</div>
+      <div className={`mt-2 font-mono font-semibold text-card-foreground ${typeof value === "string" && value.length > 11 ? "text-lg leading-tight xl:text-xl" : "text-2xl"}`}>{value}</div>
       {hint && <div className={`mt-1 text-xs ${toneCls}`}>{hint}</div>}
     </div>
   );

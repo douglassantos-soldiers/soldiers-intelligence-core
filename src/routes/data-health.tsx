@@ -130,7 +130,7 @@ function Body({ d }: { d: D }) {
         </p>
       </Panel>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6 2xl:grid-cols-2">
         <Panel title="Filas de sincronização (30 dias)">
           <Table head={["Fila", "Status", "Máx. tentativas", "Último erro", "Atualizado"]}>
             {d.filas.map((f) => (

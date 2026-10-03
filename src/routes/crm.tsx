@@ -130,7 +130,7 @@ function Body({ d }: { d: Record<string, R[]> }) {
         </Panel>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6 2xl:grid-cols-2">
         <Panel title="Segmentos RFM" right={<CsvButton name="rfm-segmentos" rows={rfm} />}>
           <Table head={["Segmento", "Clientes", "Receita", "Ticket", "Recência (d)", "Frequência"]}>
             {rfm.map((r) => (

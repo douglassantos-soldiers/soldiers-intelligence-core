@@ -106,7 +106,7 @@ function Body({ sku, d }: { sku: string; d: Awaited<ReturnType<typeof getProduto
       <Panel title="Estoque por canal">
         {/* Plano Mestre cap. 6.4: estoques de canais diferentes não são intercambiáveis,
             por isso cada canal aparece separado e não existe "estoque total". */}
-        <Table head={["Canal", "Disponível", "Total no canal", "Registros", "Atualizado"]}>
+        <Table head={["Canal", "Disponível", "Total no canal / cobertura", "Registros", "Atualizado"]}>
           <tr>
             <Td>Site (Shopify)</Td>
             <Td mono>{fmtNum(est?.["estoque"])}</Td>
