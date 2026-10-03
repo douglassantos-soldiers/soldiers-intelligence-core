@@ -19,10 +19,20 @@ export const MARKETPLACES = ["Mercado Livre", "Amazon", "Shopee", "TikTok"] as c
 // Canais presentes no nível de pedido (fact_pedido_cliente).
 export const CANAIS_PEDIDO = ["Shopify", "Mercado Livre", "Amazon", "TikTok"] as const;
 
-export const ACOES_LABEL: Record<string, string> = {
-  aguardar: "Aguardar",
-  resgate: "Resgate",
-  reativacao: "Reativação",
-  lembrete: "Lembrete",
-  perdido: "Perdido",
+export const ACAO_TONE: Record<string, "primary" | "success" | "warn" | "danger" | "muted"> = {
+  recompra: "success",
+  segunda_compra: "primary",
+  resgate: "warn",
+  valioso_em_risco: "danger",
+  reativacao: "warn",
+  aguardar: "muted",
 };
+export const ACAO_LABEL: Record<string, string> = {
+  recompra: "Recompra",
+  segunda_compra: "2ª compra",
+  resgate: "Resgate",
+  valioso_em_risco: "Valioso em risco",
+  reativacao: "Reativação",
+  aguardar: "Aguardar",
+};
+

@@ -6,6 +6,7 @@ import { getClientes, getClienteResumo } from "@/lib/data.functions";
 import { PageHeader, Pills, Kpi, Panel, Loading, ErrorBox, Table, Td, SearchBox, StatusTag, CsvButton, Empty, Select } from "@/components/kit";
 import { fmtBRL, fmtNum, fmtPct, fmtDate } from "@/lib/format";
 import { sumBy } from "@/lib/aggregate";
+import { ACAO_LABEL, ACAO_TONE } from "@/domain/sources";
 
 export const Route = createFileRoute("/clientes/")({
   head: () => ({
@@ -18,23 +19,6 @@ export const Route = createFileRoute("/clientes/")({
   }),
   component: Clientes,
 });
-
-export const ACAO_TONE: Record<string, "primary" | "success" | "warn" | "danger" | "muted"> = {
-  recompra: "success",
-  segunda_compra: "primary",
-  resgate: "warn",
-  valioso_em_risco: "danger",
-  reativacao: "warn",
-  aguardar: "muted",
-};
-export const ACAO_LABEL: Record<string, string> = {
-  recompra: "Recompra",
-  segunda_compra: "2ª compra",
-  resgate: "Resgate",
-  valioso_em_risco: "Valioso em risco",
-  reativacao: "Reativação",
-  aguardar: "Aguardar",
-};
 
 function Clientes() {
   const [busca, setBusca] = useState("");

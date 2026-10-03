@@ -6,7 +6,7 @@ import { getCliente } from "@/lib/data.functions";
 import { Kpi, Panel, Loading, ErrorBox, Table, Td, StatusTag, Empty } from "@/components/kit";
 import { fmtBRL, fmtNum, fmtPct, fmtDate } from "@/lib/format";
 import { custoMap } from "@/lib/aggregate";
-import { ACAO_LABEL, ACAO_TONE } from "./clientes.index";
+import { ACAO_LABEL, ACAO_TONE } from "@/domain/sources";
 
 export const Route = createFileRoute("/clientes/$chave")({
   head: () => ({
