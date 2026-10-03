@@ -763,8 +763,8 @@ describe("telas novas renderizam com dados", () => {
     expect(screen.getAllByText("Creatina ML 300g").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByText("Anúncios"));
-    expect(screen.getByText("perdendo o catálogo: ganhar ainda dá lucro")).toBeTruthy();
-    expect(screen.getByText("perdendo o catálogo: ganhar daria prejuízo")).toBeTruthy();
+    expect(screen.getByText("catálogo: ganhar dá lucro")).toBeTruthy();
+    expect(screen.getByText("catálogo: ganhar dá prejuízo")).toBeTruthy();
     expect(screen.getByText("Full cobre 5 dias")).toBeTruthy();
 
     fireEvent.click(screen.getByText("Product Ads"));

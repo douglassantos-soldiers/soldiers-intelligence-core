@@ -188,12 +188,21 @@ describe("anuncios360", () => {
   it("catálogo: diz se ganhar no price_to_win ainda dá lucro", () => {
     // Creatina: tarifa 27/200 = 13,5%; frete 10/un; CMV 30/un → 95 − 12,825 − 10 − 30 = 42,175
     expect(r[0]!.contribuicaoNoPtw).toBeCloseTo(42.175, 6);
-    expect(r[0]!.problemas).toContain("perdendo o catálogo: ganhar ainda dá lucro");
+    expect(r[0]!.problemas).toContain("catálogo: ganhar dá lucro");
     expect(r[0]!.problemas).toContain("Full cobre 6 dias");
     // Whey a 60: tarifa 15% → 60 − 9 − 10 − 70 < 0
-    expect(r[2]!.problemas[0]).toBe("perdendo o catálogo: ganhar daria prejuízo");
+    expect(r[2]!.problemas[0]).toBe("catálogo: ganhar dá prejuízo");
     expect(r[2]!.problemas).toContain("qualidade 50%");
     expect(r[2]!.problemas).toContain("conversão abaixo da metade da mediana");
+  });
+
+  it("vira alertas de catálogo e Full", () => {
+    const a = alertasML({ anuncios: r, ads: diagnosticoAds([], DE, ATE) });
+    expect(a.map((x) => [x.tipo, x.tag])).toEqual([
+      ["problema", "ML Full"],
+      ["oportunidade", "ML catálogo"],
+      ["problema", "ML catálogo"],
+    ]);
   });
 });
 

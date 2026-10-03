@@ -331,8 +331,8 @@ export function anuncios360(
     const perdendo = /compet|losing|perd/i.test(catalogo) && !/winning|ganh/i.test(catalogo);
     if (perdendo) {
       if (contribuicaoNoPtw == null) problemas.push("perdendo o catálogo");
-      else if (contribuicaoNoPtw >= 0) problemas.push("perdendo o catálogo: ganhar ainda dá lucro");
-      else problemas.push("perdendo o catálogo: ganhar daria prejuízo");
+      else if (contribuicaoNoPtw >= 0) problemas.push("catálogo: ganhar dá lucro");
+      else problemas.push("catálogo: ganhar dá prejuízo");
     }
     if (/paused|inactive/i.test(status) && n(c?.["estoque_disponivel"]) > 0)
       problemas.push("pausado com estoque");
@@ -534,7 +534,7 @@ export function alertasML(i: {
       tom: "danger",
       texto: `${negativo.length} anúncio(s) com contribuição negativa no período (após tarifa, frete, afiliado, Ads e custo), como ${negativo[0]!.titulo}.`,
     });
-  const catLucro = com(/ganhar ainda dá lucro/);
+  const catLucro = com(/ganhar dá lucro/);
   if (catLucro.length)
     out.push({
       tipo: "oportunidade",
@@ -542,7 +542,7 @@ export function alertasML(i: {
       tom: "success",
       texto: `${catLucro.length} anúncio(s) perdendo o catálogo em que baixar para o preço vencedor ainda dá lucro, como ${catLucro[0]!.titulo}.`,
     });
-  const catPrej = com(/ganhar daria prejuízo/);
+  const catPrej = com(/ganhar dá prejuízo/);
   if (catPrej.length)
     out.push({
       tipo: "problema",
