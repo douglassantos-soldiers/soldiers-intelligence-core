@@ -17,6 +17,7 @@ import { Route as DataHealthRouteImport } from './routes/data-health'
 import { Route as GlossarioRouteImport } from './routes/glossario'
 import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as MediaRouteImport } from './routes/media'
+import { Route as AfiliadosHojeRouteImport } from './routes/afiliados.hoje'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesChaveRouteImport } from './routes/clientes.$chave'
 import { Route as EmBreveModuloRouteImport } from './routes/em-breve.$modulo'
@@ -65,6 +66,11 @@ const MediaRoute = MediaRouteImport.update({
   path: '/media',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AfiliadosHojeRoute = AfiliadosHojeRouteImport.update({
+  id: '/afiliados/hoje',
+  path: '/afiliados/hoje',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientesIndexRoute = ClientesIndexRouteImport.update({
   id: '/clientes/',
   path: '/clientes/',
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/glossario': typeof GlossarioRoute
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
+  '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/glossario': typeof GlossarioRoute
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
+  '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   '/glossario': typeof GlossarioRoute
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
+  '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/glossario'
     | '/marketplace'
     | '/media'
+    | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/em-breve/$modulo'
     | '/produtos/$sku'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/glossario'
     | '/marketplace'
     | '/media'
+    | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/em-breve/$modulo'
     | '/produtos/$sku'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/glossario'
     | '/marketplace'
     | '/media'
+    | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/em-breve/$modulo'
     | '/produtos/$sku'
@@ -216,6 +228,7 @@ export interface RootRouteChildren {
   GlossarioRoute: typeof GlossarioRoute
   MarketplaceRoute: typeof MarketplaceRoute
   MediaRoute: typeof MediaRoute
+  AfiliadosHojeRoute: typeof AfiliadosHojeRoute
   ClientesChaveRoute: typeof ClientesChaveRoute
   EmBreveModuloRoute: typeof EmBreveModuloRoute
   ProdutosSkuRoute: typeof ProdutosSkuRoute
@@ -283,6 +296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MediaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/afiliados/hoje': {
+      id: '/afiliados/hoje'
+      path: '/afiliados/hoje'
+      fullPath: '/afiliados/hoje'
+      preLoaderRoute: typeof AfiliadosHojeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clientes/': {
       id: '/clientes/'
       path: '/clientes'
@@ -344,6 +364,7 @@ const rootRouteChildren: RootRouteChildren = {
   GlossarioRoute: GlossarioRoute,
   MarketplaceRoute: MarketplaceRoute,
   MediaRoute: MediaRoute,
+  AfiliadosHojeRoute: AfiliadosHojeRoute,
   ClientesChaveRoute: ClientesChaveRoute,
   EmBreveModuloRoute: EmBreveModuloRoute,
   ProdutosSkuRoute: ProdutosSkuRoute,

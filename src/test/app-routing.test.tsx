@@ -27,6 +27,7 @@ describe("App routing", () => {
       "/glossario",
       "/media",
       "/affiliate",
+      "/afiliados/hoje",
       "/crm",
       "/em-breve/ai",
     ];

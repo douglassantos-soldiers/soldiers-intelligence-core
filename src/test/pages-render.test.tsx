@@ -177,6 +177,29 @@ const fixtures: Record<string, unknown> = {
       { sku: "WHEY900", produto: "Whey 900g", atual: 9000, anterior: 6000, variacao: 50 },
     ],
   },
+  hoje: {
+    referencia: "2026-10-02",
+    videosEscalar: [
+      {
+        video_id: "v1",
+        criador: "joao.fit",
+        titulo: "Creatina do jeito certo",
+        produto: "Creatina 300g",
+        views: 80000,
+        gmv: 9200,
+        pedidos: 102,
+        gpm: 115,
+        vsMediana: 3.2,
+      },
+    ],
+    emAlta: [{ criador: "ana.treina", atual: 6400, anterior: 2100, variacao: 204.8, videos: 5 }],
+    reativar: [{ criador: "caio.run", atual: 0, anterior: 18000, variacao: -100, videos: 12 }],
+    semVenda: [
+      { nome: "Lia Souza", tiktok: "lia.souza", tier: "micro", custo: 1500, desde: "2026-08-01" },
+    ],
+    influenciadoresErro: null,
+    mix30d: { gmv: 100000, video: 62000, live: 30000, card: 8000, pedidos: 900 },
+  },
 };
 let current = "media";
 
@@ -254,5 +277,17 @@ describe("telas novas renderizam com dados", () => {
     expect(screen.getByText("Whey 900g")).toBeTruthy();
     expect(screen.getByText("Recompra")).toBeTruthy();
     expect(screen.queryByText("Aguardar")).toBeNull(); // "aguardar" não é oportunidade
+  });
+
+  it("Affiliate Copilot: o que fazer hoje", async () => {
+    current = "hoje";
+    const { Route } = await import("@/routes/afiliados.hoje");
+    const C = Route.options.component!;
+    wrap(<C />);
+    expect(await screen.findByText("Hoje existem 4 ações sugeridas")).toBeTruthy();
+    expect(screen.getByText("@joao.fit")).toBeTruthy();
+    expect(screen.getByText("+205%")).toBeTruthy();
+    expect(screen.getByText("Lia Souza")).toBeTruthy();
+    expect(screen.getByText("62%")).toBeTruthy(); // vídeo = 62% das vendas atribuídas
   });
 });

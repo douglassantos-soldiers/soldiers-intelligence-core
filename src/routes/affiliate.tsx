@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -59,7 +59,14 @@ function Affiliate() {
       <PageHeader
         title="Affiliate"
         subtitle="Vendas atribuídas a afiliados e custo do programa. Separado de Media."
-        right={<PeriodPills value={dias} onChange={setDias} />}
+        right={
+          <div className="flex items-center gap-4">
+            <Link to="/afiliados/hoje" className="text-sm font-medium text-primary hover:underline">
+              O que fazer hoje →
+            </Link>
+            <PeriodPills value={dias} onChange={setDias} />
+          </div>
+        }
       />
       {q.isLoading && <Loading />}
       {q.error && <ErrorBox error={q.error} />}
