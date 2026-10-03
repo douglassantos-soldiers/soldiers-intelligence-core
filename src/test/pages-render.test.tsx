@@ -112,6 +112,50 @@ const fixtures: Record<string, unknown> = {
       { safra: "2026-08-01", mes_offset: 1, clientes_safra: 50, clientes: 10, receita: 2000 },
     ],
   },
+  health: {
+    fontes: [
+      { fonte: "Meta Ads", ultimoDado: "2026-01-01", carregadoEm: "2026-01-02", erro: null },
+      {
+        fonte: "Pedidos: Shopify",
+        ultimoDado: new Date().toISOString().slice(0, 10),
+        carregadoEm: null,
+        erro: null,
+      },
+    ],
+    filas: [
+      {
+        fila: "Shopee: pedidos",
+        linhas: 3,
+        porStatus: { ok: 2, erro: 1 },
+        maxTentativas: 4,
+        ultimoErro: "timeout",
+        atualizado: "2026-10-02",
+        erro: null,
+      },
+    ],
+    logs: [
+      {
+        log: "Shopee",
+        execucoes: 50,
+        comErro: 2,
+        ultimaExecucao: "2026-10-02",
+        ultimoErro: "429",
+        erro: null,
+      },
+    ],
+    problemas: [
+      {
+        canal: "Shopify",
+        problema: "pedido sem custo",
+        severidade: "alta",
+        dias_aberto: 5,
+        pedido: "1001",
+        valor: 199,
+        data: "2026-09-28",
+      },
+    ],
+    afiliadoMl: [],
+  },
 };
 let current = "media";
 
@@ -168,5 +212,16 @@ describe("telas novas renderizam com dados", () => {
     expect(await screen.findByText("Segmentos RFM")).toBeTruthy();
     expect(screen.getByText("Campeões")).toBeTruthy();
     expect(screen.getByText("20%")).toBeTruthy(); // cohort: 10 de 50 voltaram em M1
+  });
+
+  it("Data Health", async () => {
+    current = "health";
+    const { Route } = await import("@/routes/data-health");
+    const C = Route.options.component!;
+    wrap(<C />);
+    expect(await screen.findByText("Frescor por fonte")).toBeTruthy();
+    expect(screen.getByText("Atrasado")).toBeTruthy(); // Meta Ads parado desde janeiro
+    expect(screen.getByText("Em dia")).toBeTruthy();
+    expect(screen.getByText("pedido sem custo")).toBeTruthy();
   });
 });

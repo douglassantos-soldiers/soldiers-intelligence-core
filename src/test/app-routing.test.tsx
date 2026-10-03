@@ -23,6 +23,7 @@ describe("App routing", () => {
       "/pedidos",
       "/commerce",
       "/marketplace",
+      "/data-health",
       "/media",
       "/affiliate",
       "/crm",

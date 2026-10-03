@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { custoHistorico, custoNaData, channelSummary, ratio, buildCohort } from "@/lib/aggregate";
+import {
+  custoHistorico,
+  custoNaData,
+  channelSummary,
+  ratio,
+  buildCohort,
+  diasDesde,
+  semaforoFrescor,
+} from "@/lib/aggregate";
 import { canalPedido, canalVenda } from "@/domain/sources";
 
 const custos = [
@@ -106,5 +114,20 @@ describe("buildCohort", () => {
     expect(c.safras.map((s) => s.safra)).toEqual(["2026-02", "2026-01"]);
     expect(c.safras[1]!.pct[1]).toBe(15);
     expect(c.safras[1]!.pct[13]).toBeUndefined();
+  });
+});
+
+describe("Data Health: frescor", () => {
+  const hoje = new Date("2026-10-03T15:00:00Z");
+  it("conta dias desde o último dado", () => {
+    expect(diasDesde("2026-10-02", hoje)).toBe(1);
+    expect(diasDesde("2026-09-28T23:00:00", hoje)).toBe(5);
+    expect(diasDesde(null, hoje)).toBeNull();
+  });
+  it("classifica D-1 como ok e mais de 3 dias como crítico", () => {
+    expect(semaforoFrescor(1)).toBe("ok");
+    expect(semaforoFrescor(3)).toBe("atencao");
+    expect(semaforoFrescor(4)).toBe("critico");
+    expect(semaforoFrescor(null)).toBe("sem_dado");
   });
 });

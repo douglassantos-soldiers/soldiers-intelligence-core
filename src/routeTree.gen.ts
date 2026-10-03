@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AffiliateRouteImport } from './routes/affiliate'
 import { Route as CommerceRouteImport } from './routes/commerce'
 import { Route as CrmRouteImport } from './routes/crm'
+import { Route as DataHealthRouteImport } from './routes/data-health'
 import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
@@ -41,6 +42,11 @@ const CommerceRoute = CommerceRouteImport.update({
 const CrmRoute = CrmRouteImport.update({
   id: '/crm',
   path: '/crm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataHealthRoute = DataHealthRouteImport.update({
+  id: '/data-health',
+  path: '/data-health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MarketplaceRoute = MarketplaceRouteImport.update({
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/affiliate': typeof AffiliateRoute
   '/commerce': typeof CommerceRoute
   '/crm': typeof CrmRoute
+  '/data-health': typeof DataHealthRoute
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
   '/clientes/$chave': typeof ClientesChaveRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/affiliate': typeof AffiliateRoute
   '/commerce': typeof CommerceRoute
   '/crm': typeof CrmRoute
+  '/data-health': typeof DataHealthRoute
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
   '/clientes/$chave': typeof ClientesChaveRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/affiliate': typeof AffiliateRoute
   '/commerce': typeof CommerceRoute
   '/crm': typeof CrmRoute
+  '/data-health': typeof DataHealthRoute
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
   '/clientes/$chave': typeof ClientesChaveRoute
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/affiliate'
     | '/commerce'
     | '/crm'
+    | '/data-health'
     | '/marketplace'
     | '/media'
     | '/clientes/$chave'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/affiliate'
     | '/commerce'
     | '/crm'
+    | '/data-health'
     | '/marketplace'
     | '/media'
     | '/clientes/$chave'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/affiliate'
     | '/commerce'
     | '/crm'
+    | '/data-health'
     | '/marketplace'
     | '/media'
     | '/clientes/$chave'
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   AffiliateRoute: typeof AffiliateRoute
   CommerceRoute: typeof CommerceRoute
   CrmRoute: typeof CrmRoute
+  DataHealthRoute: typeof DataHealthRoute
   MarketplaceRoute: typeof MarketplaceRoute
   MediaRoute: typeof MediaRoute
   ClientesChaveRoute: typeof ClientesChaveRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/crm'
       fullPath: '/crm'
       preLoaderRoute: typeof CrmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data-health': {
+      id: '/data-health'
+      path: '/data-health'
+      fullPath: '/data-health'
+      preLoaderRoute: typeof DataHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/marketplace': {
@@ -300,6 +320,7 @@ const rootRouteChildren: RootRouteChildren = {
   AffiliateRoute: AffiliateRoute,
   CommerceRoute: CommerceRoute,
   CrmRoute: CrmRoute,
+  DataHealthRoute: DataHealthRoute,
   MarketplaceRoute: MarketplaceRoute,
   MediaRoute: MediaRoute,
   ClientesChaveRoute: ClientesChaveRoute,

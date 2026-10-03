@@ -104,3 +104,23 @@ export function buildCohort(rows: Row[]) {
   const safras = [...bySafra.values()].sort((a, b) => b.safra.localeCompare(a.safra)).slice(0, 12);
   return { safras, offsets };
 }
+
+/* ---------------- Data Health ---------------- */
+export type Semaforo = "ok" | "atencao" | "critico" | "sem_dado";
+
+/** Dias inteiros entre uma data (YYYY-MM-DD…) e hoje. */
+export function diasDesde(data: unknown, hoje: Date = new Date()): number | null {
+  if (!data) return null;
+  const d = new Date(String(data).slice(0, 10) + "T00:00:00Z");
+  if (Number.isNaN(d.getTime())) return null;
+  const h = Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate());
+  return Math.round((h - d.getTime()) / 86400000);
+}
+
+/** Dado de D-1 é normal (fontes diárias). Até 3 dias = atenção; mais que isso = crítico. */
+export function semaforoFrescor(dias: number | null): Semaforo {
+  if (dias == null) return "sem_dado";
+  if (dias <= 1) return "ok";
+  if (dias <= 3) return "atencao";
+  return "critico";
+}

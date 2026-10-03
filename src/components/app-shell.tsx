@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   LayoutGrid, Users, Package, ShoppingCart, Megaphone, Handshake, Store, Boxes, HeartHandshake,
-  Brain, GitBranch, Coins, Bot, Sun, Moon, Menu, X,
+  Brain, GitBranch, Coins, Bot, Sun, Moon, Menu, X, Activity,
 } from "lucide-react";
 
 type Item = { to: string; label: string; icon: typeof LayoutGrid; params?: Record<string, string> };
@@ -25,6 +25,10 @@ const GROUPS: { title?: string; items: Item[] }[] = [
       { to: "/marketplace", label: "Marketplace", icon: Boxes },
       { to: "/crm", label: "CRM / Growth", icon: HeartHandshake },
     ],
+  },
+  {
+    title: "Plataforma",
+    items: [{ to: "/data-health", label: "Data Health", icon: Activity }],
   },
   {
     title: "Em breve",
