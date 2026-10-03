@@ -7,6 +7,7 @@ import { channelSummary, total, ratio, pct, RECEITA_FIELDS, PL_FIELDS } from "@/
 import { fmtBRL, fmtNum, fmtPct, fmtX } from "@/lib/format";
 import { useOverview } from "@/lib/queries";
 import { Alertas } from "@/components/alertas";
+import { MetasMes } from "@/components/metas";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -31,6 +32,7 @@ function CommandCenter() {
       {q.error && <ErrorBox error={q.error} />}
       {q.data && (
         <div className="space-y-6">
+          <MetasMes />
           <Alertas />
           <Body data={q.data} />
         </div>

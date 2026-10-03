@@ -53,6 +53,9 @@ function Media() {
         subtitle="Mídia paga por tipo e por canal de venda. Receita atribuída pelas plataformas, sem afiliados."
         right={
           <div className="flex items-center gap-4">
+            <Link to="/media/meta" className="text-sm font-medium text-primary hover:underline">
+              Meta Ads →
+            </Link>
             <Link to="/media/google" className="text-sm font-medium text-primary hover:underline">
               Google Ads →
             </Link>

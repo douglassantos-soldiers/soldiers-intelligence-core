@@ -26,6 +26,7 @@ import { Route as MarketplaceMercadoLivreRouteImport } from './routes/marketplac
 import { Route as MarketplaceShopeeRouteImport } from './routes/marketplace_.shopee'
 import { Route as MarketplaceTiktokRouteImport } from './routes/marketplace_.tiktok'
 import { Route as MediaGoogleRouteImport } from './routes/media_.google'
+import { Route as MediaMetaRouteImport } from './routes/media_.meta'
 import { Route as PedidosIndexRouteImport } from './routes/pedidos.index'
 import { Route as ProdutosIndexRouteImport } from './routes/produtos.index'
 import { Route as ProdutosSkuRouteImport } from './routes/produtos.$sku'
@@ -116,6 +117,11 @@ const MediaGoogleRoute = MediaGoogleRouteImport.update({
   path: '/media/google',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MediaMetaRoute = MediaMetaRouteImport.update({
+  id: '/media_/meta',
+  path: '/media/meta',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PedidosIndexRoute = PedidosIndexRouteImport.update({
   id: '/pedidos/',
   path: '/pedidos/',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/marketplace/shopee': typeof MarketplaceShopeeRoute
   '/marketplace/tiktok': typeof MarketplaceTiktokRoute
   '/media/google': typeof MediaGoogleRoute
+  '/media/meta': typeof MediaMetaRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
   '/pedidos/': typeof PedidosIndexRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/marketplace/shopee': typeof MarketplaceShopeeRoute
   '/marketplace/tiktok': typeof MarketplaceTiktokRoute
   '/media/google': typeof MediaGoogleRoute
+  '/media/meta': typeof MediaMetaRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes': typeof ClientesIndexRoute
   '/pedidos': typeof PedidosIndexRoute
@@ -201,6 +209,7 @@ export interface FileRoutesById {
   '/marketplace_/shopee': typeof MarketplaceShopeeRoute
   '/marketplace_/tiktok': typeof MarketplaceTiktokRoute
   '/media_/google': typeof MediaGoogleRoute
+  '/media_/meta': typeof MediaMetaRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
   '/pedidos/': typeof PedidosIndexRoute
@@ -226,6 +235,7 @@ export interface FileRouteTypes {
     | '/marketplace/shopee'
     | '/marketplace/tiktok'
     | '/media/google'
+    | '/media/meta'
     | '/produtos/$sku'
     | '/clientes/'
     | '/pedidos/'
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/marketplace/shopee'
     | '/marketplace/tiktok'
     | '/media/google'
+    | '/media/meta'
     | '/produtos/$sku'
     | '/clientes'
     | '/pedidos'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/marketplace_/shopee'
     | '/marketplace_/tiktok'
     | '/media_/google'
+    | '/media_/meta'
     | '/produtos/$sku'
     | '/clientes/'
     | '/pedidos/'
@@ -296,6 +308,7 @@ export interface RootRouteChildren {
   MarketplaceShopeeRoute: typeof MarketplaceShopeeRoute
   MarketplaceTiktokRoute: typeof MarketplaceTiktokRoute
   MediaGoogleRoute: typeof MediaGoogleRoute
+  MediaMetaRoute: typeof MediaMetaRoute
   ProdutosSkuRoute: typeof ProdutosSkuRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
   PedidosIndexRoute: typeof PedidosIndexRoute
@@ -424,6 +437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MediaGoogleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/media_/meta': {
+      id: '/media_/meta'
+      path: '/media/meta'
+      fullPath: '/media/meta'
+      preLoaderRoute: typeof MediaMetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pedidos/': {
       id: '/pedidos/'
       path: '/pedidos'
@@ -472,6 +492,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarketplaceShopeeRoute: MarketplaceShopeeRoute,
   MarketplaceTiktokRoute: MarketplaceTiktokRoute,
   MediaGoogleRoute: MediaGoogleRoute,
+  MediaMetaRoute: MediaMetaRoute,
   ProdutosSkuRoute: ProdutosSkuRoute,
   ClientesIndexRoute: ClientesIndexRoute,
   PedidosIndexRoute: PedidosIndexRoute,

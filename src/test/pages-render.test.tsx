@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { reconciliacaoMeta, criativosMeta, segmentosMeta, funilMeta, ritmoMeta, metasDoMes } from "@/lib/metaads";
 import {
   campanhasGoogle,
   ritmoIntraday,
@@ -585,7 +586,126 @@ const googleFixture = {
   erros: {} as Record<string, string>,
 };
 
+const metaFixture = {
+  reconciliacao: reconciliacaoMeta(
+    [
+      {
+        data: "2026-09-01",
+        gasto_meta: 1000,
+        receita_informada_meta: 6000,
+        receita_meta_utm: 3000,
+        compras_informadas_meta: 40,
+        pedidos_meta_utm: 20,
+        enviados_meta: 70,
+        pedidos_totais: 100,
+      },
+      {
+        data: "2026-09-02",
+        gasto_meta: 1000,
+        receita_informada_meta: 5000,
+        receita_meta_utm: 3500,
+        compras_informadas_meta: 35,
+        pedidos_meta_utm: 22,
+        enviados_meta: 75,
+        pedidos_totais: 100,
+      },
+    ],
+    "2026-09-01",
+    "2026-09-30",
+  ),
+  criativos: criativosMeta(
+    [
+      {
+        criativo: "UGC Creatina 15s",
+        campanha: "TOPO | VENDA",
+        publico: "Aberto",
+        invest: 1200,
+        receita: 7200,
+        roas: 6,
+        hook_pct: 38,
+        ctr_pct: 1.8,
+        frequencia: 1.6,
+        sugestao: "Escalar",
+      },
+      {
+        criativo: "Estático Whey",
+        campanha: "MEIO-FUNDO",
+        publico: "Remarketing",
+        invest: 800,
+        receita: 800,
+        roas: 1,
+        ctr_pct: 0.6,
+        frequencia: 4.1,
+        sugestao: "Pausar",
+      },
+    ],
+    [
+      {
+        criativo: "Estático Whey",
+        publico: "Remarketing",
+        diagnostico: "Fadiga: frequência alta e ROAS caindo",
+        freq_7d: 4.1,
+        freq_ant: 2.3,
+        roas_7d: 1,
+        roas_ant: 2.8,
+        invest_7d: 300,
+      },
+    ],
+    [{ formato: "vídeo", criativos: 5, invest: 1500, receita: 7600, roas: 5.1, ctr_pct: 1.5 }],
+  ),
+  segmentos: segmentosMeta(
+    [
+      { publico: "Lookalike compradores", invest: 1000, receita: 6000 },
+      { publico: "Interesses fitness", invest: 1000, receita: 2000 },
+    ],
+    [{ plataforma: "instagram", posicionamento: "reels", invest: 1200, receita: 6000 }],
+    [{ faixa_idade: "25-34", genero: "male", invest: 900, receita: 4500 }],
+    [{ hora: 21, invest: 300, receita: 1800 }],
+  ),
+  funil: funilMeta([
+    { ord: 1, etapa: "Impressões", valor: 500000 },
+    { ord: 2, etapa: "Cliques", valor: 8000, taxa_passagem: "1,6%" },
+    { ord: 3, etapa: "Compras", valor: 120, taxa_passagem: "1,5%", cpa: 16.7 },
+  ]),
+  ritmo: ritmoMeta(
+    [{ data: "2026-10-03", gasto: 700, receita: 2400, captured_at: "2026-10-03T15:00:00Z" }],
+    [
+      { data: "2026-10-02", gasto: 1000, receita: 4000 },
+      { data: "2026-10-01", gasto: 1000, receita: 4000 },
+    ],
+  ),
+  alertas: [],
+  erros: {} as Record<string, string>,
+};
+const metasFixture = {
+  mes: "2026-10",
+  canais: metasDoMes(
+    [
+      {
+        data: "2026-10-01",
+        mes: "2026-10",
+        canal: "Site",
+        receita_meta: 10000,
+        receita_real: 9000,
+      },
+      {
+        data: "2026-10-02",
+        mes: "2026-10",
+        canal: "Site",
+        receita_meta: 10000,
+        receita_real: 7000,
+        dado_provisorio: true,
+      },
+      { data: "2026-10-03", mes: "2026-10", canal: "Site", receita_meta: 280000, dia_futuro: true },
+    ],
+    "2026-10-03",
+  ),
+  eventos: [{ data: "2026-10-02", tipo: "promoção", titulo: "Semana da Creatina", obs: "" }],
+};
+
 const fixtures: Record<string, unknown> = {
+  meta: metaFixture,
+  metas: metasFixture,
   google: googleFixture,
   shopee: shopeeFixture,
   ml: mercadoLivreFixture,
@@ -1075,6 +1195,34 @@ describe("telas novas renderizam com dados", () => {
 
     fireEvent.click(screen.getByText("Páginas do site"));
     expect(screen.getByText("chega ao checkout e não fecha")).toBeTruthy();
+  });
+
+  it("Meta Ads: atribuição, criativos, segmentos, funil e ritmo", async () => {
+    current = "meta";
+    const { Route } = await import("@/routes/media_.meta");
+    const C = Route.options.component!;
+    wrap(<C />);
+    expect(await screen.findByText("Por dia")).toBeTruthy();
+    expect(screen.getAllByText("Pedidos enviados ao Meta").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByText("Criativos"));
+    expect(screen.getByText("Fadiga: frequência alta e ROAS caindo")).toBeTruthy();
+    expect(screen.getByText("UGC Creatina 15s")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Públicos e posicionamento"));
+    expect(screen.getByText("Lookalike compradores")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Funil e ritmo"));
+    expect(screen.getByText("Ritmo de hoje")).toBeTruthy();
+    expect(screen.getByText("acima")).toBeTruthy();
+  });
+
+  it("Command Center: meta do mês × realizado", async () => {
+    current = "metas";
+    const { MetasMes } = await import("@/components/metas");
+    wrap(<MetasMes />);
+    expect(await screen.findByText("Semana da Creatina")).toBeTruthy();
+    expect(screen.getByText("80% da meta")).toBeTruthy();
   });
 
   it("Data Health mostra token com renovação parada", async () => {

@@ -31,6 +31,7 @@ describe("App routing", () => {
       "/glossario",
       "/media",
       "/media/google",
+      "/media/meta",
       "/affiliate",
       "/afiliados/hoje",
       "/crm",

@@ -10,6 +10,7 @@ import {
   influenciadoresSemVenda,
 } from "@/lib/affiliate";
 import { economiaTikTok, devolucoesPorMotivo, saudeListings, validadeToken } from "@/lib/tiktok";
+import { reconciliacaoMeta, criativosMeta, segmentosMeta, funilMeta, ritmoMeta, metasDoMes, alertasMeta } from "@/lib/metaads";
 import { campanhasGoogle, ritmoIntraday, produtosGoogle, assetsPmax, paginasSite, alertasGoogle } from "@/lib/google";
 import { economiaShopee, cancelamentosShopee, adsShopee, adsPorHora, produtosShopee, livesShopee, alertasShopee } from "@/lib/shopee";
 import { economiaML, anuncios360, diagnosticoAds, alertasML } from "@/lib/mercadolivre";
@@ -482,11 +483,18 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
   } catch {
     google = [];
   }
+  let meta: ReturnType<typeof alertasMeta> = [];
+  try {
+    meta = (await dadosMeta({ de: new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10), ate: hoje })).alertas;
+  } catch {
+    meta = [];
+  }
   return {
     amazon,
     mercadoLivre,
     shopee,
     google,
+    meta,
     estoque: (estoque.data ?? []) as Record<string, unknown>[],
     problemasDados: problemasDados.length,
     buybox: (abb.data?.[0] ?? null) as Record<string, unknown> | null,
@@ -754,3 +762,67 @@ async function dadosGoogle(data: { de: string; ate: string }) {
 export const getGoogle = createServerFn({ method: "GET" })
   .inputValidator((d) => Periodo.parse(d))
   .handler(async ({ data }) => dadosGoogle(data));
+
+
+// Meta Ads (benchmarks/meta-ads/ANALISE.md §4). As views vw_meta_criativos, _fadiga, _publicos, _posicionamento,
+// _demografia, _horario e _funil têm janela própria (sem coluna de data); a reconciliação e o intraday usam o período.
+async function dadosMeta(data: { de: string; ate: string }) {
+  const c = await db();
+  const erros: Record<string, string> = {};
+  const safe = async (nome: string, p: Promise<Record<string, unknown>[]>) => {
+    try {
+      return await p;
+    } catch (e) {
+      erros[nome] = e instanceof Error ? e.message : String(e);
+      return [] as Record<string, unknown>[];
+    }
+  };
+  const hoje = new Date().toISOString().slice(0, 10);
+  const de8 = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10);
+  const [recon, criativos, fadiga, formatos, publicos, posic, demog, horario, funil, intraday, kpi] = await Promise.all([
+    safe("reconciliacao", fetchAll(() => c.from("vw_reconciliacao_shopify_meta_dia").select("data,gasto_meta,receita_informada_meta,receita_meta_utm,compras_informadas_meta,pedidos_meta_utm,enviados_meta,pedidos_totais").gte("data", data.de).lte("data", data.ate), "meta reconciliacao")),
+    safe("criativos", fetchAll(() => c.from("vw_meta_criativos").select("criativo,titulo,campanha,grupo,publico,invest,receita,roas,ctr_pct,hook_pct,frequencia,compras,sugestao"), "meta criativos")),
+    safe("fadiga", fetchAll(() => c.from("vw_meta_fadiga").select("criativo,publico,diagnostico,freq_7d,freq_ant,roas_7d,roas_ant,invest_7d"), "meta fadiga")),
+    safe("formatos", fetchAll(() => c.from("vw_meta_criativo_formato").select("formato,criativos,invest,receita,roas,ctr_pct"), "meta formatos")),
+    safe("publicos", fetchAll(() => c.from("vw_meta_publicos").select("publico,grupo,invest,receita,roas,ctr_pct"), "meta publicos")),
+    safe("posicionamento", fetchAll(() => c.from("vw_meta_posicionamento").select("plataforma,posicionamento,dispositivo,invest,receita,roas,ctr_pct"), "meta posicionamento")),
+    safe("demografia", fetchAll(() => c.from("vw_meta_demografia").select("faixa_idade,genero,invest,receita,roas,ctr_pct"), "meta demografia")),
+    safe("horario", fetchAll(() => c.from("vw_meta_horario").select("hora,invest,receita,roas,ctr_pct"), "meta horario")),
+    safe("funil", fetchAll(() => c.from("vw_meta_funil").select("ord,etapa,valor,taxa_passagem,cpa"), "meta funil")),
+    safe("intraday", fetchAll(() => c.from("vw_meta_intraday").select("data,gasto,receita,captured_at").gte("data", hoje), "meta intraday")),
+    safe("kpi", fetchAll(() => c.from("vw_meta_kpi_dia").select("data,gasto,receita").gte("data", de8).lte("data", hoje), "meta kpi dia")),
+  ]);
+  const reconciliacao = reconciliacaoMeta(recon, data.de, data.ate);
+  const cr = criativosMeta(criativos, fadiga, formatos);
+  const ritmo = ritmoMeta(intraday, kpi);
+  return {
+    reconciliacao,
+    criativos: cr,
+    segmentos: segmentosMeta(publicos, posic, demog, horario),
+    funil: funilMeta(funil),
+    ritmo,
+    alertas: alertasMeta({ recon: reconciliacao, criativos: cr, ritmo }),
+    erros,
+  };
+}
+
+export const getMeta = createServerFn({ method: "GET" })
+  .inputValidator((d) => Periodo.parse(d))
+  .handler(async ({ data }) => dadosMeta(data));
+
+// Metas do mês (meta = objetivo) × realizado por canal, com as anotações do mês (meta_evento).
+export const getMetasMes = createServerFn({ method: "GET" }).handler(async () => {
+  const c = await db();
+  const hoje = new Date().toISOString().slice(0, 10);
+  const mes = hoje.slice(0, 7);
+  const ini = `${mes}-01`;
+  const [rows, eventos] = await Promise.all([
+    fetchAll(() => c.from("vw_meta_vs_real_dia").select("data,mes,canal,receita_meta,receita_real,ads_meta,ads_real,dia_futuro,dado_provisorio").gte("data", ini), "metas do mes").catch(() => [] as Record<string, unknown>[]),
+    c.from("meta_evento").select("data,tipo,titulo,obs").gte("data", ini).order("data"),
+  ]);
+  return {
+    mes,
+    canais: metasDoMes(rows, hoje),
+    eventos: ((eventos.data ?? []) as Record<string, unknown>[]).map((e) => ({ data: String(e["data"] ?? ""), tipo: String(e["tipo"] ?? ""), titulo: String(e["titulo"] ?? ""), obs: String(e["obs"] ?? "") })),
+  };
+});
