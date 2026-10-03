@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import {
+  campanhasGoogle,
+  ritmoIntraday,
+  produtosGoogle,
+  assetsPmax,
+  paginasSite,
+} from "@/lib/google";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import {
@@ -454,7 +461,132 @@ const shopeeFixture = {
   erros: {} as Record<string, string>,
 };
 
+const googleFixture = {
+  campanhas: campanhasGoogle(
+    [
+      {
+        data: "2026-09-05",
+        campaign_id: "A",
+        campaign_name: "PMax Creatina",
+        gasto: 200,
+        receita: 1600,
+        receita_shopify: 1300,
+        impressoes: 1000,
+        fatia_impressao: 0.5,
+        fatia_perdida_orcamento: 0.4,
+        fatia_perdida_rank: 0.1,
+      },
+      {
+        data: "2026-09-05",
+        campaign_id: "B",
+        campaign_name: "Search Whey",
+        gasto: 300,
+        receita: 600,
+        receita_shopify: 500,
+        impressoes: 1000,
+        fatia_impressao: 0.6,
+        fatia_perdida_orcamento: 0.05,
+        fatia_perdida_rank: 0.35,
+      },
+    ],
+    [
+      { campaign_id: "A", campaign_name: "PMax Creatina", target_roas: 5, orcamento_diario: 100 },
+      { campaign_id: "B", campaign_name: "Search Whey", target_roas: 4 },
+    ],
+    "2026-09-01",
+    "2026-09-30",
+  ),
+  ritmo: ritmoIntraday(
+    [{ data: "2026-10-03", campaign_id: "A", gasto: 90, captured_at: "2026-10-03T15:00:00Z" }],
+    [{ campaign_id: "A", campaign_name: "PMax Creatina", orcamento_diario: 100 }],
+  ),
+  produtos: produtosGoogle(
+    [
+      {
+        data: "2026-09-05",
+        product_item_id: "CREA300",
+        product_title: "Creatina Google 300g",
+        gasto: 100,
+        receita: 500,
+      },
+      {
+        data: "2026-09-05",
+        product_item_id: "WHEY900",
+        product_title: "Whey Google 900g",
+        gasto: 100,
+        receita: 300,
+      },
+    ],
+    [
+      { product_variant_id: "1", product_variant_sku: "CREA300", product_variant_price: 100 },
+      { product_variant_id: "2", product_variant_sku: "WHEY900", product_variant_price: 200 },
+    ],
+    [
+      { sku: "CREA300", custo_unitario: 40, vigencia_inicio: "2026-01-01" },
+      { sku: "WHEY900", custo_unitario: 150, vigencia_inicio: "2026-01-01" },
+    ],
+    "2026-09-01",
+    "2026-09-30",
+  ),
+  termos: {
+    negativar: [
+      {
+        termo: "creatina gratis",
+        campanha: "Search",
+        cliques: 40,
+        invest_desperdicado: 80,
+        sugestao: "Negativar como frase",
+      },
+    ],
+    graduar: [
+      {
+        termo: "creatina monohidratada 1kg",
+        campanha: "PMax",
+        conversoes: 8,
+        receita: 900,
+        roas: 9,
+        sugestao: "Criar keyword exata",
+      },
+    ],
+    keywords: [],
+  },
+  assets: assetsPmax([
+    {
+      campaign_id: "1",
+      campaign_name: "PMax Creatina",
+      asset_group_id: "g",
+      asset_group_name: "Creatina",
+      performance_label: "LOW",
+      field_type: "HEADLINE",
+      texto: "Compre já",
+    },
+  ]),
+  paginas: paginasSite(
+    [
+      {
+        data: "2026-09-05",
+        pagina_path: "/products/creatina",
+        sessoes: 1000,
+        sessoes_checkout: 100,
+      },
+      { data: "2026-09-05", pagina_path: "/pages/lp-whey", sessoes: 2000, sessoes_checkout: 200 },
+      { data: "2026-09-05", pagina_path: "/products/bcaa", sessoes: 500, sessoes_checkout: 50 },
+    ],
+    [
+      { data: "2026-09-05", pagina_path: "/products/creatina", pedidos: 40, receita: 4000 },
+      { data: "2026-09-05", pagina_path: "/pages/lp-whey", pedidos: 10, receita: 1500 },
+      { data: "2026-09-05", pagina_path: "/products/bcaa", pedidos: 20, receita: 1000 },
+    ],
+    [{ pagina_path: "/pages/lp-whey", tipo: "LP", rotulo: "LP Whey" }],
+    "2026-09-01",
+    "2026-09-30",
+  ),
+  alertas: [],
+  erros: {} as Record<string, string>,
+};
+
 const fixtures: Record<string, unknown> = {
+  google: googleFixture,
   shopee: shopeeFixture,
   ml: mercadoLivreFixture,
   amazon: amazonFixture,
@@ -921,6 +1053,28 @@ describe("telas novas renderizam com dados", () => {
 
     fireEvent.click(screen.getByText("Cancelamentos"));
     expect(screen.getByText("Fora de estoque")).toBeTruthy();
+  });
+
+  it("Google Ads: campanhas, termos, POAS, assets e páginas", async () => {
+    current = "google";
+    const { Route } = await import("@/routes/media_.google");
+    const C = Route.options.component!;
+    wrap(<C />);
+    expect(await screen.findByText("Ritmo do orçamento hoje")).toBeTruthy();
+    expect(screen.getByText("abaixo da meta")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Termos"));
+    expect(screen.getByText("creatina gratis")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Produtos (POAS)"));
+    expect(screen.getByText("POAS < 1")).toBeTruthy();
+    expect(screen.getByText("Whey Google 900g")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("PMax assets"));
+    expect(screen.getByText("Compre já")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Páginas do site"));
+    expect(screen.getByText("chega ao checkout e não fecha")).toBeTruthy();
   });
 
   it("Data Health mostra token com renovação parada", async () => {

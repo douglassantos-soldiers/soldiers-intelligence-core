@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -51,12 +51,23 @@ function Media() {
       <PageHeader
         title="Media"
         subtitle="Mídia paga por tipo e por canal de venda. Receita atribuída pelas plataformas, sem afiliados."
-        right={<PeriodPills value={dias} onChange={setDias} />}
+        right={
+          <div className="flex items-center gap-4">
+            <Link to="/media/google" className="text-sm font-medium text-primary hover:underline">
+              Google Ads →
+            </Link>
+            <PeriodPills value={dias} onChange={setDias} />
+          </div>
+        }
       />
       {q.isLoading && <Loading />}
       {q.error && <ErrorBox error={q.error} />}
       {q.data && (
-        <Body tipos={q.data.tipos} funil={q.data.funil} amazonNtb={(q.data as { amazonNtb?: Ntb }).amazonNtb ?? null} />
+        <Body
+          tipos={q.data.tipos}
+          funil={q.data.funil}
+          amazonNtb={(q.data as { amazonNtb?: Ntb }).amazonNtb ?? null}
+        />
       )}
     </>
   );

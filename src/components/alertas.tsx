@@ -21,6 +21,7 @@ export function Alertas() {
   // Alertas dos marketplaces (Amazon e Mercado Livre), cada um com o link da sua tela.
   const canais = [
     ...(d.amazon ?? []).map((a) => ({ ...a, to: "/marketplace/amazon" as const, nome: "Amazon" })),
+    ...(d.google ?? []).map((a) => ({ ...a, to: "/media/google" as const, nome: "Google" })),
     ...(d.shopee ?? []).map((a) => ({ ...a, to: "/marketplace/shopee" as const, nome: "Shopee" })),
     ...(d.mercadoLivre ?? []).map((a) => ({
       ...a,

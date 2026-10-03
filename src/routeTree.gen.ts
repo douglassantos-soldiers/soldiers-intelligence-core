@@ -25,6 +25,7 @@ import { Route as MarketplaceAmazonRouteImport } from './routes/marketplace_.ama
 import { Route as MarketplaceMercadoLivreRouteImport } from './routes/marketplace_.mercado-livre'
 import { Route as MarketplaceShopeeRouteImport } from './routes/marketplace_.shopee'
 import { Route as MarketplaceTiktokRouteImport } from './routes/marketplace_.tiktok'
+import { Route as MediaGoogleRouteImport } from './routes/media_.google'
 import { Route as PedidosIndexRouteImport } from './routes/pedidos.index'
 import { Route as ProdutosIndexRouteImport } from './routes/produtos.index'
 import { Route as ProdutosSkuRouteImport } from './routes/produtos.$sku'
@@ -110,6 +111,11 @@ const MarketplaceTiktokRoute = MarketplaceTiktokRouteImport.update({
   path: '/marketplace/tiktok',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MediaGoogleRoute = MediaGoogleRouteImport.update({
+  id: '/media_/google',
+  path: '/media/google',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PedidosIndexRoute = PedidosIndexRouteImport.update({
   id: '/pedidos/',
   path: '/pedidos/',
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/marketplace/mercado-livre': typeof MarketplaceMercadoLivreRoute
   '/marketplace/shopee': typeof MarketplaceShopeeRoute
   '/marketplace/tiktok': typeof MarketplaceTiktokRoute
+  '/media/google': typeof MediaGoogleRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
   '/pedidos/': typeof PedidosIndexRoute
@@ -169,6 +176,7 @@ export interface FileRoutesByTo {
   '/marketplace/mercado-livre': typeof MarketplaceMercadoLivreRoute
   '/marketplace/shopee': typeof MarketplaceShopeeRoute
   '/marketplace/tiktok': typeof MarketplaceTiktokRoute
+  '/media/google': typeof MediaGoogleRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes': typeof ClientesIndexRoute
   '/pedidos': typeof PedidosIndexRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/marketplace_/mercado-livre': typeof MarketplaceMercadoLivreRoute
   '/marketplace_/shopee': typeof MarketplaceShopeeRoute
   '/marketplace_/tiktok': typeof MarketplaceTiktokRoute
+  '/media_/google': typeof MediaGoogleRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
   '/pedidos/': typeof PedidosIndexRoute
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/marketplace/mercado-livre'
     | '/marketplace/shopee'
     | '/marketplace/tiktok'
+    | '/media/google'
     | '/produtos/$sku'
     | '/clientes/'
     | '/pedidos/'
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
     | '/marketplace/mercado-livre'
     | '/marketplace/shopee'
     | '/marketplace/tiktok'
+    | '/media/google'
     | '/produtos/$sku'
     | '/clientes'
     | '/pedidos'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/marketplace_/mercado-livre'
     | '/marketplace_/shopee'
     | '/marketplace_/tiktok'
+    | '/media_/google'
     | '/produtos/$sku'
     | '/clientes/'
     | '/pedidos/'
@@ -283,6 +295,7 @@ export interface RootRouteChildren {
   MarketplaceMercadoLivreRoute: typeof MarketplaceMercadoLivreRoute
   MarketplaceShopeeRoute: typeof MarketplaceShopeeRoute
   MarketplaceTiktokRoute: typeof MarketplaceTiktokRoute
+  MediaGoogleRoute: typeof MediaGoogleRoute
   ProdutosSkuRoute: typeof ProdutosSkuRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
   PedidosIndexRoute: typeof PedidosIndexRoute
@@ -404,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarketplaceTiktokRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/media_/google': {
+      id: '/media_/google'
+      path: '/media/google'
+      fullPath: '/media/google'
+      preLoaderRoute: typeof MediaGoogleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pedidos/': {
       id: '/pedidos/'
       path: '/pedidos'
@@ -451,6 +471,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarketplaceMercadoLivreRoute: MarketplaceMercadoLivreRoute,
   MarketplaceShopeeRoute: MarketplaceShopeeRoute,
   MarketplaceTiktokRoute: MarketplaceTiktokRoute,
+  MediaGoogleRoute: MediaGoogleRoute,
   ProdutosSkuRoute: ProdutosSkuRoute,
   ClientesIndexRoute: ClientesIndexRoute,
   PedidosIndexRoute: PedidosIndexRoute,

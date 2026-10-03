@@ -30,6 +30,7 @@ describe("App routing", () => {
       "/data-health",
       "/glossario",
       "/media",
+      "/media/google",
       "/affiliate",
       "/afiliados/hoje",
       "/crm",

@@ -10,6 +10,7 @@ import {
   influenciadoresSemVenda,
 } from "@/lib/affiliate";
 import { economiaTikTok, devolucoesPorMotivo, saudeListings, validadeToken } from "@/lib/tiktok";
+import { campanhasGoogle, ritmoIntraday, produtosGoogle, assetsPmax, paginasSite, alertasGoogle } from "@/lib/google";
 import { economiaShopee, cancelamentosShopee, adsShopee, adsPorHora, produtosShopee, livesShopee, alertasShopee } from "@/lib/shopee";
 import { economiaML, anuncios360, diagnosticoAds, alertasML } from "@/lib/mercadolivre";
 import { resumoAmazon, asin360, termosAds, shareDeBusca, reposicaoFba, recompraAsin, organicoVsAds, vendasPorHora, novosParaMarca, alvosKeywords, alvosSd, classificaLances, alertasAmazon, amazonDoSku } from "@/lib/amazon";
@@ -475,10 +476,17 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
   } catch {
     shopee = [];
   }
+  let google: ReturnType<typeof alertasGoogle> = [];
+  try {
+    google = (await dadosGoogle({ de: new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10), ate: hoje })).alertas;
+  } catch {
+    google = [];
+  }
   return {
     amazon,
     mercadoLivre,
     shopee,
+    google,
     estoque: (estoque.data ?? []) as Record<string, unknown>[],
     problemasDados: problemasDados.length,
     buybox: (abb.data?.[0] ?? null) as Record<string, unknown> | null,
@@ -685,3 +693,64 @@ async function dadosShopee(data: { de: string; ate: string }) {
 export const getShopee = createServerFn({ method: "GET" })
   .inputValidator((d) => Periodo.parse(d))
   .handler(async ({ data }) => dadosShopee(data));
+
+
+// Google Ads e site (benchmarks/google/ANALISE.md §4): views vw_google_* / vw_gads_* e páginas do site.
+async function dadosGoogle(data: { de: string; ate: string }) {
+  const c = await db();
+  const erros: Record<string, string> = {};
+  const safe = async (nome: string, p: Promise<Record<string, unknown>[]>) => {
+    try {
+      return await p;
+    } catch (e) {
+      erros[nome] = e instanceof Error ? e.message : String(e);
+      return [] as Record<string, unknown>[];
+    }
+  };
+  const hoje = new Date().toISOString().slice(0, 10);
+  const ontem = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const [dias, lista, intraday, produtos, variantes, custosR, negativar, graduar, keywords, assets, sessoes, pedidosPag, paginas] = await Promise.all([
+    safe("campanhas", fetchAll(() => c.from("vw_google_campanha_dia").select("data,campaign_id,campaign_name,tipo,gasto,receita,receita_shopify,impressoes,fatia_impressao,fatia_perdida_orcamento,fatia_perdida_rank").gte("data", data.de).lte("data", data.ate), "google campanhas", 60000)),
+    safe("lista", fetchAll(() => c.from("vw_google_campanha_lista").select("campaign_id,campaign_name,tipo,status,target_roas,target_cpa,optimization_score,orcamento_diario"), "google lista")),
+    safe("intraday", fetchAll(() => c.from("vw_google_intraday_campanha").select("data,campaign_id,campaign_name,gasto,captured_at").gte("data", ontem).lte("data", hoje), "google intraday", 30000)),
+    safe("produtos", fetchAll(() => c.from("vw_google_produto_dia").select("data,product_item_id,product_title,gasto,receita,conversoes,cliques").gte("data", data.de).lte("data", data.ate), "google produtos", 120000)),
+    safe("variantes", fetchAll(() => c.from("stg_shopify_products_variant").select("product_variant_id,product_variant_sku,product_variant_inventory_item_sku,product_variant_price,date").order("date", { ascending: false }), "shopify variantes", 30000)),
+    safe("custos", fetchAll(() => c.from("dim_custo_sku").select("sku,custo_unitario,vigencia_inicio"), "custos")),
+    safe("negativar", fetchAll(() => c.from("vw_gads_termos_negativar").select("campanha,termo,cliques,invest_desperdicado,sugestao").order("invest_desperdicado", { ascending: false }), "google negativar", 1000)),
+    safe("graduar", fetchAll(() => c.from("vw_gads_termos_graduar").select("campanha,termo,cliques,conversoes,invest,receita,roas,sugestao").order("receita", { ascending: false }), "google graduar", 1000)),
+    safe("keywords", fetchAll(() => c.from("vw_gads_keywords_top").select("campanha,keyword,match_type,quality_score,invest,receita,roas,sugestao").order("invest", { ascending: false }), "google keywords", 1000)),
+    safe("assets", fetchAll(() => c.from("vw_google_pmax_asset").select("campaign_id,campaign_name,asset_group_id,asset_group_name,asset_type,field_type,performance_label,status,texto,youtube_video_id"), "google assets")),
+    safe("sessoes", fetchAll(() => c.from("fact_site_pagina_dia").select("data,pagina_path,sessoes,sessoes_checkout").gte("data", data.de).lte("data", data.ate), "site sessoes", 120000)),
+    safe("pedidosPag", fetchAll(() => c.from("mv_site_pedido_pagina_dia").select("data,pagina_path,pedidos,receita").gte("data", data.de).lte("data", data.ate), "site pedidos por pagina", 120000)),
+    safe("paginas", fetchAll(() => c.from("vw_site_pagina").select("pagina_path,tipo,rotulo,produto"), "site paginas")),
+  ]);
+  // Variantes: o mais recente de cada ID (a tabela pode ter fotos por data).
+  const vistas = new Set<string>();
+  const variantesUnicas = variantes.filter((v) => {
+    const id = String(v["product_variant_id"] ?? "");
+    if (!id || vistas.has(id)) return false;
+    vistas.add(id);
+    return true;
+  });
+  const campanhas = campanhasGoogle(dias, lista, data.de, data.ate);
+  const prods = produtosGoogle(produtos, variantesUnicas, custosR, data.de, data.ate);
+  const pags = paginasSite(sessoes, pedidosPag, paginas, data.de, data.ate);
+  return {
+    campanhas,
+    ritmo: ritmoIntraday(intraday, lista),
+    produtos: prods,
+    termos: {
+      negativar: negativar.slice(0, 30).map((x) => ({ termo: String(x["termo"] ?? ""), campanha: String(x["campanha"] ?? ""), cliques: Number(x["cliques"]) || 0, semRetorno: Number(x["invest_desperdicado"]) || 0, sugestao: String(x["sugestao"] ?? "") })),
+      graduar: graduar.slice(0, 30).map((x) => ({ termo: String(x["termo"] ?? ""), campanha: String(x["campanha"] ?? ""), conversoes: Number(x["conversoes"]) || 0, receita: Number(x["receita"]) || 0, roas: x["roas"] == null ? null : Number(x["roas"]), sugestao: String(x["sugestao"] ?? "") })),
+      keywords: keywords.slice(0, 30).map((x) => ({ keyword: String(x["keyword"] ?? ""), correspondencia: String(x["match_type"] ?? "").toLowerCase(), qualidade: x["quality_score"] == null ? null : Number(x["quality_score"]), invest: Number(x["invest"]) || 0, roas: x["roas"] == null ? null : Number(x["roas"]), sugestao: String(x["sugestao"] ?? "") })),
+    },
+    assets: assetsPmax(assets),
+    paginas: pags,
+    alertas: alertasGoogle({ campanhas, produtos: prods, termosNegativar: negativar, paginas: pags }),
+    erros,
+  };
+}
+
+export const getGoogle = createServerFn({ method: "GET" })
+  .inputValidator((d) => Periodo.parse(d))
+  .handler(async ({ data }) => dadosGoogle(data));
