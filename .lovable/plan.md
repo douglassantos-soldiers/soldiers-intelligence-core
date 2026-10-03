@@ -22,7 +22,7 @@ Barra lateral
   Intelligence | Attribution | Profit | AI
 ```
 
-1. **Login**: entrar com e-mail/senha do Supabase. Os dados de clientes têm nome, CPF e endereço, então só usuários com papel em `app_papel` terão acesso.
+1. **Sem login nesta fase**: o app abre direto no Command Center, porque só você vai usar. Atenção: se ele for publicado, qualquer pessoa com o link verá dados de clientes (nome, CPF, endereço). Por isso o app fica sem publicar até colocarmos uma proteção, que pode ser uma senha única simples.
 2. **Command Center**: receita, pedidos, ticket médio, margem de contribuição, investimento (Ads + afiliados), ROAS, clientes novos vs. recorrentes e divisão por canal, com filtro de período.
 3. **Customer 360**: lista com busca e filtros (canal, LTV, dias desde a última compra). Ficha do cliente: canais onde compra, linha do tempo de pedidos, total gasto, margem gerada, intervalo médio entre compras, próxima recompra estimada, risco de churn (pelo atraso em relação ao próprio ritmo) e produtos favoritos. CPF e telefone aparecem mascarados.
 4. **Product 360**: ranking de SKUs. Ficha do produto: vendas, receita e margem por canal ao longo do tempo, recompra e LTV de quem comprou.
@@ -49,10 +49,10 @@ A identidade segue o site da Soldiers e a tela "Soldiers Growth OS" que você ma
 - Fotos de produto aparecem nas listas quando a tabela de produtos tiver imagem.
 
 ## Detalhes técnicos
-- Todas as leituras passam por funções no servidor que exigem login e conferem o papel em `app_papel`. Depois disso, elas consultam com acesso de servidor, porque várias tabelas não têm regras de leitura. O navegador nunca acessa essas tabelas direto.
+- Todas as leituras passam por funções no servidor, que consultam com acesso de servidor porque várias tabelas não têm regras de leitura. O navegador nunca acessa essas tabelas direto nem vê a chave do banco. Essas funções ficam num só lugar, para que seja fácil colocar uma proteção depois.
 - As agregações (LTV, recompra, margem) rodam em SQL no servidor, com limites e paginação. Assim não esbarramos no limite de 1000 linhas.
 - As agregações pesadas usam views novas, criadas com prefixo `sp_`. Isso é só adição: nada do que existe é apagado ou alterado.
-- Rotas separadas para cada área, protegidas por login, com uma barra lateral comum.
+- Rotas separadas para cada área, com uma barra lateral comum.
 - Uma camada de modelo canônico em `src/domain/` (Customer, Product, Order, Channel) isola as telas das tabelas brutas de cada canal. A regra vai para o `AGENTS.md`.
 - Gráficos com Recharts. Cores definidas como tokens do tema.
 
