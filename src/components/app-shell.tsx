@@ -32,6 +32,7 @@ const GROUPS: { title?: string; items: Item[] }[] = [
       { to: "/marketplace/mercado-livre", label: "Mercado Livre: economia", icon: Receipt },
       { to: "/marketplace/shopee", label: "Shopee: economia", icon: Receipt },
       { to: "/crm", label: "CRM / Growth", icon: HeartHandshake },
+      { to: "/crm/acao", label: "CRM 2.0: ação", icon: HeartHandshake },
     ],
   },
   {

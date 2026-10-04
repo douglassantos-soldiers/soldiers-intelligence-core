@@ -36,7 +36,7 @@ describe("tela CRM 2.0", () => {
 
     fireEvent.click(screen.getByText("E-mail (RD)"));
     expect(screen.getByText("Semana da Creatina")).toBeTruthy();
-    expect(screen.getByText(/bounce alto, spam acima do limite/)).toBeTruthy();
+    expect(screen.getAllByText("spam acima do limite")[0]).toBeTruthy();
     expect(screen.getByText("pos-compra")).toBeTruthy();
 
     fireEvent.click(screen.getByText("Leads"));

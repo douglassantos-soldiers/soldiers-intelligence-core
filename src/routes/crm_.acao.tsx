@@ -439,7 +439,13 @@ function Email({ d }: { d: D }) {
                 <Td mono>{fmtPct(c.descadastroPct, 2)}</Td>
                 <Td>
                   {c.alertas.length ? (
-                    <StatusTag tone="warn">{c.alertas.join(", ")}</StatusTag>
+                    <span className="flex flex-wrap gap-1">
+                      {c.alertas.map((t) => (
+                        <StatusTag key={t} tone="warn">
+                          {t}
+                        </StatusTag>
+                      ))}
+                    </span>
                   ) : (
                     <StatusTag tone="success">ok</StatusTag>
                   )}
@@ -488,7 +494,13 @@ function Email({ d }: { d: D }) {
                   <Td mono>{fmtPct(a.descadastroPct, 2)}</Td>
                   <Td>
                     {a.alertas.length ? (
-                      <StatusTag tone="warn">{a.alertas.join(", ")}</StatusTag>
+                      <span className="flex flex-wrap gap-1">
+                        {a.alertas.map((t) => (
+                          <StatusTag key={t} tone="warn">
+                            {t}
+                          </StatusTag>
+                        ))}
+                      </span>
                     ) : (
                       <StatusTag tone="success">ok</StatusTag>
                     )}
