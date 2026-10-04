@@ -48,6 +48,11 @@ function Crm() {
       <PageHeader
         title="CRM / Growth"
         subtitle={`Quem são os clientes, de onde vêm e qual a próxima ação.${gerado ? ` Dados de ${fmtDate(gerado)}.` : ""}`}
+        right={
+          <Link to="/crm/acao" className="text-sm font-medium text-primary hover:underline">
+            CRM 2.0: fila, e-mail e leads →
+          </Link>
+        }
       />
       {q.isLoading && <Loading />}
       {q.error && <ErrorBox error={q.error} />}

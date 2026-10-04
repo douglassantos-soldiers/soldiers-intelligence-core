@@ -20,6 +20,7 @@ import { Route as MediaRouteImport } from './routes/media'
 import { Route as AfiliadosHojeRouteImport } from './routes/afiliados.hoje'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesChaveRouteImport } from './routes/clientes.$chave'
+import { Route as CrmAcaoRouteImport } from './routes/crm_.acao'
 import { Route as EmBreveModuloRouteImport } from './routes/em-breve.$modulo'
 import { Route as MarketplaceAmazonRouteImport } from './routes/marketplace_.amazon'
 import { Route as MarketplaceMercadoLivreRouteImport } from './routes/marketplace_.mercado-livre'
@@ -86,6 +87,11 @@ const ClientesIndexRoute = ClientesIndexRouteImport.update({
 const ClientesChaveRoute = ClientesChaveRouteImport.update({
   id: '/clientes/$chave',
   path: '/clientes/$chave',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmAcaoRoute = CrmAcaoRouteImport.update({
+  id: '/crm_/acao',
+  path: '/crm/acao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmBreveModuloRoute = EmBreveModuloRouteImport.update({
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/media': typeof MediaRoute
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
+  '/crm/acao': typeof CrmAcaoRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/marketplace/amazon': typeof MarketplaceAmazonRoute
   '/marketplace/mercado-livre': typeof MarketplaceMercadoLivreRoute
@@ -185,6 +192,7 @@ export interface FileRoutesByTo {
   '/media': typeof MediaRoute
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
+  '/crm/acao': typeof CrmAcaoRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/marketplace/amazon': typeof MarketplaceAmazonRoute
   '/marketplace/mercado-livre': typeof MarketplaceMercadoLivreRoute
@@ -211,6 +219,7 @@ export interface FileRoutesById {
   '/media': typeof MediaRoute
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
+  '/crm_/acao': typeof CrmAcaoRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/marketplace_/amazon': typeof MarketplaceAmazonRoute
   '/marketplace_/mercado-livre': typeof MarketplaceMercadoLivreRoute
@@ -238,6 +247,7 @@ export interface FileRouteTypes {
     | '/media'
     | '/afiliados/hoje'
     | '/clientes/$chave'
+    | '/crm/acao'
     | '/em-breve/$modulo'
     | '/marketplace/amazon'
     | '/marketplace/mercado-livre'
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
     | '/media'
     | '/afiliados/hoje'
     | '/clientes/$chave'
+    | '/crm/acao'
     | '/em-breve/$modulo'
     | '/marketplace/amazon'
     | '/marketplace/mercado-livre'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '/media'
     | '/afiliados/hoje'
     | '/clientes/$chave'
+    | '/crm_/acao'
     | '/em-breve/$modulo'
     | '/marketplace_/amazon'
     | '/marketplace_/mercado-livre'
@@ -314,6 +326,7 @@ export interface RootRouteChildren {
   MediaRoute: typeof MediaRoute
   AfiliadosHojeRoute: typeof AfiliadosHojeRoute
   ClientesChaveRoute: typeof ClientesChaveRoute
+  CrmAcaoRoute: typeof CrmAcaoRoute
   EmBreveModuloRoute: typeof EmBreveModuloRoute
   MarketplaceAmazonRoute: typeof MarketplaceAmazonRoute
   MarketplaceMercadoLivreRoute: typeof MarketplaceMercadoLivreRoute
@@ -406,6 +419,13 @@ declare module '@tanstack/react-router' {
       path: '/clientes/$chave'
       fullPath: '/clientes/$chave'
       preLoaderRoute: typeof ClientesChaveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm_/acao': {
+      id: '/crm_/acao'
+      path: '/crm/acao'
+      fullPath: '/crm/acao'
+      preLoaderRoute: typeof CrmAcaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/em-breve/$modulo': {
@@ -506,6 +526,7 @@ const rootRouteChildren: RootRouteChildren = {
   MediaRoute: MediaRoute,
   AfiliadosHojeRoute: AfiliadosHojeRoute,
   ClientesChaveRoute: ClientesChaveRoute,
+  CrmAcaoRoute: CrmAcaoRoute,
   EmBreveModuloRoute: EmBreveModuloRoute,
   MarketplaceAmazonRoute: MarketplaceAmazonRoute,
   MarketplaceMercadoLivreRoute: MarketplaceMercadoLivreRoute,
