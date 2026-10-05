@@ -539,7 +539,8 @@ export function resultadosExperimentos(exps: Row[], grupos: Row[]): ResultadoExp
                 ? ((t.taxaPct - controle.taxaPct) / controle.taxaPct) * 100
                 : null,
             pValor: st.pValor,
-            amostraNecessaria: st.amostra,
+            // Já significativo: não falta amostra.
+            amostraNecessaria: st.pValor != null && st.pValor < 0.05 ? null : st.amostra,
           };
         });
       let leitura: ResultadoExperimento["leitura"] = "inconclusivo";

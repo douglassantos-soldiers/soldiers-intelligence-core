@@ -95,3 +95,10 @@ describe("Experimentos", () => {
     ]);
   });
 });
+
+describe("amostra necessária", () => {
+  it("só aparece enquanto o teste não é significativo", () => {
+    const d2 = inteligenciaFixture();
+    expect(d2.experimentos[0]!.tratamentos[0]!.amostraNecessaria).toBeNull();
+  });
+});
