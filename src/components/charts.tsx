@@ -43,10 +43,15 @@ export function Bars({ data, x, keys, height = 260, money = true, xIsDate = fals
 }
 
 // Pivota linhas {data, canal, valor} em {data, [canal]: valor}
-export function pivot(rows: Record<string, unknown>[], valueKey: string, seriesKey = "canal", xKey = "data") {
+export function pivot(
+  rows: Record<string, unknown>[] | null | undefined,
+  valueKey: string,
+  seriesKey = "canal",
+  xKey = "data",
+) {
   const map = new Map<string, Record<string, unknown>>();
   const series = new Set<string>();
-  for (const r of rows) {
+  for (const r of rows ?? []) {
     const x = String(r[xKey]);
     const s = String(r[seriesKey] ?? "—");
     series.add(s);
