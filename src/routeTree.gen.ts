@@ -17,17 +17,22 @@ import { Route as DataHealthRouteImport } from './routes/data-health'
 import { Route as GlossarioRouteImport } from './routes/glossario'
 import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as MediaRouteImport } from './routes/media'
+import { Route as AffiliateCreatorsRouteImport } from './routes/affiliate_.creators'
 import { Route as AfiliadosHojeRouteImport } from './routes/afiliados.hoje'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesChaveRouteImport } from './routes/clientes.$chave'
 import { Route as CrmAcaoRouteImport } from './routes/crm_.acao'
 import { Route as EmBreveModuloRouteImport } from './routes/em-breve.$modulo'
 import { Route as MarketplaceAmazonRouteImport } from './routes/marketplace_.amazon'
+import { Route as MarketplaceDevolucoesRouteImport } from './routes/marketplace_.devolucoes'
 import { Route as MarketplaceMercadoLivreRouteImport } from './routes/marketplace_.mercado-livre'
 import { Route as MarketplaceShopeeRouteImport } from './routes/marketplace_.shopee'
 import { Route as MarketplaceTiktokRouteImport } from './routes/marketplace_.tiktok'
 import { Route as MediaGoogleRouteImport } from './routes/media_.google'
+import { Route as MediaMeliDspRouteImport } from './routes/media_.meli-dsp'
 import { Route as MediaMetaRouteImport } from './routes/media_.meta'
+import { Route as MediaProdutosRouteImport } from './routes/media_.produtos'
+import { Route as MediaTiktokRouteImport } from './routes/media_.tiktok'
 import { Route as PedidosIndexRouteImport } from './routes/pedidos.index'
 import { Route as ProdutosIndexRouteImport } from './routes/produtos.index'
 import { Route as ProdutosSkuRouteImport } from './routes/produtos.$sku'
@@ -74,6 +79,11 @@ const MediaRoute = MediaRouteImport.update({
   path: '/media',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AffiliateCreatorsRoute = AffiliateCreatorsRouteImport.update({
+  id: '/affiliate_/creators',
+  path: '/affiliate/creators',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AfiliadosHojeRoute = AfiliadosHojeRouteImport.update({
   id: '/afiliados/hoje',
   path: '/afiliados/hoje',
@@ -104,6 +114,11 @@ const MarketplaceAmazonRoute = MarketplaceAmazonRouteImport.update({
   path: '/marketplace/amazon',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MarketplaceDevolucoesRoute = MarketplaceDevolucoesRouteImport.update({
+  id: '/marketplace_/devolucoes',
+  path: '/marketplace/devolucoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MarketplaceMercadoLivreRoute = MarketplaceMercadoLivreRouteImport.update({
   id: '/marketplace_/mercado-livre',
   path: '/marketplace/mercado-livre',
@@ -124,9 +139,24 @@ const MediaGoogleRoute = MediaGoogleRouteImport.update({
   path: '/media/google',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MediaMeliDspRoute = MediaMeliDspRouteImport.update({
+  id: '/media_/meli-dsp',
+  path: '/media/meli-dsp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MediaMetaRoute = MediaMetaRouteImport.update({
   id: '/media_/meta',
   path: '/media/meta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MediaProdutosRoute = MediaProdutosRouteImport.update({
+  id: '/media_/produtos',
+  path: '/media/produtos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MediaTiktokRoute = MediaTiktokRouteImport.update({
+  id: '/media_/tiktok',
+  path: '/media/tiktok',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PedidosIndexRoute = PedidosIndexRouteImport.update({
@@ -164,16 +194,21 @@ export interface FileRoutesByFullPath {
   '/glossario': typeof GlossarioRoute
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
+  '/affiliate/creators': typeof AffiliateCreatorsRoute
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/crm/acao': typeof CrmAcaoRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/marketplace/amazon': typeof MarketplaceAmazonRoute
+  '/marketplace/devolucoes': typeof MarketplaceDevolucoesRoute
   '/marketplace/mercado-livre': typeof MarketplaceMercadoLivreRoute
   '/marketplace/shopee': typeof MarketplaceShopeeRoute
   '/marketplace/tiktok': typeof MarketplaceTiktokRoute
   '/media/google': typeof MediaGoogleRoute
+  '/media/meli-dsp': typeof MediaMeliDspRoute
   '/media/meta': typeof MediaMetaRoute
+  '/media/produtos': typeof MediaProdutosRoute
+  '/media/tiktok': typeof MediaTiktokRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
   '/pedidos/': typeof PedidosIndexRoute
@@ -190,16 +225,21 @@ export interface FileRoutesByTo {
   '/glossario': typeof GlossarioRoute
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
+  '/affiliate/creators': typeof AffiliateCreatorsRoute
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/crm/acao': typeof CrmAcaoRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/marketplace/amazon': typeof MarketplaceAmazonRoute
+  '/marketplace/devolucoes': typeof MarketplaceDevolucoesRoute
   '/marketplace/mercado-livre': typeof MarketplaceMercadoLivreRoute
   '/marketplace/shopee': typeof MarketplaceShopeeRoute
   '/marketplace/tiktok': typeof MarketplaceTiktokRoute
   '/media/google': typeof MediaGoogleRoute
+  '/media/meli-dsp': typeof MediaMeliDspRoute
   '/media/meta': typeof MediaMetaRoute
+  '/media/produtos': typeof MediaProdutosRoute
+  '/media/tiktok': typeof MediaTiktokRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes': typeof ClientesIndexRoute
   '/pedidos': typeof PedidosIndexRoute
@@ -217,16 +257,21 @@ export interface FileRoutesById {
   '/glossario': typeof GlossarioRoute
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
+  '/affiliate_/creators': typeof AffiliateCreatorsRoute
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/crm_/acao': typeof CrmAcaoRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/marketplace_/amazon': typeof MarketplaceAmazonRoute
+  '/marketplace_/devolucoes': typeof MarketplaceDevolucoesRoute
   '/marketplace_/mercado-livre': typeof MarketplaceMercadoLivreRoute
   '/marketplace_/shopee': typeof MarketplaceShopeeRoute
   '/marketplace_/tiktok': typeof MarketplaceTiktokRoute
   '/media_/google': typeof MediaGoogleRoute
+  '/media_/meli-dsp': typeof MediaMeliDspRoute
   '/media_/meta': typeof MediaMetaRoute
+  '/media_/produtos': typeof MediaProdutosRoute
+  '/media_/tiktok': typeof MediaTiktokRoute
   '/produtos/$sku': typeof ProdutosSkuRoute
   '/clientes/': typeof ClientesIndexRoute
   '/pedidos/': typeof PedidosIndexRoute
@@ -245,16 +290,21 @@ export interface FileRouteTypes {
     | '/glossario'
     | '/marketplace'
     | '/media'
+    | '/affiliate/creators'
     | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/crm/acao'
     | '/em-breve/$modulo'
     | '/marketplace/amazon'
+    | '/marketplace/devolucoes'
     | '/marketplace/mercado-livre'
     | '/marketplace/shopee'
     | '/marketplace/tiktok'
     | '/media/google'
+    | '/media/meli-dsp'
     | '/media/meta'
+    | '/media/produtos'
+    | '/media/tiktok'
     | '/produtos/$sku'
     | '/clientes/'
     | '/pedidos/'
@@ -271,16 +321,21 @@ export interface FileRouteTypes {
     | '/glossario'
     | '/marketplace'
     | '/media'
+    | '/affiliate/creators'
     | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/crm/acao'
     | '/em-breve/$modulo'
     | '/marketplace/amazon'
+    | '/marketplace/devolucoes'
     | '/marketplace/mercado-livre'
     | '/marketplace/shopee'
     | '/marketplace/tiktok'
     | '/media/google'
+    | '/media/meli-dsp'
     | '/media/meta'
+    | '/media/produtos'
+    | '/media/tiktok'
     | '/produtos/$sku'
     | '/clientes'
     | '/pedidos'
@@ -297,16 +352,21 @@ export interface FileRouteTypes {
     | '/glossario'
     | '/marketplace'
     | '/media'
+    | '/affiliate_/creators'
     | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/crm_/acao'
     | '/em-breve/$modulo'
     | '/marketplace_/amazon'
+    | '/marketplace_/devolucoes'
     | '/marketplace_/mercado-livre'
     | '/marketplace_/shopee'
     | '/marketplace_/tiktok'
     | '/media_/google'
+    | '/media_/meli-dsp'
     | '/media_/meta'
+    | '/media_/produtos'
+    | '/media_/tiktok'
     | '/produtos/$sku'
     | '/clientes/'
     | '/pedidos/'
@@ -324,16 +384,21 @@ export interface RootRouteChildren {
   GlossarioRoute: typeof GlossarioRoute
   MarketplaceRoute: typeof MarketplaceRoute
   MediaRoute: typeof MediaRoute
+  AffiliateCreatorsRoute: typeof AffiliateCreatorsRoute
   AfiliadosHojeRoute: typeof AfiliadosHojeRoute
   ClientesChaveRoute: typeof ClientesChaveRoute
   CrmAcaoRoute: typeof CrmAcaoRoute
   EmBreveModuloRoute: typeof EmBreveModuloRoute
   MarketplaceAmazonRoute: typeof MarketplaceAmazonRoute
+  MarketplaceDevolucoesRoute: typeof MarketplaceDevolucoesRoute
   MarketplaceMercadoLivreRoute: typeof MarketplaceMercadoLivreRoute
   MarketplaceShopeeRoute: typeof MarketplaceShopeeRoute
   MarketplaceTiktokRoute: typeof MarketplaceTiktokRoute
   MediaGoogleRoute: typeof MediaGoogleRoute
+  MediaMeliDspRoute: typeof MediaMeliDspRoute
   MediaMetaRoute: typeof MediaMetaRoute
+  MediaProdutosRoute: typeof MediaProdutosRoute
+  MediaTiktokRoute: typeof MediaTiktokRoute
   ProdutosSkuRoute: typeof ProdutosSkuRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
   PedidosIndexRoute: typeof PedidosIndexRoute
@@ -400,6 +465,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MediaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/affiliate_/creators': {
+      id: '/affiliate_/creators'
+      path: '/affiliate/creators'
+      fullPath: '/affiliate/creators'
+      preLoaderRoute: typeof AffiliateCreatorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/afiliados/hoje': {
       id: '/afiliados/hoje'
       path: '/afiliados/hoje'
@@ -442,6 +514,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarketplaceAmazonRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/marketplace_/devolucoes': {
+      id: '/marketplace_/devolucoes'
+      path: '/marketplace/devolucoes'
+      fullPath: '/marketplace/devolucoes'
+      preLoaderRoute: typeof MarketplaceDevolucoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/marketplace_/mercado-livre': {
       id: '/marketplace_/mercado-livre'
       path: '/marketplace/mercado-livre'
@@ -470,11 +549,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MediaGoogleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/media_/meli-dsp': {
+      id: '/media_/meli-dsp'
+      path: '/media/meli-dsp'
+      fullPath: '/media/meli-dsp'
+      preLoaderRoute: typeof MediaMeliDspRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/media_/meta': {
       id: '/media_/meta'
       path: '/media/meta'
       fullPath: '/media/meta'
       preLoaderRoute: typeof MediaMetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media_/produtos': {
+      id: '/media_/produtos'
+      path: '/media/produtos'
+      fullPath: '/media/produtos'
+      preLoaderRoute: typeof MediaProdutosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media_/tiktok': {
+      id: '/media_/tiktok'
+      path: '/media/tiktok'
+      fullPath: '/media/tiktok'
+      preLoaderRoute: typeof MediaTiktokRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pedidos/': {
@@ -524,16 +624,21 @@ const rootRouteChildren: RootRouteChildren = {
   GlossarioRoute: GlossarioRoute,
   MarketplaceRoute: MarketplaceRoute,
   MediaRoute: MediaRoute,
+  AffiliateCreatorsRoute: AffiliateCreatorsRoute,
   AfiliadosHojeRoute: AfiliadosHojeRoute,
   ClientesChaveRoute: ClientesChaveRoute,
   CrmAcaoRoute: CrmAcaoRoute,
   EmBreveModuloRoute: EmBreveModuloRoute,
   MarketplaceAmazonRoute: MarketplaceAmazonRoute,
+  MarketplaceDevolucoesRoute: MarketplaceDevolucoesRoute,
   MarketplaceMercadoLivreRoute: MarketplaceMercadoLivreRoute,
   MarketplaceShopeeRoute: MarketplaceShopeeRoute,
   MarketplaceTiktokRoute: MarketplaceTiktokRoute,
   MediaGoogleRoute: MediaGoogleRoute,
+  MediaMeliDspRoute: MediaMeliDspRoute,
   MediaMetaRoute: MediaMetaRoute,
+  MediaProdutosRoute: MediaProdutosRoute,
+  MediaTiktokRoute: MediaTiktokRoute,
   ProdutosSkuRoute: ProdutosSkuRoute,
   ClientesIndexRoute: ClientesIndexRoute,
   PedidosIndexRoute: PedidosIndexRoute,

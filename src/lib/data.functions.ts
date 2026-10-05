@@ -17,38 +17,8 @@ import { economiaML, anuncios360, diagnosticoAds, alertasML } from "@/lib/mercad
 import { filaDeAcao, calibracao, reguaReposicao, emailRD, automacoesRD, utmEmail, funilLeads, acoesGrowth, saudeKlaviyo, alertasCRM } from "@/lib/crm";
 import { resumoAmazon, asin360, termosAds, shareDeBusca, reposicaoFba, recompraAsin, organicoVsAds, vendasPorHora, novosParaMarca, alvosKeywords, alvosSd, classificaLances, alertasAmazon, amazonDoSku } from "@/lib/amazon";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Db = any;
-async function db(): Promise<Db> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin as Db;
-}
-
-function check<T>(r: { data: T; error: { message: string } | null }, ctx: string): T {
-  if (r.error) throw new Error(`${ctx}: ${r.error.message}`);
-  return r.data;
-}
-
-// Busca paginada para contornar o limite de 1000 linhas por consulta.
-async function fetchAll<T = Record<string, unknown>>(make: () => Db, ctx: string, max = 30000): Promise<T[]> {
-  const out: T[] = [];
-  for (let from = 0; from < max; from += 1000) {
-    const rows = check(await make().range(from, from + 999), ctx) as T[];
-    out.push(...rows);
-    if (rows.length < 1000) break;
-  }
-  return out;
-}
-
-// Busca por lista de IDs em lotes (para views sem coluna de data, como vw_ml_frete_pedido).
-async function fetchIn(c: Db, tabela: string, select: string, col: string, ids: (string | number)[], ctx: string, lote = 300) {
-  const out: Record<string, unknown>[] = [];
-  for (let i = 0; i < ids.length; i += lote) {
-    const r = await c.from(tabela).select(select).in(col, ids.slice(i, i + lote));
-    out.push(...((check(r, ctx) ?? []) as Record<string, unknown>[]));
-  }
-  return out;
-}
+import { db, check, fetchAll, fetchIn, type Db } from "@/lib/db-helpers";
+import { dadosTikTokAds, dadosMeliDsp, dadosAfiliados, dadosMidiaSku, dadosDevolucoes } from "@/lib/canais.functions";
 
 const menosDiasIso = (iso: string, d: number) =>
   new Date(Date.parse(iso + "T00:00:00Z") - d * 86400000).toISOString().slice(0, 10);
@@ -550,6 +520,18 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
   } catch {
     google = [];
   }
+  // Telas novas (TikTok Ads, Meli DSP, afiliados, mídia × estoque, devoluções): em paralelo; erro só esconde o bloco.
+  type Alerta = { tipo: "problema" | "oportunidade"; tag: string; tom: "danger" | "warn" | "success" | "primary"; texto: string };
+  const p14 = { de: new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10), ate: hoje };
+  const p30 = { de: new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10), ate: hoje };
+  const so = (pr: Promise<{ alertas: Alerta[] }>) => pr.then((x) => x.alertas).catch(() => [] as Alerta[]);
+  const [tiktokAds, meliDsp, afiliados, midiaSku, devolucoes] = await Promise.all([
+    so(dadosTikTokAds(p14)),
+    so(dadosMeliDsp(p14)),
+    so(dadosAfiliados(p30)),
+    so(dadosMidiaSku(p14)),
+    so(dadosDevolucoes(p30)),
+  ]);
   let crm: ReturnType<typeof alertasCRM> = [];
   try {
     crm = (await dadosCrm({ de: new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10), ate: hoje })).alertas;
@@ -569,6 +551,11 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
     google,
     meta,
     crm,
+    tiktokAds,
+    meliDsp,
+    afiliados,
+    midiaSku,
+    devolucoes,
     estoque: (estoque.data ?? []) as Record<string, unknown>[],
     problemasDados: problemasDados.length,
     buybox: (abb.data?.[0] ?? null) as Record<string, unknown> | null,

@@ -22,6 +22,11 @@ export function Alertas() {
   const canais = [
     ...(d.amazon ?? []).map((a) => ({ ...a, to: "/marketplace/amazon" as const, nome: "Amazon" })),
     ...(d.crm ?? []).map((a) => ({ ...a, to: "/crm/acao" as const, nome: "CRM" })),
+    ...(d.midiaSku ?? []).map((a) => ({ ...a, to: "/media/produtos" as const, nome: "Mídia por produto" })),
+    ...(d.tiktokAds ?? []).map((a) => ({ ...a, to: "/media/tiktok" as const, nome: "TikTok Ads" })),
+    ...(d.meliDsp ?? []).map((a) => ({ ...a, to: "/media/meli-dsp" as const, nome: "Meli DSP" })),
+    ...(d.afiliados ?? []).map((a) => ({ ...a, to: "/affiliate/creators" as const, nome: "Creators" })),
+    ...(d.devolucoes ?? []).map((a) => ({ ...a, to: "/marketplace/devolucoes" as const, nome: "Devoluções e ranking" })),
     ...(d.meta ?? []).map((a) => ({ ...a, to: "/media/meta" as const, nome: "Meta Ads" })),
     ...(d.google ?? []).map((a) => ({ ...a, to: "/media/google" as const, nome: "Google" })),
     ...(d.shopee ?? []).map((a) => ({ ...a, to: "/marketplace/shopee" as const, nome: "Shopee" })),
