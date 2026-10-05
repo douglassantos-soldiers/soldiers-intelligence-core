@@ -16,6 +16,7 @@ import { Route as CommerceRouteImport } from './routes/commerce'
 import { Route as CrmRouteImport } from './routes/crm'
 import { Route as DataHealthRouteImport } from './routes/data-health'
 import { Route as GlossarioRouteImport } from './routes/glossario'
+import { Route as IntelligenceRouteImport } from './routes/intelligence'
 import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as AffiliateCreatorsRouteImport } from './routes/affiliate_.creators'
@@ -74,6 +75,11 @@ const DataHealthRoute = DataHealthRouteImport.update({
 const GlossarioRoute = GlossarioRouteImport.update({
   id: '/glossario',
   path: '/glossario',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IntelligenceRoute = IntelligenceRouteImport.update({
+  id: '/intelligence',
+  path: '/intelligence',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MarketplaceRoute = MarketplaceRouteImport.update({
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/crm': typeof CrmRoute
   '/data-health': typeof DataHealthRoute
   '/glossario': typeof GlossarioRoute
+  '/intelligence': typeof IntelligenceRoute
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
   '/affiliate/creators': typeof AffiliateCreatorsRoute
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/crm': typeof CrmRoute
   '/data-health': typeof DataHealthRoute
   '/glossario': typeof GlossarioRoute
+  '/intelligence': typeof IntelligenceRoute
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
   '/affiliate/creators': typeof AffiliateCreatorsRoute
@@ -272,6 +280,7 @@ export interface FileRoutesById {
   '/crm': typeof CrmRoute
   '/data-health': typeof DataHealthRoute
   '/glossario': typeof GlossarioRoute
+  '/intelligence': typeof IntelligenceRoute
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
   '/affiliate_/creators': typeof AffiliateCreatorsRoute
@@ -307,6 +316,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/data-health'
     | '/glossario'
+    | '/intelligence'
     | '/marketplace'
     | '/media'
     | '/affiliate/creators'
@@ -340,6 +350,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/data-health'
     | '/glossario'
+    | '/intelligence'
     | '/marketplace'
     | '/media'
     | '/affiliate/creators'
@@ -373,6 +384,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/data-health'
     | '/glossario'
+    | '/intelligence'
     | '/marketplace'
     | '/media'
     | '/affiliate_/creators'
@@ -407,6 +419,7 @@ export interface RootRouteChildren {
   CrmRoute: typeof CrmRoute
   DataHealthRoute: typeof DataHealthRoute
   GlossarioRoute: typeof GlossarioRoute
+  IntelligenceRoute: typeof IntelligenceRoute
   MarketplaceRoute: typeof MarketplaceRoute
   MediaRoute: typeof MediaRoute
   AffiliateCreatorsRoute: typeof AffiliateCreatorsRoute
@@ -482,6 +495,13 @@ declare module '@tanstack/react-router' {
       path: '/glossario'
       fullPath: '/glossario'
       preLoaderRoute: typeof GlossarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/intelligence': {
+      id: '/intelligence'
+      path: '/intelligence'
+      fullPath: '/intelligence'
+      preLoaderRoute: typeof IntelligenceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/marketplace': {
@@ -663,6 +683,7 @@ const rootRouteChildren: RootRouteChildren = {
   CrmRoute: CrmRoute,
   DataHealthRoute: DataHealthRoute,
   GlossarioRoute: GlossarioRoute,
+  IntelligenceRoute: IntelligenceRoute,
   MarketplaceRoute: MarketplaceRoute,
   MediaRoute: MediaRoute,
   AffiliateCreatorsRoute: AffiliateCreatorsRoute,

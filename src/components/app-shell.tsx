@@ -44,6 +44,7 @@ const GROUPS: { title?: string; items: Item[] }[] = [
   {
     title: "Plataforma",
     items: [
+      { to: "/intelligence", label: "Intelligence", icon: Brain },
       { to: "/attribution", label: "Attribution", icon: GitBranch },
       { to: "/data-health", label: "Data Health", icon: Activity },
       { to: "/glossario", label: "Glossário de métricas", icon: BookOpen },
@@ -52,7 +53,6 @@ const GROUPS: { title?: string; items: Item[] }[] = [
   {
     title: "Em breve",
     items: [
-      { to: "/em-breve/$modulo", params: { modulo: "intelligence" }, label: "Intelligence", icon: Brain },
       { to: "/em-breve/$modulo", params: { modulo: "profit" }, label: "Profit", icon: Coins },
       { to: "/em-breve/$modulo", params: { modulo: "ai" }, label: "AI", icon: Bot },
     ],
