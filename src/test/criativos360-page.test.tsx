@@ -30,6 +30,12 @@ describe("tela Central de criativos", () => {
     const aba = (n: string) => fireEvent.click(screen.getByRole("button", { name: n }));
     aba("O que funciona");
     expect(screen.getByText("Por formato")).toBeTruthy();
+    aba("DNA do conteúdo");
+    expect(screen.getByText("Ângulo nos vídeos de creators")).toBeTruthy();
+    expect(screen.getAllByText("Ciência / pureza").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("@atleta.alfa").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Anúncios (Meta)" }));
+    expect(screen.getByText("Ângulo nos anúncios do Meta")).toBeTruthy();
     aba("Renovar e cortar");
     expect(screen.getByText("gastou sem nenhuma compra")).toBeTruthy();
     aba("Outros canais");

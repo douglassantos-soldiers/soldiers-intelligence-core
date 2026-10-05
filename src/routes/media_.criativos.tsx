@@ -39,7 +39,7 @@ export const Route = createFileRoute("/media_/criativos")({
 });
 
 type D = Awaited<ReturnType<typeof getCriativos>>;
-type Aba = "placar" | "funciona" | "renovar" | "multicanal" | "biblioteca";
+type Aba = "placar" | "funciona" | "dna" | "renovar" | "multicanal" | "biblioteca";
 const T = (r: unknown) => r as Record<string, unknown>[];
 const TOM: Record<string, "success" | "danger" | "warn" | "muted" | "primary"> = {
   escalar: "success",
@@ -132,6 +132,7 @@ function Body({ d }: { d: D }) {
         options={[
           { id: "placar", label: "Placar" },
           { id: "funciona", label: "O que funciona" },
+          { id: "dna", label: "DNA do conteúdo" },
           { id: "renovar", label: "Renovar e cortar" },
           { id: "multicanal", label: "Outros canais" },
           { id: "biblioteca", label: "Biblioteca" },
@@ -139,6 +140,7 @@ function Body({ d }: { d: D }) {
       />
       {aba === "placar" && <Placar p={d.placar} />}
       {aba === "funciona" && <Funciona g={d.oQueFunciona} />}
+      {aba === "dna" && <Dna d={d.dna} />}
       {aba === "renovar" && (
         <Placar
           p={d.placar.filter((c) => c.leitura === "renovar" || c.leitura === "cortar")}
@@ -318,8 +320,244 @@ function Funciona({ g }: { g: D["oQueFunciona"] }) {
       <p className="text-xs text-muted-foreground 2xl:col-span-2">
         Etiquetas lidas do nome, título e texto do anúncio (formato, proporção como 9x16, produto,
         UGC ou @creator). Padronizar o nome dos anúncios (como a subida em massa faz:
-        LOTE_TIPO_PROPORÇÃO_NNN) deixa essa leitura mais precisa. Gancho, ângulo e CTA ainda
-        precisam de etiqueta manual.
+        LOTE_TIPO_PROPORÇÃO_NNN) deixa essa leitura mais precisa. Gancho, ângulo e CTA estão na aba
+        DNA do conteúdo.
+      </p>
+    </div>
+  );
+}
+
+const NOME_DIM: Record<string, string> = { gancho: "Gancho", angulo: "Ângulo", cta: "CTA" };
+const FONTE: Record<string, string> = {
+  manual: "manual",
+  misto: "manual + regra",
+  regra: "regra",
+  nenhuma: "—",
+};
+
+function Dna({ d }: { d: D["dna"] }) {
+  const [canal, setCanal] = useState<"tiktok" | "meta">("tiktok");
+  const [dim, setDim] = useState<"gancho" | "angulo" | "cta">("angulo");
+  const cob = d.cobertura;
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi
+          label="Gasto do Meta com DNA"
+          value={fmtPct(cob.metaPct, 0)}
+          hint="gancho, ângulo ou CTA identificado"
+        />
+        <Kpi
+          label="GMV TikTok com DNA"
+          value={fmtPct(cob.tiktokPct, 0)}
+          hint="pelo título do vídeo"
+        />
+        <Kpi label="Vídeos de creators" value={fmtNum(d.pecasTikTok.length)} />
+        <Kpi label="Etiquetas manuais" value={fmtNum(cob.manuais)} hint="vencem a regra" />
+      </div>
+      <div className="flex flex-wrap items-center gap-4">
+        <Pills
+          value={canal}
+          onChange={setCanal}
+          options={[
+            { id: "tiktok", label: "Vídeos de creators (TikTok)" },
+            { id: "meta", label: "Anúncios (Meta)" },
+          ]}
+        />
+        <Pills
+          value={dim}
+          onChange={setDim}
+          options={[
+            { id: "gancho", label: "Gancho" },
+            { id: "angulo", label: "Ângulo" },
+            { id: "cta", label: "CTA" },
+          ]}
+        />
+      </div>
+      {canal === "tiktok" ? (
+        <Panel
+          title={`${NOME_DIM[dim]} nos vídeos de creators`}
+          right={<CsvButton name="dna-tiktok" rows={T(d.tiktok)} />}
+        >
+          {d.tiktok.length ? (
+            <Table
+              head={[
+                NOME_DIM[dim]!,
+                "Vídeos",
+                "Creators",
+                "Views",
+                "GMV",
+                "% do GMV",
+                "GMV / mil views",
+                "× média",
+              ]}
+            >
+              {d.tiktok
+                .filter((g) => g.dimensao === dim)
+                .map((g) => (
+                  <tr key={g.valor}>
+                    <Td>{g.valor}</Td>
+                    <Td mono>{fmtNum(g.videos)}</Td>
+                    <Td mono>{fmtNum(g.creators)}</Td>
+                    <Td mono>{fmtNum(g.views)}</Td>
+                    <Td mono>{fmtBRL(g.gmv)}</Td>
+                    <Td mono>{fmtPct(g.fatiaGmvPct, 0)}</Td>
+                    <Td mono>{fmtBRL(g.gmvMilViews)}</Td>
+                    <Td mono>
+                      {g.indice == null ? (
+                        "—"
+                      ) : (
+                        <StatusTag
+                          tone={g.indice >= 1.3 ? "success" : g.indice < 0.7 ? "danger" : "muted"}
+                        >
+                          {fmtX(g.indice)}
+                        </StatusTag>
+                      )}
+                    </Td>
+                  </tr>
+                ))}
+            </Table>
+          ) : (
+            <Empty>Sem vídeos de creators no período.</Empty>
+          )}
+        </Panel>
+      ) : (
+        <Panel
+          title={`${NOME_DIM[dim]} nos anúncios do Meta`}
+          right={<CsvButton name="dna-meta" rows={T(d.meta)} />}
+        >
+          {d.meta.length ? (
+            <Table
+              head={[
+                NOME_DIM[dim]!,
+                "Criativos",
+                "Gasto",
+                "% do gasto",
+                "CTR",
+                "ROAS Meta",
+                "Clientes novos",
+                "CAC",
+                "LTV ÷ CAC",
+                "Contribuição LTV",
+              ]}
+            >
+              {d.meta
+                .filter((g) => g.dimensao === dim)
+                .map((g) => (
+                  <tr key={g.valor}>
+                    <Td>{g.valor}</Td>
+                    <Td mono>{fmtNum(g.pecas)}</Td>
+                    <Td mono>{fmtBRL(g.gasto)}</Td>
+                    <Td mono>{fmtPct(g.fatiaGastoPct, 0)}</Td>
+                    <Td mono>{fmtPct(g.ctrPct, 2)}</Td>
+                    <Td mono>{fmtX(g.roasMeta)}</Td>
+                    <Td mono>{fmtNum(g.clientesNovos)}</Td>
+                    <Td mono>{fmtBRL(g.cac)}</Td>
+                    <Td mono>{fmtX(g.ltvCac)}</Td>
+                    <Td mono>{fmtBRL(g.contribuicaoLtv)}</Td>
+                  </tr>
+                ))}
+            </Table>
+          ) : (
+            <Empty>Sem anúncios com gasto no período.</Empty>
+          )}
+        </Panel>
+      )}
+      <div className="grid gap-6 2xl:grid-cols-2">
+        <Panel title="Combinações que mais vendem por view (TikTok)">
+          {d.combinacoes.length ? (
+            <Table head={["Gancho + ângulo", "Vídeos", "Views", "GMV", "GMV / mil views"]}>
+              {d.combinacoes.map((c) => (
+                <tr key={c.combinacao}>
+                  <Td>{c.combinacao}</Td>
+                  <Td mono>{fmtNum(c.videos)}</Td>
+                  <Td mono>{fmtNum(c.views)}</Td>
+                  <Td mono>{fmtBRL(c.gmv)}</Td>
+                  <Td mono>{fmtBRL(c.gmvMilViews)}</Td>
+                </tr>
+              ))}
+            </Table>
+          ) : (
+            <Empty>Nenhuma combinação com 3 vídeos ou mais.</Empty>
+          )}
+        </Panel>
+        <Panel
+          title="O que vende para cada creator"
+          right={<CsvButton name="dna-creators" rows={T(d.creators)} />}
+        >
+          {d.creators.length ? (
+            <Table
+              head={["Creator", "Vídeos", "GMV", "GMV / mil views", "Gancho", "Ângulo", "CTA"]}
+            >
+              {d.creators.slice(0, 30).map((c) => (
+                <tr key={c.creator}>
+                  <Td className="font-medium">@{c.creator}</Td>
+                  <Td mono>{fmtNum(c.videos)}</Td>
+                  <Td mono>{fmtBRL(c.gmv)}</Td>
+                  <Td mono>{fmtBRL(c.gmvMilViews)}</Td>
+                  <Td>{c.ganchoQueVende || "—"}</Td>
+                  <Td>{c.anguloQueVende || "—"}</Td>
+                  <Td>{c.ctaQueVende || "—"}</Td>
+                </tr>
+              ))}
+            </Table>
+          ) : (
+            <Empty>Sem vídeos de creators no período.</Empty>
+          )}
+        </Panel>
+      </div>
+      <Panel
+        title="Peças e DNA lido"
+        right={
+          <CsvButton
+            name="dna-pecas"
+            rows={T(
+              canal === "tiktok"
+                ? d.pecasTikTok.map(({ dna, ...x }) => ({ ...x, ...dna }))
+                : d.pecasMeta.map(({ dna, ...x }) => ({ ...x, ...dna })),
+            )}
+          />
+        }
+      >
+        {canal === "tiktok" ? (
+          <Table head={["Vídeo", "Creator", "Gancho", "Ângulo", "CTA", "Fonte", "Views", "GMV"]}>
+            {d.pecasTikTok.slice(0, 60).map((p) => (
+              <tr key={p.id}>
+                <Td className="max-w-[320px] truncate">{p.titulo || p.id}</Td>
+                <Td>{p.creator ? `@${p.creator}` : "—"}</Td>
+                <Td>{p.dna.gancho}</Td>
+                <Td>{p.dna.angulo}</Td>
+                <Td>{p.dna.cta}</Td>
+                <Td>{FONTE[p.dna.fonte]}</Td>
+                <Td mono>{fmtNum(p.views)}</Td>
+                <Td mono>{fmtBRL(p.gmv)}</Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Table
+            head={["Criativo", "Gancho", "Ângulo", "CTA", "Fonte", "Gasto", "Contribuição LTV"]}
+          >
+            {d.pecasMeta.slice(0, 60).map((p) => (
+              <tr key={p.id}>
+                <Td className="max-w-[320px] truncate">{p.nome}</Td>
+                <Td>{p.dna.gancho}</Td>
+                <Td>{p.dna.angulo}</Td>
+                <Td>{p.dna.cta}</Td>
+                <Td>{FONTE[p.dna.fonte]}</Td>
+                <Td mono>{fmtBRL(p.gasto)}</Td>
+                <Td mono>{fmtBRL(p.contribuicaoLtv)}</Td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </Panel>
+      <p className="text-xs text-muted-foreground">
+        A regra lê palavras do texto do anúncio (Meta) e do título do vídeo (TikTok): o gancho pela
+        primeira frase, ângulo e CTA pelo texto todo. Ela não vê a imagem nem ouve o áudio, então
+        &quot;(não identificado)&quot; é comum. Etiqueta manual na tabela{" "}
+        <span className="font-mono">conteudo_etiqueta</span> (migração 20261005160000) sempre vence
+        a regra. GMV por mil views compara vídeos de tamanhos diferentes; é correlação, não causa.
       </p>
     </div>
   );

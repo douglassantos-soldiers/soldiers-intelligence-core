@@ -6,6 +6,17 @@ import {
   biblioteca,
   alertasCriativos,
 } from "@/lib/criativos360";
+import {
+  mapaManual,
+  dnaMeta,
+  dnaTikTok,
+  resumoMeta,
+  resumoTikTok,
+  combinacoesTikTok,
+  dnaPorCreator,
+  cobertura,
+  alertasDNA,
+} from "@/lib/dna";
 
 export const DE = "2026-09-01";
 export const ATE = "2026-09-30";
@@ -31,8 +42,8 @@ export const cr = {
       ad_id: "111",
       creative_id: "c1",
       ad_name: "BF_VID_9x16_001 creatina @atleta.alfa",
-      ad_title: "",
-      ad_body: "",
+      ad_title: "Você toma creatina do jeito errado?",
+      ad_body: "Creapure com laudo de pureza. Use o cupom ATLETA10.",
       object_type: "VIDEO",
       gasto: 100,
       impressoes: 10000,
@@ -50,7 +61,7 @@ export const cr = {
       creative_id: "c2",
       ad_name: "BF_IMG_4x5_002",
       ad_title: "Whey 900g",
-      ad_body: "",
+      ad_body: "Leve 2 com 20% OFF. Sabor que dissolve fácil. Compre agora.",
       object_type: "PHOTO",
       gasto: 50,
       impressoes: 10000,
@@ -65,8 +76,8 @@ export const cr = {
       ad_id: "333",
       creative_id: "c3",
       ad_name: "Teste institucional",
-      ad_title: "",
-      ad_body: "",
+      ad_title: "Mais vendido do Brasil",
+      ad_body: "Mais de 1 milhão de clientes. Saiba mais.",
       object_type: "SHARE",
       gasto: 2000,
       impressoes: 50000,
@@ -246,9 +257,45 @@ export const cr = {
   ],
 };
 
+const v = (id: string, criador: string, titulo: string, views: number, gmv: number) =>
+  ["2026-09-05", "2026-09-06"].map((data) => ({
+    data,
+    video_id: id,
+    titulo,
+    criador,
+    views: views / 2,
+    gmv: gmv / 2,
+    unidades: Math.round(gmv / 100),
+  }));
+export const videos = [
+  ...v(
+    "t1",
+    "atleta.alfa",
+    "Pare de tomar creatina assim! Creapure com laudo, link na bio",
+    20000,
+    3000,
+  ),
+  ...v("t2", "atleta.alfa", "3 erros com whey. Pureza importa, cupom ALFA", 15000, 2000),
+  ...v("t3", "fit.beta", "Creatina pura sem enrolação, carrinho amarelo", 10000, 1500),
+  ...v("t4", "fit.beta", "Minha rotina de treino com whey, prático no dia a dia", 30000, 600),
+  ...v("t5", "gym.gama", "Quanto custa? Whey em promoção com desconto", 25000, 900),
+  ...v("t6", "gym.gama", "Antes e depois de 60 dias com creatina", 12000, 1200),
+  ...v("t7", "gym.gama", "unboxing", 5000, 100),
+];
+export const etiquetasManuais = [
+  { canal: "tiktok_creator", conteudo_id: "t7", dimensao: "gancho", valor: "Novidade" },
+  { canal: "meta", conteudo_id: "c4", dimensao: "angulo", valor: "Autoridade" },
+];
+
 export function criativosFixture() {
   const placar = placarMeta(cr.anuncios, cr.cliente, 40, DE, ATE);
   const biblio = biblioteca(cr.cria, cr.criaAsset, cr.lote, placar);
+  const manual = mapaManual(etiquetasManuais);
+  const pm = dnaMeta(placar, manual);
+  const pt = dnaTikTok(videos, manual, DE, ATE);
+  const rm = resumoMeta(pm);
+  const rt = resumoTikTok(pt);
+  const cob = cobertura(pm, pt);
   return {
     margemSitePct: 40,
     temCliente: true,
@@ -259,7 +306,16 @@ export function criativosFixture() {
     biblioteca: biblio,
     totalBiblioteca: biblio.length,
     migracaoPendente: false,
-    alertas: alertasCriativos(placar, biblio),
+    dna: {
+      meta: rm,
+      tiktok: rt,
+      combinacoes: combinacoesTikTok(pt, 1),
+      creators: dnaPorCreator(pt),
+      pecasMeta: pm,
+      pecasTikTok: pt,
+      cobertura: cob,
+    },
+    alertas: [...alertasCriativos(placar, biblio), ...alertasDNA(rm, rt, cob)],
     erros: {} as Record<string, string>,
   };
 }

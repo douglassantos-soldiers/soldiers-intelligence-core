@@ -62,6 +62,7 @@ export type CriativoPlacar = {
   creativeId: string;
   nome: string;
   titulo: string;
+  texto: string;
   thumbnail: string;
   link: string;
   anuncios: number;
@@ -245,6 +246,7 @@ export function placarMeta(
         creativeId,
         nome: a.nome || creativeId,
         titulo: a.titulo,
+        texto: a.texto,
         thumbnail: a.thumb,
         link: a.link,
         anuncios: a.ads.size,

@@ -9,6 +9,17 @@ import {
   biblioteca,
   alertasCriativos,
 } from "@/lib/criativos360";
+import {
+  mapaManual,
+  dnaMeta,
+  dnaTikTok,
+  resumoMeta,
+  resumoTikTok,
+  combinacoesTikTok,
+  dnaPorCreator,
+  cobertura,
+  alertasDNA,
+} from "@/lib/dna";
 
 type Rows = Record<string, unknown>[];
 
@@ -33,114 +44,136 @@ export async function dadosCriativos(p: { de: string; ate: string }) {
   const deFetch = [p.de, de14].sort()[0]!;
   const cols =
     "data,ad_id,ad_name,ad_title,ad_body,creative_id,object_type,effective_status,thumbnail_url,instagram_permalink_url,facebook_permalink_url,gasto,impressoes,alcance,cliques,frequencia,video_25,video_100,compras,receita";
-  const [anuncios, cliente, pl, cria, criaAsset, lote, tiktok, pmax, dsp] = await Promise.all([
-    safe(
-      "anuncios",
-      fetchAll(
-        () =>
-          c
-            .from("vw_meta_anuncio_dia_completo")
-            .select(cols)
-            .gte("data", deFetch)
-            .lte("data", p.ate),
-        "meta anuncios",
-        150000,
+  const [anuncios, cliente, pl, cria, criaAsset, lote, tiktok, pmax, dsp, videos, etiq] =
+    await Promise.all([
+      safe(
+        "anuncios",
+        fetchAll(
+          () =>
+            c
+              .from("vw_meta_anuncio_dia_completo")
+              .select(cols)
+              .gte("data", deFetch)
+              .lte("data", p.ate),
+          "meta anuncios",
+          150000,
+        ),
       ),
-    ),
-    safe(
-      "clientePorAnuncio",
-      fetchAll(
-        () =>
-          c
-            .from("mv_criativo_cliente")
-            .select(
-              "ad_id,pedidos,receita,clientes,clientes_novos,novos_que_recompraram,ltv_medio_novos",
-            ),
-        "criativo cliente",
+      safe(
+        "clientePorAnuncio",
+        fetchAll(
+          () =>
+            c
+              .from("mv_criativo_cliente")
+              .select(
+                "ad_id,pedidos,receita,clientes,clientes_novos,novos_que_recompraram,ltv_medio_novos",
+              ),
+          "criativo cliente",
+        ),
+        true,
       ),
-      true,
-    ),
-    safe(
-      "margem",
-      fetchAll(
-        () =>
-          c
-            .from("mv_pl_canal_dia")
-            .select("data,canal,receita_bruta,margem_contribuicao,ads")
-            .gte("data", p.de)
-            .lte("data", p.ate),
-        "pl canal",
+      safe(
+        "margem",
+        fetchAll(
+          () =>
+            c
+              .from("mv_pl_canal_dia")
+              .select("data,canal,receita_bruta,margem_contribuicao,ads")
+              .gte("data", p.de)
+              .lte("data", p.ate),
+          "pl canal",
+        ),
       ),
-    ),
-    safe(
-      "biblioteca",
-      fetchAll(
-        () =>
-          c
-            .from("cria_criativo")
-            .select("id,nome,tipo,largura,altura,duracao_seg,origem,criado_em")
-            .order("criado_em", { ascending: false }),
-        "cria_criativo",
-        2000,
+      safe(
+        "biblioteca",
+        fetchAll(
+          () =>
+            c
+              .from("cria_criativo")
+              .select("id,nome,tipo,largura,altura,duracao_seg,origem,criado_em")
+              .order("criado_em", { ascending: false }),
+          "cria_criativo",
+          2000,
+        ),
       ),
-    ),
-    safe(
-      "bibliotecaEnvios",
-      fetchAll(
-        () => c.from("cria_asset").select("criativo_id,plataforma,estado,erro_msg"),
-        "cria_asset",
-        10000,
+      safe(
+        "bibliotecaEnvios",
+        fetchAll(
+          () => c.from("cria_asset").select("criativo_id,plataforma,estado,erro_msg"),
+          "cria_asset",
+          10000,
+        ),
       ),
-    ),
-    safe(
-      "loteMeta",
-      fetchAll(
-        () =>
-          c
-            .from("meta_criativo_item")
-            .select("nome_criativo,meta_creative_id")
-            .not("meta_creative_id", "is", null),
-        "meta_criativo_item",
+      safe(
+        "loteMeta",
+        fetchAll(
+          () =>
+            c
+              .from("meta_criativo_item")
+              .select("nome_criativo,meta_creative_id")
+              .not("meta_creative_id", "is", null),
+          "meta_criativo_item",
+        ),
+        true,
       ),
-      true,
-    ),
-    safe(
-      "tiktok",
-      fetchAll(
-        () =>
-          c
-            .from("vw_tiktok_ads_criativo_dia")
-            .select("data,item_id,produto,agregado,invest,receita")
-            .gte("data", p.de)
-            .lte("data", p.ate),
-        "tiktok criativos",
-        90000,
+      safe(
+        "tiktok",
+        fetchAll(
+          () =>
+            c
+              .from("vw_tiktok_ads_criativo_dia")
+              .select("data,item_id,produto,agregado,invest,receita")
+              .gte("data", p.de)
+              .lte("data", p.ate),
+          "tiktok criativos",
+          90000,
+        ),
       ),
-    ),
-    safe(
-      "pmax",
-      fetchAll(
-        () =>
-          c
-            .from("vw_google_pmax_asset")
-            .select("asset_id,asset_type,field_type,texto,youtube_video_id,performance_label"),
-        "pmax assets",
+      safe(
+        "pmax",
+        fetchAll(
+          () =>
+            c
+              .from("vw_google_pmax_asset")
+              .select("asset_id,asset_type,field_type,texto,youtube_video_id,performance_label"),
+          "pmax assets",
+        ),
       ),
-    ),
-    safe(
-      "dsp",
-      fetchAll(
-        () =>
-          c
-            .from("vw_ml_display_criativo_dia")
-            .select("data,creative_id,creative_name,investimento,receita")
-            .gte("data", p.de)
-            .lte("data", p.ate),
-        "meli dsp criativos",
-        60000,
+      safe(
+        "dsp",
+        fetchAll(
+          () =>
+            c
+              .from("vw_ml_display_criativo_dia")
+              .select("data,creative_id,creative_name,investimento,receita")
+              .gte("data", p.de)
+              .lte("data", p.ate),
+          "meli dsp criativos",
+          60000,
+        ),
       ),
-    ),
-  ]);
+      safe(
+        "videosCreators",
+        fetchAll(
+          () =>
+            c
+              .from("fact_tiktok_video_dia")
+              .select("data,video_id,titulo,criador,views,gmv,unidades")
+              .gte("data", p.de)
+              .lte("data", p.ate),
+          "tiktok videos",
+          150000,
+        ),
+      ),
+      safe(
+        "etiquetasManuais",
+        fetchAll(
+          () => c.from("vw_conteudo_etiqueta_atual").select("canal,conteudo_id,dimensao,valor"),
+          "conteudo etiqueta",
+        ),
+        true,
+      ),
+    ]);
   // Margem de contribuição do site antes de Ads (a mídia do criativo é descontada no placar).
   const site = pl.filter((r) => /site|shopify/i.test(String(r["canal"] ?? "")));
   const rec = site.reduce((s, r) => s + (Number(r["receita_bruta"]) || 0), 0);
@@ -154,6 +187,13 @@ export async function dadosCriativos(p: { de: string; ate: string }) {
     : 30;
   const placar = placarMeta(anuncios, cliente, margemAntesAds, p.de, p.ate);
   const biblio = biblioteca(cria, criaAsset, lote, placar);
+  // DNA do conteúdo: Meta pelo texto do anúncio, TikTok pelo título do vídeo; etiqueta manual vence.
+  const manual = mapaManual(etiq);
+  const pecasMeta = dnaMeta(placar, manual);
+  const pecasTT = dnaTikTok(videos, manual, p.de, p.ate);
+  const dnaResumoMeta = resumoMeta(pecasMeta);
+  const dnaResumoTT = resumoTikTok(pecasTT);
+  const dnaCob = cobertura(pecasMeta, pecasTT);
   return {
     margemSitePct: margemAntesAds,
     temCliente: cliente.length > 0,
@@ -164,7 +204,19 @@ export async function dadosCriativos(p: { de: string; ate: string }) {
     biblioteca: biblio.slice(0, 300),
     totalBiblioteca: biblio.length,
     migracaoPendente,
-    alertas: alertasCriativos(placar, biblio),
+    dna: {
+      meta: dnaResumoMeta,
+      tiktok: dnaResumoTT,
+      combinacoes: combinacoesTikTok(pecasTT).slice(0, 15),
+      creators: dnaPorCreator(pecasTT).slice(0, 60),
+      pecasMeta: pecasMeta.slice(0, 200),
+      pecasTikTok: pecasTT.slice(0, 200),
+      cobertura: dnaCob,
+    },
+    alertas: [
+      ...alertasCriativos(placar, biblio),
+      ...alertasDNA(dnaResumoMeta, dnaResumoTT, dnaCob),
+    ],
     erros,
   };
 }
