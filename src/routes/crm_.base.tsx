@@ -13,6 +13,8 @@ import {
   Empty,
 } from "@/components/kit";
 import { ErrosLeitura } from "@/components/erros-leitura";
+import { StackedArea } from "@/components/charts";
+import { ESTADOS, ESTADO_LABEL } from "@/lib/clientes360";
 import { getCrmBase } from "@/lib/clientes.functions";
 import { fmtNum, fmtPct } from "@/lib/format";
 
@@ -69,6 +71,14 @@ function Body({ d }: { d: D }) {
   return (
     <div className="space-y-6">
       <ErrosLeitura erros={d.erros} />
+      {d.migracaoPendente && (
+        <div className="rounded-lg border border-warning/50 bg-warning/10 p-4 text-sm">
+          A linha do tempo e o registro de consentimento precisam da migração{" "}
+          <span className="font-mono">20261005120000_crm_estado_e_consentimento.sql</span>. Depois
+          de aplicar, rode <span className="font-mono">crm_registra_estados()</span> uma vez por
+          dia.
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
         <Kpi
           label="Clientes na base"
@@ -86,11 +96,19 @@ function Body({ d }: { d: D }) {
           value={fmtNum(d.leads90.semCompra)}
           hint={`${fmtNum(d.leads90.compraram)} de ${fmtNum(d.leads90.leads)} compraram`}
         />
-        <Kpi
-          label="Aceitam marketing"
-          value={fmtPct(cs.aceitaPct, 0)}
-          hint="itens do site, 12 meses"
-        />
+        {cs.registro.total ? (
+          <Kpi
+            label="E-mail liberado"
+            value={fmtNum(cs.registro.emailConcedido)}
+            hint={`clientes · WhatsApp: ${fmtNum(cs.registro.whatsappConcedido)}`}
+          />
+        ) : (
+          <Kpi
+            label="Aceitam marketing"
+            value={fmtPct(cs.aceitaPct, 0)}
+            hint="itens do site, 12 meses"
+          />
+        )}
         <Kpi
           label="Compram em 2+ canais"
           value={fmtPct(cu.multiPct, 1)}
@@ -156,9 +174,62 @@ function Body({ d }: { d: D }) {
         </Panel>
       </div>
 
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Panel title="Estado ao longo do tempo (180 dias)" className="xl:col-span-2">
+          {d.linhaDoTempo.length > 1 ? (
+            <StackedArea
+              data={d.linhaDoTempo}
+              keys={ESTADOS.map((x) => ESTADO_LABEL[x])}
+              money={false}
+            />
+          ) : (
+            <Empty>
+              {d.linhaDoTempo.length === 1
+                ? "Primeira foto tirada. O gráfico aparece a partir do segundo dia."
+                : "Ainda sem fotos diárias (crm_estado_dia)."}
+            </Empty>
+          )}
+        </Panel>
+        <Panel title="Mudanças de estado (30 dias)">
+          {d.transicoes30d.length ? (
+            <Table head={["De", "Para", "Clientes"]}>
+              {d.transicoes30d.slice(0, 12).map((t) => (
+                <tr key={`${t.de}-${t.para}`}>
+                  <Td>{ESTADO_LABEL[t.de]}</Td>
+                  <Td>
+                    <StatusTag tone={t.piora ? "warn" : "success"}>
+                      {ESTADO_LABEL[t.para]}
+                    </StatusTag>
+                  </Td>
+                  <Td mono>{fmtNum(t.clientes)}</Td>
+                </tr>
+              ))}
+            </Table>
+          ) : (
+            <Empty>Sem mudanças registradas.</Empty>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            Em amarelo, quem piorou para em risco, adormecido ou perdido: é a lista de resgate.
+          </p>
+        </Panel>
+      </div>
+
       <div className="grid gap-6 xl:grid-cols-2">
         <Panel title="Consentimento de marketing">
-          {cs.base ? (
+          {cs.registro.total ? (
+            <Table head={["Canal", "Liberado", "Revogado"]}>
+              <tr>
+                <Td>E-mail</Td>
+                <Td mono>{fmtNum(cs.registro.emailConcedido)}</Td>
+                <Td mono>{fmtNum(cs.registro.emailRevogado)}</Td>
+              </tr>
+              <tr>
+                <Td>WhatsApp</Td>
+                <Td mono>{fmtNum(cs.registro.whatsappConcedido)}</Td>
+                <Td mono>—</Td>
+              </tr>
+            </Table>
+          ) : cs.base ? (
             <Table head={["Situação", "% dos itens vendidos no site (12 meses)"]}>
               <tr>
                 <Td>
@@ -184,16 +255,17 @@ function Body({ d }: { d: D }) {
           )}
           <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
             <li>
-              Fonte: o campo accepts_marketing dos pedidos do Shopify. Conta itens de pedido, então
-              é uma aproximação por cliente.
+              {cs.registro.total
+                ? "Fonte: registro de consentimento por cliente (cliente_consentimento), só inserção e com origem e data de cada concessão ou revogação."
+                : "Fonte provisória: o campo accepts_marketing dos pedidos do Shopify, contado por item de pedido. Aplique a migração e rode crm_importa_consentimento_shopify() para ter por cliente."}
             </li>
             <li>
               Clientes de marketplace não trazem consentimento: só podem ser impactados por mídia no
               próprio canal.
             </li>
             <li>
-              WhatsApp precisa de opt-in próprio, que o banco ainda não registra. Lacuna de LGPD
-              para a Fase 3.
+              WhatsApp só conta com opt-in próprio registrado (formulário ou atendimento), nunca
+              herdado do e-mail.
             </li>
           </ul>
         </Panel>

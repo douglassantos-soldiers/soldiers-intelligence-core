@@ -4,8 +4,17 @@ import {
   distribuicaoEstados,
   proximaAcao,
   consentimentoDe,
+  consentimentoRegistrado,
+  linhaDoTempo,
+  transicoes,
 } from "@/lib/clientes360";
-import { cli, clienteAcaoFixture, atribuicaoFixture } from "./clientes-fixture";
+import {
+  cli,
+  clienteAcaoFixture,
+  atribuicaoFixture,
+  estadoDia,
+  historico,
+} from "./clientes-fixture";
 
 describe("estado e saúde do cliente", () => {
   it("regras na ordem: perdido, adormecido, em risco, novo, fiel, recorrente", () => {
@@ -44,7 +53,7 @@ describe("afinidade e próxima ação", () => {
     ]);
   });
   it("canal pelo consentimento e pelo canal do cliente; sempre aguardando aprovação", () => {
-    expect(d.consentimento).toEqual({ aceita: true, desde: "2026-09-20" });
+    expect(d.consentimento).toEqual({ aceita: true, desde: "2026-09-20", fonte: "shopify" });
     expect(d.acao).toMatchObject({
       estado: "em_risco",
       acao: "Recompra urgente",
@@ -98,5 +107,38 @@ describe("Attribution Engine v1", () => {
     ]);
     expect(d.modelos[0]!.futuro).toBe(true);
     expect(d.alertas).toHaveLength(3);
+  });
+});
+
+describe("linha do tempo, transições e consentimento registrado", () => {
+  it("uma linha por dia com todos os estados", () => {
+    const l = linhaDoTempo(estadoDia);
+    expect(l).toHaveLength(10);
+    expect(l[0]).toMatchObject({ data: "2026-09-21", Perdido: 450, Fiel: 50 });
+    expect(l.at(-1)).toMatchObject({ data: "2026-09-30", Perdido: 477 });
+    expect(linhaDoTempo([{ data: "2026-09-01", estado: "novo", clientes: 3 }])[0]).toMatchObject({
+      Novo: 3,
+      Fiel: 0,
+    });
+  });
+  it("transições agregadas, marcando quem piorou", () => {
+    const t = transicoes(historico);
+    expect(t[0]).toMatchObject({ de: "recorrente", para: "em_risco", clientes: 30, piora: true });
+    expect(t.find((x) => x.para === "fiel")).toMatchObject({ clientes: 12, piora: false });
+    expect(t.find((x) => x.de === "em_risco")!.piora).toBe(false);
+    expect(t).toHaveLength(3); // linha sem estado anterior fica fora
+  });
+  it("registro vale mais que o pedido do site e libera WhatsApp", () => {
+    const r = consentimentoRegistrado([
+      { canal: "email", status: "revogado", ocorrido_em: "2026-09-01T10:00:00Z" },
+      { canal: "whatsapp", status: "concedido", ocorrido_em: "2026-09-10T10:00:00Z" },
+    ])!;
+    expect(r).toEqual({ aceita: false, whatsapp: true, desde: "2026-09-10", fonte: "registro" });
+    expect(proximaAcao(cli.perfil, [], r).canal).toBe("WhatsApp");
+    expect(
+      proximaAcao(cli.perfil, [], { aceita: true, whatsapp: false, desde: "", fonte: "registro" })
+        .canal,
+    ).toBe("E-mail (RD / Klaviyo)");
+    expect(consentimentoRegistrado([])).toBeNull();
   });
 });

@@ -16,6 +16,13 @@ vi.mock("@tanstack/react-router", async (orig) => ({
   ),
 }));
 
+// Recharts usa ResizeObserver, que o jsdom não tem.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as unknown as typeof ResizeObserver;
+
 function wrap(node: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}>{node}</QueryClientProvider>);
@@ -29,8 +36,9 @@ describe("CRM: base, cliente e atribuição", () => {
     wrap(<C />);
     expect(await screen.findByText("Estado do cliente")).toBeTruthy();
     expect(screen.getByText("Adormecido")).toBeTruthy();
-    expect(screen.getByText("62%")).toBeTruthy();
     expect(screen.getByText("3 ou mais")).toBeTruthy();
+    expect(screen.getByText("Mudanças de estado (30 dias)")).toBeTruthy();
+    expect(screen.getByText("E-mail liberado")).toBeTruthy();
   });
 
   it("Customer 360: estado, próxima ação e afinidade", async () => {

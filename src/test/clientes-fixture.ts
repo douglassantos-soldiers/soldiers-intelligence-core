@@ -4,6 +4,8 @@ import {
   afinidadeCliente,
   proximaAcao,
   consentimentoDe,
+  linhaDoTempo,
+  transicoes,
 } from "@/lib/clientes360";
 import {
   atribuicaoPorCanal,
@@ -105,6 +107,31 @@ export const atr = {
   ],
 };
 
+const ESTADOS_DIA: Record<string, number> = {
+  novo: 100,
+  recorrente: 200,
+  fiel: 50,
+  em_risco: 80,
+  adormecido: 120,
+  perdido: 450,
+};
+export const estadoDia = Array.from(
+  { length: 10 },
+  (_, i) => `2026-09-${String(21 + i).padStart(2, "0")}`,
+).flatMap((data, i) =>
+  Object.entries(ESTADOS_DIA).map(([estado, v]) => ({
+    data,
+    estado,
+    clientes: v + (estado === "perdido" ? i * 3 : estado === "fiel" ? i : 0),
+  })),
+);
+export const historico = [
+  ...Array.from({ length: 30 }, () => ({ estado: "em_risco", estado_anterior: "recorrente" })),
+  ...Array.from({ length: 12 }, () => ({ estado: "fiel", estado_anterior: "recorrente" })),
+  ...Array.from({ length: 7 }, () => ({ estado: "recorrente", estado_anterior: "em_risco" })),
+  { estado: "novo", estado_anterior: null },
+];
+
 export function crmBaseFixture() {
   return {
     estados: distribuicaoEstados({
@@ -117,7 +144,13 @@ export function crmBaseFixture() {
     }),
     semDado: 12,
     leads90: { leads: 2700, compraram: 105, semCompra: 2595 },
-    consentimento: { aceitaPct: 62, recusaPct: 30, semInfoPct: 8, base: 50000 },
+    consentimento: {
+      aceitaPct: 62,
+      recusaPct: 30,
+      semInfoPct: 8,
+      base: 50000,
+      registro: { emailConcedido: 640, emailRevogado: 210, whatsappConcedido: 85, total: 850 },
+    },
     clienteUnico: {
       clientes: 1000,
       umCanal: 940,
@@ -126,6 +159,9 @@ export function crmBaseFixture() {
       multiPct: 6,
       idsInternos: 1012,
     },
+    linhaDoTempo: linhaDoTempo(estadoDia),
+    transicoes30d: transicoes(historico),
+    migracaoPendente: false,
     erros: {} as Record<string, string>,
   };
 }

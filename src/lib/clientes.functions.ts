@@ -9,6 +9,9 @@ import {
   afinidadeCliente,
   proximaAcao,
   consentimentoDe,
+  consentimentoRegistrado,
+  linhaDoTempo,
+  transicoes,
   type Estado,
 } from "@/lib/clientes360";
 import {
@@ -121,6 +124,65 @@ export async function dadosCrmBase() {
       [] as Rows,
     ),
   ]);
+  // Tabelas da migração 20261005120000 (linha do tempo e consentimento). Se ainda não foi aplicada,
+  // a tela mostra o aviso em vez de erro.
+  const migracao = { pendente: false };
+  const opcional = async <T>(p: Promise<T>, vazio: T, nome: string) => {
+    try {
+      return await p;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/does not exist|não existe|schema cache|Could not find/i.test(msg))
+        migracao.pendente = true;
+      else erros[nome] = msg;
+      return vazio;
+    }
+  };
+  const de180 = new Date(Date.now() - 179 * 86400000).toISOString().slice(0, 10);
+  const de30 = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
+  const vw = () =>
+    c
+      .from("vw_cliente_consentimento_atual")
+      .select("cliente_chave", { count: "exact", head: true });
+  const [diaRows, histRows, emailSim, emailNao, whatsSim] = await Promise.all([
+    opcional(
+      fetchAll(
+        () => c.from("crm_estado_dia").select("data,estado,clientes").gte("data", de180),
+        "crm_estado_dia",
+      ) as Promise<Rows>,
+      [] as Rows,
+      "linhaDoTempo",
+    ),
+    opcional(
+      fetchAll(
+        () =>
+          c
+            .from("crm_estado_historico")
+            .select("estado,estado_anterior")
+            .gte("desde", de30)
+            .not("estado_anterior", "is", null),
+        "crm_estado_historico",
+        100000,
+      ) as Promise<Rows>,
+      [] as Rows,
+      "transicoes",
+    ),
+    opcional(
+      conta(vw().eq("canal", "email").eq("status", "concedido"), "consent email sim"),
+      0,
+      "consentEmail",
+    ),
+    opcional(
+      conta(vw().eq("canal", "email").eq("status", "revogado"), "consent email não"),
+      0,
+      "consentEmailNao",
+    ),
+    opcional(
+      conta(vw().eq("canal", "whatsapp").eq("status", "concedido"), "consent whatsapp"),
+      0,
+      "consentWhatsapp",
+    ),
+  ]);
   const leads = leadDia.reduce((s, r) => s + (Number(r["leads"]) || 0), 0);
   const compraram = leadDia.reduce((s, r) => s + (Number(r["leads_compraram"]) || 0), 0);
   const totConsent = aceita + recusa + semInfo;
@@ -134,7 +196,17 @@ export async function dadosCrmBase() {
       recusaPct: totConsent ? (recusa / totConsent) * 100 : null,
       semInfoPct: totConsent ? (semInfo / totConsent) * 100 : null,
       base: totConsent,
+      // Registro por cliente (cliente_consentimento): quando existe, é a fonte que vale.
+      registro: {
+        emailConcedido: emailSim,
+        emailRevogado: emailNao,
+        whatsappConcedido: whatsSim,
+        total: emailSim + emailNao,
+      },
     },
+    linhaDoTempo: linhaDoTempo(diaRows),
+    transicoes30d: transicoes(histRows),
+    migracaoPendente: migracao.pendente,
     clienteUnico: {
       clientes: totCanais,
       umCanal: um,
@@ -208,7 +280,17 @@ export const getClienteAcao = createServerFn({ method: "GET" })
       consentLinhas = (r.data ?? []) as Rows;
     }
     const afinidade = afinidadeCliente(itensCliente, proximos, hoje);
-    const consent = consentimentoDe(consentLinhas);
+    let registrado: ReturnType<typeof consentimentoRegistrado> = null;
+    try {
+      const r = await c
+        .from("vw_cliente_consentimento_atual")
+        .select("canal,status,ocorrido_em")
+        .eq("cliente_chave", data.chave);
+      if (!r.error) registrado = consentimentoRegistrado((r.data ?? []) as Rows);
+    } catch {
+      registrado = null; // migração ainda não aplicada
+    }
+    const consent = registrado ?? consentimentoDe(consentLinhas);
     return { afinidade, consentimento: consent, acao: proximaAcao(perfil, afinidade, consent) };
   });
 

@@ -178,7 +178,12 @@ export function afinidadeCliente(
 // ---------------------------------------------------------------------------------------------
 // Próxima melhor ação com canal
 
-export type Consentimento = { aceita: boolean | null; desde: string };
+export type Consentimento = {
+  aceita: boolean | null; // e-mail
+  desde: string;
+  whatsapp?: boolean | null;
+  fonte?: "registro" | "shopify";
+};
 export type ProximaAcao = {
   estado: Estado;
   saude: Saude;
@@ -199,10 +204,16 @@ export function proximaAcao(p: Row, afinidade: Afinidade[], consent: Consentimen
   const produto = txt(p["produto_provavel"]) || afinidade[0]?.produto || "";
   let canal: string;
   let porqueCanal: string;
-  if (consent.aceita === true) {
+  const deOnde = consent.fonte === "registro" ? "registro de consentimento" : "pedido do site";
+  if (consent.whatsapp === true) {
+    canal = "WhatsApp";
+    porqueCanal = `opt-in de WhatsApp registrado (${deOnde}).${consent.aceita === true ? " E-mail também liberado." : ""}`;
+  } else if (consent.aceita === true) {
     canal = "E-mail (RD / Klaviyo)";
     porqueCanal =
-      "aceitou marketing no site. WhatsApp só com opt-in próprio, que o banco não registra.";
+      consent.fonte === "registro"
+        ? "e-mail liberado no registro de consentimento; WhatsApp sem opt-in."
+        : "aceitou marketing no site. WhatsApp só com opt-in próprio, que o banco não registra.";
   } else if (consent.aceita === false) {
     canal = "Remarketing em mídia paga";
     porqueCanal = "não aceitou marketing: sem e-mail nem WhatsApp.";
@@ -241,8 +252,62 @@ export function consentimentoDe(linhas: Row[]): Consentimento {
   let melhor: Row | null = null;
   for (const l of linhas)
     if (!melhor || txt(l["order_created_at"]) > txt(melhor["order_created_at"])) melhor = l;
-  if (!melhor) return { aceita: null, desde: "" };
+  if (!melhor) return { aceita: null, desde: "", fonte: "shopify" };
   const v = melhor["order_customer_accepts_marketing"];
   const aceita = v === true || v === "true" ? true : v === false || v === "false" ? false : null;
-  return { aceita, desde: dia(melhor["order_created_at"]) };
+  return { aceita, desde: dia(melhor["order_created_at"]), fonte: "shopify" };
+}
+
+/** Consentimento vigente pelo registro (vw_cliente_consentimento_atual). null quando o cliente não tem registro. */
+export function consentimentoRegistrado(linhas: Row[]): Consentimento | null {
+  if (!linhas.length) return null;
+  const por = (c: string) => linhas.find((l) => txt(l["canal"]) === c);
+  const st = (l?: Row) => (!l ? null : txt(l["status"]) === "concedido");
+  const email = por("email");
+  const datas = linhas.map((l) => dia(l["ocorrido_em"])).sort();
+  return {
+    aceita: st(email),
+    whatsapp: st(por("whatsapp")),
+    desde: datas.at(-1) ?? "",
+    fonte: "registro",
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Linha do tempo do estado (crm_estado_dia) e transições (crm_estado_historico)
+
+/** Uma linha por dia com a contagem de cada estado (estado ausente no dia = 0). */
+export function linhaDoTempo(rows: Row[]) {
+  const m = new Map<string, Record<string, number | string>>();
+  for (const r of rows) {
+    const d = dia(r["data"]);
+    const e = txt(r["estado"]) as Estado;
+    if (!d || !ESTADOS.includes(e)) continue;
+    const cur =
+      m.get(d) ?? Object.fromEntries([["data", d], ...ESTADOS.map((x) => [ESTADO_LABEL[x], 0])]);
+    cur[ESTADO_LABEL[e]] = n(r["clientes"]);
+    m.set(d, cur);
+  }
+  return [...m.values()].sort((a, b) => String(a["data"]).localeCompare(String(b["data"])));
+}
+
+/** Quantos clientes mudaram de um estado para outro (linhas do histórico com estado anterior). */
+export function transicoes(rows: Row[]) {
+  const m = new Map<string, { de: Estado; para: Estado; clientes: number }>();
+  for (const r of rows) {
+    const de = txt(r["estado_anterior"]) as Estado;
+    const para = txt(r["estado"]) as Estado;
+    if (!de || !para) continue;
+    const k = `${de}>${para}`;
+    const cur = m.get(k) ?? { de, para, clientes: 0 };
+    cur.clientes++;
+    m.set(k, cur);
+  }
+  const ordem = (e: Estado) => ESTADOS.indexOf(e);
+  return [...m.values()]
+    .map((t) => ({
+      ...t,
+      piora: ordem(t.para) > ordem(t.de) && ordem(t.para) >= ESTADOS.indexOf("em_risco"),
+    }))
+    .sort((a, b) => b.clientes - a.clientes);
 }

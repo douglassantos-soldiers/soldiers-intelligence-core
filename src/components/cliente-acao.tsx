@@ -46,9 +46,11 @@ export function ClienteAcao({ chave }: { chave: string }) {
               ["Canal", a.canal],
               [
                 "Consentimento",
-                cs.aceita == null
+                cs.aceita == null && cs.whatsapp == null
                   ? "sem registro"
-                  : `${cs.aceita ? "aceita" : "não aceita"} (${fmtDate(cs.desde)})`,
+                  : `e-mail ${cs.aceita == null ? "—" : cs.aceita ? "sim" : "não"}${
+                      cs.whatsapp == null ? "" : ` · WhatsApp ${cs.whatsapp ? "sim" : "não"}`
+                    } (${cs.fonte === "registro" ? "registro" : "pedido do site"}, ${fmtDate(cs.desde)})`,
               ],
               [
                 "Envio",
