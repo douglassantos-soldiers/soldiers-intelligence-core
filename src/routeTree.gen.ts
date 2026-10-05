@@ -20,6 +20,7 @@ import { Route as IntelligenceRouteImport } from './routes/intelligence'
 import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as AffiliateCreatorsRouteImport } from './routes/affiliate_.creators'
+import { Route as AffiliateOsRouteImport } from './routes/affiliate_.os'
 import { Route as AfiliadosHojeRouteImport } from './routes/afiliados.hoje'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesChaveRouteImport } from './routes/clientes.$chave'
@@ -95,6 +96,11 @@ const MediaRoute = MediaRouteImport.update({
 const AffiliateCreatorsRoute = AffiliateCreatorsRouteImport.update({
   id: '/affiliate_/creators',
   path: '/affiliate/creators',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AffiliateOsRoute = AffiliateOsRouteImport.update({
+  id: '/affiliate_/os',
+  path: '/affiliate/os',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AfiliadosHojeRoute = AfiliadosHojeRouteImport.update({
@@ -215,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
   '/affiliate/creators': typeof AffiliateCreatorsRoute
+  '/affiliate/os': typeof AffiliateOsRoute
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/crm/acao': typeof CrmAcaoRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
   '/affiliate/creators': typeof AffiliateCreatorsRoute
+  '/affiliate/os': typeof AffiliateOsRoute
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/crm/acao': typeof CrmAcaoRoute
@@ -284,6 +292,7 @@ export interface FileRoutesById {
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
   '/affiliate_/creators': typeof AffiliateCreatorsRoute
+  '/affiliate_/os': typeof AffiliateOsRoute
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/crm_/acao': typeof CrmAcaoRoute
@@ -320,6 +329,7 @@ export interface FileRouteTypes {
     | '/marketplace'
     | '/media'
     | '/affiliate/creators'
+    | '/affiliate/os'
     | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/crm/acao'
@@ -354,6 +364,7 @@ export interface FileRouteTypes {
     | '/marketplace'
     | '/media'
     | '/affiliate/creators'
+    | '/affiliate/os'
     | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/crm/acao'
@@ -388,6 +399,7 @@ export interface FileRouteTypes {
     | '/marketplace'
     | '/media'
     | '/affiliate_/creators'
+    | '/affiliate_/os'
     | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/crm_/acao'
@@ -423,6 +435,7 @@ export interface RootRouteChildren {
   MarketplaceRoute: typeof MarketplaceRoute
   MediaRoute: typeof MediaRoute
   AffiliateCreatorsRoute: typeof AffiliateCreatorsRoute
+  AffiliateOsRoute: typeof AffiliateOsRoute
   AfiliadosHojeRoute: typeof AfiliadosHojeRoute
   ClientesChaveRoute: typeof ClientesChaveRoute
   CrmAcaoRoute: typeof CrmAcaoRoute
@@ -523,6 +536,13 @@ declare module '@tanstack/react-router' {
       path: '/affiliate/creators'
       fullPath: '/affiliate/creators'
       preLoaderRoute: typeof AffiliateCreatorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/affiliate_/os': {
+      id: '/affiliate_/os'
+      path: '/affiliate/os'
+      fullPath: '/affiliate/os'
+      preLoaderRoute: typeof AffiliateOsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/afiliados/hoje': {
@@ -687,6 +707,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarketplaceRoute: MarketplaceRoute,
   MediaRoute: MediaRoute,
   AffiliateCreatorsRoute: AffiliateCreatorsRoute,
+  AffiliateOsRoute: AffiliateOsRoute,
   AfiliadosHojeRoute: AfiliadosHojeRoute,
   ClientesChaveRoute: ClientesChaveRoute,
   CrmAcaoRoute: CrmAcaoRoute,
