@@ -18,7 +18,7 @@ export function StackedArea({ data, keys, height = 280, money = true }: { data: 
         <Tooltip {...tooltipStyle} labelFormatter={fmtDate} formatter={(v: number) => (money ? fmtBRL(v) : fmtCompact(v))} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
         {keys.map((k, i) => (
-          <Area key={k} type="monotone" dataKey={k} stackId="1" stroke={CHART_COLORS[i % 6]} fill={CHART_COLORS[i % 6]} fillOpacity={0.25} strokeWidth={1.5} />
+          <Area key={k} type="monotone" dataKey={k} stackId="1" stroke={CHART_COLORS[i % 6]} fill={CHART_COLORS[i % 6]} fillOpacity={0.25} strokeWidth={1.5} isAnimationActive={false} />
         ))}
       </AreaChart>
     </ResponsiveContainer>

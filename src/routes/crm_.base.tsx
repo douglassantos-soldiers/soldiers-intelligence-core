@@ -150,9 +150,9 @@ function Body({ d }: { d: D }) {
               comprar), depois em risco (ritmo), depois pedidos.
             </li>
             <li>
-              "Ritmo" usa razao_ritmo do banco (dias sem comprar ÷ ritmo do cliente). Estado é foto
-              de hoje; a linha do tempo por mês precisa de uma foto diária gravada no banco (ainda
-              não existe).
+              "Ritmo" usa razao_ritmo do banco (dias sem comprar ÷ ritmo do cliente). Esta tabela é
+              a foto de hoje; a evolução vem da foto diária gravada por crm_registra_estados()
+              (gráfico abaixo).
             </li>
           </ul>
         </Panel>
