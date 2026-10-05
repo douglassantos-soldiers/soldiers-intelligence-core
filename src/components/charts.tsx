@@ -35,7 +35,7 @@ export function Bars({ data, x, keys, height = 260, money = true, xIsDate = fals
         <Tooltip {...tooltipStyle} cursor={{ fill: "var(--accent)" }} formatter={(v: number) => (money ? fmtBRL(v) : fmtCompact(v))} />
         {keys.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
         {keys.map((k, i) => (
-          <Bar key={k} dataKey={k} fill={CHART_COLORS[i % 6]} radius={[3, 3, 0, 0]} stackId={stacked && keys.length > 1 ? "s" : undefined} />
+          <Bar key={k} dataKey={k} fill={CHART_COLORS[i % 6]} radius={[3, 3, 0, 0]} isAnimationActive={false} stackId={stacked && keys.length > 1 ? "s" : undefined} />
         ))}
       </BarChart>
     </ResponsiveContainer>
