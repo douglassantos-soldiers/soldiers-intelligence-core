@@ -114,7 +114,13 @@ export function plataformasVsUtm(reconMeta: Row[], de: string, ate: string): Pla
   ];
 }
 
-export type Modelo = { chave: string; inicio: string; obs: string; vigente: boolean };
+export type Modelo = {
+  chave: string;
+  inicio: string;
+  obs: string;
+  vigente: boolean;
+  futuro: boolean;
+};
 
 /** Modelos de atribuição registrados, com o vigente marcado (o de início mais recente até hoje, por chave). */
 export function modelosRegistrados(rows: Row[], hoje: string): Modelo[] {
@@ -126,7 +132,7 @@ export function modelosRegistrados(rows: Row[], hoje: string): Modelo[] {
   return lista.map((x) => {
     const vigente = x.inicio <= hoje && !vistos.has(x.chave);
     if (vigente) vistos.add(x.chave);
-    return { ...x, vigente };
+    return { ...x, vigente, futuro: x.inicio > hoje };
   });
 }
 

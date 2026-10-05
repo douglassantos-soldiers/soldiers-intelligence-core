@@ -199,6 +199,8 @@ function Body({ d }: { d: D }) {
                     <Td>
                       {m.vigente ? (
                         <StatusTag tone="success">vigente</StatusTag>
+                      ) : m.futuro ? (
+                        <StatusTag tone="primary">programado</StatusTag>
                       ) : (
                         <StatusTag tone="muted">anterior</StatusTag>
                       )}

@@ -96,6 +96,7 @@ describe("Attribution Engine v1", () => {
       ["ultimo_clique", "2026-09-15", true],
       ["ultimo_clique", "2026-01-01", false],
     ]);
+    expect(d.modelos[0]!.futuro).toBe(true);
     expect(d.alertas).toHaveLength(3);
   });
 });
