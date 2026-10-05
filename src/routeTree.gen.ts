@@ -32,6 +32,7 @@ import { Route as MarketplaceDevolucoesRouteImport } from './routes/marketplace_
 import { Route as MarketplaceMercadoLivreRouteImport } from './routes/marketplace_.mercado-livre'
 import { Route as MarketplaceShopeeRouteImport } from './routes/marketplace_.shopee'
 import { Route as MarketplaceTiktokRouteImport } from './routes/marketplace_.tiktok'
+import { Route as MediaCriativosRouteImport } from './routes/media_.criativos'
 import { Route as MediaGoogleRouteImport } from './routes/media_.google'
 import { Route as MediaMeliDspRouteImport } from './routes/media_.meli-dsp'
 import { Route as MediaMetaRouteImport } from './routes/media_.meta'
@@ -158,6 +159,11 @@ const MarketplaceTiktokRoute = MarketplaceTiktokRouteImport.update({
   path: '/marketplace/tiktok',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MediaCriativosRoute = MediaCriativosRouteImport.update({
+  id: '/media_/criativos',
+  path: '/media/criativos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MediaGoogleRoute = MediaGoogleRouteImport.update({
   id: '/media_/google',
   path: '/media/google',
@@ -232,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/marketplace/mercado-livre': typeof MarketplaceMercadoLivreRoute
   '/marketplace/shopee': typeof MarketplaceShopeeRoute
   '/marketplace/tiktok': typeof MarketplaceTiktokRoute
+  '/media/criativos': typeof MediaCriativosRoute
   '/media/google': typeof MediaGoogleRoute
   '/media/meli-dsp': typeof MediaMeliDspRoute
   '/media/meta': typeof MediaMetaRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/marketplace/mercado-livre': typeof MarketplaceMercadoLivreRoute
   '/marketplace/shopee': typeof MarketplaceShopeeRoute
   '/marketplace/tiktok': typeof MarketplaceTiktokRoute
+  '/media/criativos': typeof MediaCriativosRoute
   '/media/google': typeof MediaGoogleRoute
   '/media/meli-dsp': typeof MediaMeliDspRoute
   '/media/meta': typeof MediaMetaRoute
@@ -303,6 +311,7 @@ export interface FileRoutesById {
   '/marketplace_/mercado-livre': typeof MarketplaceMercadoLivreRoute
   '/marketplace_/shopee': typeof MarketplaceShopeeRoute
   '/marketplace_/tiktok': typeof MarketplaceTiktokRoute
+  '/media_/criativos': typeof MediaCriativosRoute
   '/media_/google': typeof MediaGoogleRoute
   '/media_/meli-dsp': typeof MediaMeliDspRoute
   '/media_/meta': typeof MediaMetaRoute
@@ -340,6 +349,7 @@ export interface FileRouteTypes {
     | '/marketplace/mercado-livre'
     | '/marketplace/shopee'
     | '/marketplace/tiktok'
+    | '/media/criativos'
     | '/media/google'
     | '/media/meli-dsp'
     | '/media/meta'
@@ -375,6 +385,7 @@ export interface FileRouteTypes {
     | '/marketplace/mercado-livre'
     | '/marketplace/shopee'
     | '/marketplace/tiktok'
+    | '/media/criativos'
     | '/media/google'
     | '/media/meli-dsp'
     | '/media/meta'
@@ -410,6 +421,7 @@ export interface FileRouteTypes {
     | '/marketplace_/mercado-livre'
     | '/marketplace_/shopee'
     | '/marketplace_/tiktok'
+    | '/media_/criativos'
     | '/media_/google'
     | '/media_/meli-dsp'
     | '/media_/meta'
@@ -446,6 +458,7 @@ export interface RootRouteChildren {
   MarketplaceMercadoLivreRoute: typeof MarketplaceMercadoLivreRoute
   MarketplaceShopeeRoute: typeof MarketplaceShopeeRoute
   MarketplaceTiktokRoute: typeof MarketplaceTiktokRoute
+  MediaCriativosRoute: typeof MediaCriativosRoute
   MediaGoogleRoute: typeof MediaGoogleRoute
   MediaMeliDspRoute: typeof MediaMeliDspRoute
   MediaMetaRoute: typeof MediaMetaRoute
@@ -622,6 +635,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarketplaceTiktokRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/media_/criativos': {
+      id: '/media_/criativos'
+      path: '/media/criativos'
+      fullPath: '/media/criativos'
+      preLoaderRoute: typeof MediaCriativosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/media_/google': {
       id: '/media_/google'
       path: '/media/google'
@@ -718,6 +738,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarketplaceMercadoLivreRoute: MarketplaceMercadoLivreRoute,
   MarketplaceShopeeRoute: MarketplaceShopeeRoute,
   MarketplaceTiktokRoute: MarketplaceTiktokRoute,
+  MediaCriativosRoute: MediaCriativosRoute,
   MediaGoogleRoute: MediaGoogleRoute,
   MediaMeliDspRoute: MediaMeliDspRoute,
   MediaMetaRoute: MediaMetaRoute,

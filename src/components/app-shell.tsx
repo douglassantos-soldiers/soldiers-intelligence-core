@@ -22,6 +22,7 @@ const GROUPS: { title?: string; items: Item[] }[] = [
       { to: "/media", label: "Media", icon: Megaphone },
       { to: "/media/google", label: "Google Ads", icon: Megaphone },
       { to: "/media/meta", label: "Meta Ads", icon: Megaphone },
+      { to: "/media/criativos", label: "Central de criativos", icon: Megaphone },
       { to: "/media/meta/criativos", label: "Meta: subir criativos", icon: Megaphone },
       { to: "/media/tiktok", label: "TikTok Ads", icon: Megaphone },
       { to: "/media/meli-dsp", label: "Meli DSP", icon: Megaphone },
