@@ -26,6 +26,7 @@ export function Alertas() {
     ...(d.tiktokAds ?? []).map((a) => ({ ...a, to: "/media/tiktok" as const, nome: "TikTok Ads" })),
     ...(d.meliDsp ?? []).map((a) => ({ ...a, to: "/media/meli-dsp" as const, nome: "Meli DSP" })),
     ...(d.afiliados ?? []).map((a) => ({ ...a, to: "/affiliate/creators" as const, nome: "Creators" })),
+    ...(d.atribuicao ?? []).map((a) => ({ ...a, to: "/attribution" as const, nome: "Attribution" })),
     ...(d.devolucoes ?? []).map((a) => ({ ...a, to: "/marketplace/devolucoes" as const, nome: "Devoluções e ranking" })),
     ...(d.meta ?? []).map((a) => ({ ...a, to: "/media/meta" as const, nome: "Meta Ads" })),
     ...(d.google ?? []).map((a) => ({ ...a, to: "/media/google" as const, nome: "Google" })),

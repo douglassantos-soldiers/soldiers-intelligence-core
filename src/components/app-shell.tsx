@@ -38,11 +38,13 @@ const GROUPS: { title?: string; items: Item[] }[] = [
       { to: "/marketplace/devolucoes", label: "Devoluções e ranking", icon: Boxes },
       { to: "/crm", label: "CRM / Growth", icon: HeartHandshake },
       { to: "/crm/acao", label: "CRM 2.0: ação", icon: HeartHandshake },
+      { to: "/crm/base", label: "CRM: estado da base", icon: HeartHandshake },
     ],
   },
   {
     title: "Plataforma",
     items: [
+      { to: "/attribution", label: "Attribution", icon: GitBranch },
       { to: "/data-health", label: "Data Health", icon: Activity },
       { to: "/glossario", label: "Glossário de métricas", icon: BookOpen },
     ],
@@ -51,7 +53,6 @@ const GROUPS: { title?: string; items: Item[] }[] = [
     title: "Em breve",
     items: [
       { to: "/em-breve/$modulo", params: { modulo: "intelligence" }, label: "Intelligence", icon: Brain },
-      { to: "/em-breve/$modulo", params: { modulo: "attribution" }, label: "Attribution", icon: GitBranch },
       { to: "/em-breve/$modulo", params: { modulo: "profit" }, label: "Profit", icon: Coins },
       { to: "/em-breve/$modulo", params: { modulo: "ai" }, label: "AI", icon: Bot },
     ],

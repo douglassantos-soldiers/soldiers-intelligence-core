@@ -7,6 +7,7 @@ import { Kpi, Panel, Loading, ErrorBox, Table, Td, StatusTag, Empty } from "@/co
 import { fmtBRL, fmtNum, fmtPct, fmtDate } from "@/lib/format";
 import { custoHistorico, custoNaData } from "@/lib/aggregate";
 import { ACAO_LABEL, ACAO_TONE, canalVenda } from "@/domain/sources";
+import { ClienteAcao } from "@/components/cliente-acao";
 
 export const Route = createFileRoute("/clientes/$chave")({
   head: () => ({
@@ -36,6 +37,7 @@ function Cliente() {
 }
 
 function Body({ d }: { d: Awaited<ReturnType<typeof getCliente>> }) {
+  const { chave } = Route.useParams();
   const p = (d.perfil ?? {}) as Record<string, string | number>;
   const o = (d.origem ?? {}) as Record<string, string | number>;
   const c = d.contato;
@@ -83,6 +85,8 @@ function Body({ d }: { d: Awaited<ReturnType<typeof getCliente>> }) {
         <Kpi label="Chance 30/90d" value={`${fmtPct(p.chance_30, 0)}`} hint={`90d: ${fmtPct(p.chance_90, 0)}`} />
       </div>
 
+      <ClienteAcao chave={chave} />
+
       <div className="grid gap-6 xl:grid-cols-3">
         <Panel title="Como chegou">
           <dl className="space-y-2 text-sm">
@@ -102,7 +106,7 @@ function Body({ d }: { d: Awaited<ReturnType<typeof getCliente>> }) {
             ))}
           </dl>
         </Panel>
-        <Panel title="Afinidade de produtos" className="xl:col-span-2">
+        <Panel title="Produtos comprados" className="xl:col-span-2">
           {!produtos.length ? <Empty /> : (
             <Table head={["Produto", "SKU", "Unid.", "Receita", "CMV", "Margem"]}>
               {produtos.slice(0, 12).map((x) => (

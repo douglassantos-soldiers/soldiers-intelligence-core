@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AffiliateRouteImport } from './routes/affiliate'
+import { Route as AttributionRouteImport } from './routes/attribution'
 import { Route as CommerceRouteImport } from './routes/commerce'
 import { Route as CrmRouteImport } from './routes/crm'
 import { Route as DataHealthRouteImport } from './routes/data-health'
@@ -22,6 +23,7 @@ import { Route as AfiliadosHojeRouteImport } from './routes/afiliados.hoje'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesChaveRouteImport } from './routes/clientes.$chave'
 import { Route as CrmAcaoRouteImport } from './routes/crm_.acao'
+import { Route as CrmBaseRouteImport } from './routes/crm_.base'
 import { Route as EmBreveModuloRouteImport } from './routes/em-breve.$modulo'
 import { Route as MarketplaceAmazonRouteImport } from './routes/marketplace_.amazon'
 import { Route as MarketplaceDevolucoesRouteImport } from './routes/marketplace_.devolucoes'
@@ -47,6 +49,11 @@ const IndexRoute = IndexRouteImport.update({
 const AffiliateRoute = AffiliateRouteImport.update({
   id: '/affiliate',
   path: '/affiliate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AttributionRoute = AttributionRouteImport.update({
+  id: '/attribution',
+  path: '/attribution',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CommerceRoute = CommerceRouteImport.update({
@@ -102,6 +109,11 @@ const ClientesChaveRoute = ClientesChaveRouteImport.update({
 const CrmAcaoRoute = CrmAcaoRouteImport.update({
   id: '/crm_/acao',
   path: '/crm/acao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmBaseRoute = CrmBaseRouteImport.update({
+  id: '/crm_/base',
+  path: '/crm/base',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmBreveModuloRoute = EmBreveModuloRouteImport.update({
@@ -188,6 +200,7 @@ const PedidosCanalIdRoute = PedidosCanalIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/affiliate': typeof AffiliateRoute
+  '/attribution': typeof AttributionRoute
   '/commerce': typeof CommerceRoute
   '/crm': typeof CrmRoute
   '/data-health': typeof DataHealthRoute
@@ -198,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/crm/acao': typeof CrmAcaoRoute
+  '/crm/base': typeof CrmBaseRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/marketplace/amazon': typeof MarketplaceAmazonRoute
   '/marketplace/devolucoes': typeof MarketplaceDevolucoesRoute
@@ -219,6 +233,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/affiliate': typeof AffiliateRoute
+  '/attribution': typeof AttributionRoute
   '/commerce': typeof CommerceRoute
   '/crm': typeof CrmRoute
   '/data-health': typeof DataHealthRoute
@@ -229,6 +244,7 @@ export interface FileRoutesByTo {
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/crm/acao': typeof CrmAcaoRoute
+  '/crm/base': typeof CrmBaseRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/marketplace/amazon': typeof MarketplaceAmazonRoute
   '/marketplace/devolucoes': typeof MarketplaceDevolucoesRoute
@@ -251,6 +267,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/affiliate': typeof AffiliateRoute
+  '/attribution': typeof AttributionRoute
   '/commerce': typeof CommerceRoute
   '/crm': typeof CrmRoute
   '/data-health': typeof DataHealthRoute
@@ -261,6 +278,7 @@ export interface FileRoutesById {
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
   '/crm_/acao': typeof CrmAcaoRoute
+  '/crm_/base': typeof CrmBaseRoute
   '/em-breve/$modulo': typeof EmBreveModuloRoute
   '/marketplace_/amazon': typeof MarketplaceAmazonRoute
   '/marketplace_/devolucoes': typeof MarketplaceDevolucoesRoute
@@ -284,6 +302,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/affiliate'
+    | '/attribution'
     | '/commerce'
     | '/crm'
     | '/data-health'
@@ -294,6 +313,7 @@ export interface FileRouteTypes {
     | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/crm/acao'
+    | '/crm/base'
     | '/em-breve/$modulo'
     | '/marketplace/amazon'
     | '/marketplace/devolucoes'
@@ -315,6 +335,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/affiliate'
+    | '/attribution'
     | '/commerce'
     | '/crm'
     | '/data-health'
@@ -325,6 +346,7 @@ export interface FileRouteTypes {
     | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/crm/acao'
+    | '/crm/base'
     | '/em-breve/$modulo'
     | '/marketplace/amazon'
     | '/marketplace/devolucoes'
@@ -346,6 +368,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/affiliate'
+    | '/attribution'
     | '/commerce'
     | '/crm'
     | '/data-health'
@@ -356,6 +379,7 @@ export interface FileRouteTypes {
     | '/afiliados/hoje'
     | '/clientes/$chave'
     | '/crm_/acao'
+    | '/crm_/base'
     | '/em-breve/$modulo'
     | '/marketplace_/amazon'
     | '/marketplace_/devolucoes'
@@ -378,6 +402,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AffiliateRoute: typeof AffiliateRoute
+  AttributionRoute: typeof AttributionRoute
   CommerceRoute: typeof CommerceRoute
   CrmRoute: typeof CrmRoute
   DataHealthRoute: typeof DataHealthRoute
@@ -388,6 +413,7 @@ export interface RootRouteChildren {
   AfiliadosHojeRoute: typeof AfiliadosHojeRoute
   ClientesChaveRoute: typeof ClientesChaveRoute
   CrmAcaoRoute: typeof CrmAcaoRoute
+  CrmBaseRoute: typeof CrmBaseRoute
   EmBreveModuloRoute: typeof EmBreveModuloRoute
   MarketplaceAmazonRoute: typeof MarketplaceAmazonRoute
   MarketplaceDevolucoesRoute: typeof MarketplaceDevolucoesRoute
@@ -421,6 +447,13 @@ declare module '@tanstack/react-router' {
       path: '/affiliate'
       fullPath: '/affiliate'
       preLoaderRoute: typeof AffiliateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/attribution': {
+      id: '/attribution'
+      path: '/attribution'
+      fullPath: '/attribution'
+      preLoaderRoute: typeof AttributionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/commerce': {
@@ -498,6 +531,13 @@ declare module '@tanstack/react-router' {
       path: '/crm/acao'
       fullPath: '/crm/acao'
       preLoaderRoute: typeof CrmAcaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm_/base': {
+      id: '/crm_/base'
+      path: '/crm/base'
+      fullPath: '/crm/base'
+      preLoaderRoute: typeof CrmBaseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/em-breve/$modulo': {
@@ -618,6 +658,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AffiliateRoute: AffiliateRoute,
+  AttributionRoute: AttributionRoute,
   CommerceRoute: CommerceRoute,
   CrmRoute: CrmRoute,
   DataHealthRoute: DataHealthRoute,
@@ -628,6 +669,7 @@ const rootRouteChildren: RootRouteChildren = {
   AfiliadosHojeRoute: AfiliadosHojeRoute,
   ClientesChaveRoute: ClientesChaveRoute,
   CrmAcaoRoute: CrmAcaoRoute,
+  CrmBaseRoute: CrmBaseRoute,
   EmBreveModuloRoute: EmBreveModuloRoute,
   MarketplaceAmazonRoute: MarketplaceAmazonRoute,
   MarketplaceDevolucoesRoute: MarketplaceDevolucoesRoute,
