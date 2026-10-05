@@ -108,6 +108,7 @@ function Body({ d }: { d: D }) {
               x="data"
               keys={["Investido", "Receita"]}
               xIsDate
+              stacked={false}
             />
           ) : (
             <Empty />

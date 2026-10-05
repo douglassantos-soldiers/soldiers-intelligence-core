@@ -25,7 +25,7 @@ export function StackedArea({ data, keys, height = 280, money = true }: { data: 
   );
 }
 
-export function Bars({ data, x, keys, height = 260, money = true, xIsDate = false }: { data: Record<string, unknown>[]; x: string; keys: string[]; height?: number; money?: boolean; xIsDate?: boolean }) {
+export function Bars({ data, x, keys, height = 260, money = true, xIsDate = false, stacked = true }: { data: Record<string, unknown>[]; x: string; keys: string[]; height?: number; money?: boolean; xIsDate?: boolean; stacked?: boolean }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ left: 0, right: 8, top: 8 }}>
@@ -35,7 +35,7 @@ export function Bars({ data, x, keys, height = 260, money = true, xIsDate = fals
         <Tooltip {...tooltipStyle} cursor={{ fill: "var(--accent)" }} formatter={(v: number) => (money ? fmtBRL(v) : fmtCompact(v))} />
         {keys.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
         {keys.map((k, i) => (
-          <Bar key={k} dataKey={k} fill={CHART_COLORS[i % 6]} radius={[3, 3, 0, 0]} stackId={keys.length > 1 ? "s" : undefined} />
+          <Bar key={k} dataKey={k} fill={CHART_COLORS[i % 6]} radius={[3, 3, 0, 0]} stackId={stacked && keys.length > 1 ? "s" : undefined} />
         ))}
       </BarChart>
     </ResponsiveContainer>
