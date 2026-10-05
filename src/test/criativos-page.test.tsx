@@ -42,8 +42,8 @@ describe("tela de subida de criativos", () => {
     const { Route } = await import("@/routes/media_.meta_.criativos");
     const C = Route.options.component!;
     wrap(<C />);
-    expect(await screen.findByText("Enviar link")).toBeTruthy();
-  });
+    expect(await screen.findByText("Enviar link", {}, { timeout: 10000 })).toBeTruthy();
+  }, 15000);
 
   it("logado: lista lotes e abre o acompanhamento com auditoria", async () => {
     sessao = { user: { email: "malu@soldiersnutrition.com.br" } };

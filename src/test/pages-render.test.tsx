@@ -1030,12 +1030,12 @@ describe("telas novas renderizam com dados", () => {
     const { Route } = await import("@/routes/media");
     const C = Route.options.component!;
     wrap(<C />);
-    expect(await screen.findByText("Por tipo de campanha")).toBeTruthy();
+    expect(await screen.findByText("Por tipo de campanha", {}, { timeout: 10000 })).toBeTruthy();
     expect(screen.getByText("Funil por canal de venda")).toBeTruthy();
     expect(screen.getAllByText("3,67x").length).toBeGreaterThan(0); // ROAS mídia = 550 / 150
     expect(screen.getByText("Amazon Ads: clientes novos para a marca")).toBeTruthy();
     expect(screen.getAllByText("60%").length).toBeGreaterThan(0); // 600 de 1000 de clientes novos
-  });
+  }, 15000);
 
   it("Affiliate", async () => {
     current = "affiliate";

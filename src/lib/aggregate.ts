@@ -1,9 +1,9 @@
 type Row = Record<string, unknown>;
 const n = (v: unknown) => Number(v) || 0;
 
-export function sumBy(rows: Row[], key: string, fields: string[]) {
+export function sumBy(rows: Row[] | null | undefined, key: string, fields: string[]) {
   const map = new Map<string, Row>();
-  for (const r of rows) {
+  for (const r of rows ?? []) {
     const k = String(r[key] ?? "—");
     const o = map.get(k) ?? { [key]: k };
     for (const f of fields) o[f] = n(o[f]) + n(r[f]);
@@ -12,9 +12,10 @@ export function sumBy(rows: Row[], key: string, fields: string[]) {
   return [...map.values()];
 }
 
-export function total(rows: Row[], fields: string[]) {
+export function total(rows: Row[] | null | undefined, fields: string[]) {
+  const list = rows ?? [];
   const o: Record<string, number> = {};
-  for (const f of fields) o[f] = rows.reduce((s, r) => s + n(r[f]), 0);
+  for (const f of fields) o[f] = list.reduce((s, r) => s + n(r[f]), 0);
   return o;
 }
 
