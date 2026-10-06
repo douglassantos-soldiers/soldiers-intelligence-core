@@ -27,6 +27,7 @@ export function Alertas() {
     ...(d.meliDsp ?? []).map((a) => ({ ...a, to: "/media/meli-dsp" as const, nome: "Meli DSP" })),
     ...(d.afiliados ?? []).map((a) => ({ ...a, to: "/affiliate/creators" as const, nome: "Creators" })),
     ...(d.criativos ?? []).map((a) => ({ ...a, to: "/media/criativos" as const, nome: "Central de criativos" })),
+    ...(d.fechamento ?? []).map((a) => ({ ...a, to: "/affiliate/fechamento" as const, nome: "Fechamento de comissões" })),
     ...(d.affiliateOS ?? []).map((a) => ({ ...a, to: "/affiliate/os" as const, nome: "Affiliate OS" })),
     ...(d.inteligencia ?? []).map((a) => ({ ...a, to: "/intelligence" as const, nome: "Intelligence" })),
     ...(d.atribuicao ?? []).map((a) => ({ ...a, to: "/attribution" as const, nome: "Attribution" })),

@@ -239,8 +239,25 @@ export function creators360(
     if (rs + rt > 0 && dia(r["data"]) > cur.ultima) cur.ultima = dia(r["data"]);
     inf.set(k, cur);
   }
+  // Receita do UpPromote por cupom no período: entra no influenciador do mesmo cupom pela regra da planilha de
+  // fechamento (venda considerada = maior entre cupom e UpPromote), para a mesma venda não contar duas vezes.
+  const upPorCupom = new Map<string, number>();
+  {
+    const cadUp = new Map(
+      i.upAfiliados.map((a) => [txt(a["uppromote_id"]), txt(a["cupom"]).toUpperCase()]),
+    );
+    for (const r of i.upMes) {
+      const mes = txt(r["mes"]).slice(0, 7);
+      if (mes < de.slice(0, 7) || mes > ate.slice(0, 7)) continue;
+      const cupom = cadUp.get(txt(r["uppromote_id"]));
+      if (cupom) upPorCupom.set(cupom, (upPorCupom.get(cupom) ?? 0) + n(r["receita"]));
+    }
+  }
+  const cuponsInfluenciador = new Set<string>();
   for (const [k, x] of inf) {
     const q = qual.get(x.cupom.toUpperCase());
+    if (x.cupom) cuponsInfluenciador.add(x.cupom.toUpperCase());
+    x.site = Math.max(x.site, upPorCupom.get(x.cupom.toUpperCase()) ?? 0);
     const gmv = x.site + x.tt;
     out.push({
       chave: `inf:${k}`,
@@ -330,6 +347,8 @@ export function creators360(
   }
   for (const [k, x] of up) {
     const a = cad.get(k) ?? {};
+    // Mesmo cupom de um influenciador: já entrou nele pela venda considerada.
+    if (cuponsInfluenciador.has(txt((a as Row)["cupom"]).toUpperCase())) continue;
     const com = nn((a as Row)["comissao_pct"]);
     const cupom = txt((a as Row)["cupom"]);
     const q = qual.get(cupom.toUpperCase());

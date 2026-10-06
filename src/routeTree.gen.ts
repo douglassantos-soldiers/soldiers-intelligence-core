@@ -20,6 +20,7 @@ import { Route as IntelligenceRouteImport } from './routes/intelligence'
 import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as AffiliateCreatorsRouteImport } from './routes/affiliate_.creators'
+import { Route as AffiliateFechamentoRouteImport } from './routes/affiliate_.fechamento'
 import { Route as AffiliateOsRouteImport } from './routes/affiliate_.os'
 import { Route as AfiliadosHojeRouteImport } from './routes/afiliados.hoje'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
@@ -97,6 +98,11 @@ const MediaRoute = MediaRouteImport.update({
 const AffiliateCreatorsRoute = AffiliateCreatorsRouteImport.update({
   id: '/affiliate_/creators',
   path: '/affiliate/creators',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AffiliateFechamentoRoute = AffiliateFechamentoRouteImport.update({
+  id: '/affiliate_/fechamento',
+  path: '/affiliate/fechamento',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AffiliateOsRoute = AffiliateOsRouteImport.update({
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
   '/affiliate/creators': typeof AffiliateCreatorsRoute
+  '/affiliate/fechamento': typeof AffiliateFechamentoRoute
   '/affiliate/os': typeof AffiliateOsRoute
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
@@ -263,6 +270,7 @@ export interface FileRoutesByTo {
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
   '/affiliate/creators': typeof AffiliateCreatorsRoute
+  '/affiliate/fechamento': typeof AffiliateFechamentoRoute
   '/affiliate/os': typeof AffiliateOsRoute
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
@@ -300,6 +308,7 @@ export interface FileRoutesById {
   '/marketplace': typeof MarketplaceRoute
   '/media': typeof MediaRoute
   '/affiliate_/creators': typeof AffiliateCreatorsRoute
+  '/affiliate_/fechamento': typeof AffiliateFechamentoRoute
   '/affiliate_/os': typeof AffiliateOsRoute
   '/afiliados/hoje': typeof AfiliadosHojeRoute
   '/clientes/$chave': typeof ClientesChaveRoute
@@ -338,6 +347,7 @@ export interface FileRouteTypes {
     | '/marketplace'
     | '/media'
     | '/affiliate/creators'
+    | '/affiliate/fechamento'
     | '/affiliate/os'
     | '/afiliados/hoje'
     | '/clientes/$chave'
@@ -374,6 +384,7 @@ export interface FileRouteTypes {
     | '/marketplace'
     | '/media'
     | '/affiliate/creators'
+    | '/affiliate/fechamento'
     | '/affiliate/os'
     | '/afiliados/hoje'
     | '/clientes/$chave'
@@ -410,6 +421,7 @@ export interface FileRouteTypes {
     | '/marketplace'
     | '/media'
     | '/affiliate_/creators'
+    | '/affiliate_/fechamento'
     | '/affiliate_/os'
     | '/afiliados/hoje'
     | '/clientes/$chave'
@@ -447,6 +459,7 @@ export interface RootRouteChildren {
   MarketplaceRoute: typeof MarketplaceRoute
   MediaRoute: typeof MediaRoute
   AffiliateCreatorsRoute: typeof AffiliateCreatorsRoute
+  AffiliateFechamentoRoute: typeof AffiliateFechamentoRoute
   AffiliateOsRoute: typeof AffiliateOsRoute
   AfiliadosHojeRoute: typeof AfiliadosHojeRoute
   ClientesChaveRoute: typeof ClientesChaveRoute
@@ -549,6 +562,13 @@ declare module '@tanstack/react-router' {
       path: '/affiliate/creators'
       fullPath: '/affiliate/creators'
       preLoaderRoute: typeof AffiliateCreatorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/affiliate_/fechamento': {
+      id: '/affiliate_/fechamento'
+      path: '/affiliate/fechamento'
+      fullPath: '/affiliate/fechamento'
+      preLoaderRoute: typeof AffiliateFechamentoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/affiliate_/os': {
@@ -727,6 +747,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarketplaceRoute: MarketplaceRoute,
   MediaRoute: MediaRoute,
   AffiliateCreatorsRoute: AffiliateCreatorsRoute,
+  AffiliateFechamentoRoute: AffiliateFechamentoRoute,
   AffiliateOsRoute: AffiliateOsRoute,
   AfiliadosHojeRoute: AfiliadosHojeRoute,
   ClientesChaveRoute: ClientesChaveRoute,

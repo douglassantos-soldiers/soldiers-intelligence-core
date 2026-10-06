@@ -23,6 +23,7 @@ import { dadosAtribuicao } from "@/lib/clientes.functions";
 import { dadosInteligencia } from "@/lib/inteligencia.functions";
 import { dadosAffiliateOS } from "@/lib/affiliateos.functions";
 import { dadosCriativos } from "@/lib/criativos360.functions";
+import { dadosFechamento, mesAnterior } from "@/lib/fechamento.functions";
 
 const menosDiasIso = (iso: string, d: number) =>
   new Date(Date.parse(iso + "T00:00:00Z") - d * 86400000).toISOString().slice(0, 10);
@@ -529,7 +530,7 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
   const p14 = { de: new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10), ate: hoje };
   const p30 = { de: new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10), ate: hoje };
   const so = (pr: Promise<{ alertas: Alerta[] }>) => pr.then((x) => x.alertas).catch(() => [] as Alerta[]);
-  const [tiktokAds, meliDsp, afiliados, midiaSku, devolucoes, atribuicao, inteligencia, affiliateOS, criativos] = await Promise.all([
+  const [tiktokAds, meliDsp, afiliados, midiaSku, devolucoes, atribuicao, inteligencia, affiliateOS, criativos, fechamento] = await Promise.all([
     so(dadosTikTokAds(p14)),
     so(dadosMeliDsp(p14)),
     so(dadosAfiliados(p30)),
@@ -539,6 +540,7 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
     so(dadosInteligencia(p30)),
     so(dadosAffiliateOS({ foco: "Creatina" })),
     so(dadosCriativos(p14)),
+    so(dadosFechamento({ mes: mesAnterior(), base: "faturamento_liquido" })),
   ]);
   let crm: ReturnType<typeof alertasCRM> = [];
   try {
@@ -568,6 +570,7 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
     inteligencia,
     affiliateOS,
     criativos,
+    fechamento,
     estoque: (estoque.data ?? []) as Record<string, unknown>[],
     problemasDados: problemasDados.length,
     buybox: (abb.data?.[0] ?? null) as Record<string, unknown> | null,

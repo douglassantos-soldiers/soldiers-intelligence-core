@@ -31,6 +31,7 @@ const GROUPS: { title?: string; items: Item[] }[] = [
       { to: "/afiliados/hoje", label: "Affiliate: hoje", icon: Sparkles },
       { to: "/affiliate/creators", label: "Creators 360", icon: Handshake },
       { to: "/affiliate/os", label: "Affiliate OS", icon: Handshake },
+      { to: "/affiliate/fechamento", label: "Fechamento de comissões", icon: Handshake },
       { to: "/commerce", label: "Commerce", icon: Store },
       { to: "/marketplace", label: "Marketplace", icon: Boxes },
       { to: "/marketplace/tiktok", label: "TikTok Shop: economia", icon: Receipt },
