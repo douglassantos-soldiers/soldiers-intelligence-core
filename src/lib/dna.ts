@@ -1,9 +1,10 @@
-// DNA do conteúdo (Plano Mestre caps. 7.5 e 8): gancho, ângulo e CTA de cada peça, e o que cada combinação entrega.
+// DNA do conteúdo (Plano Mestre caps. 7.5, 8.11 e 8.12): gancho, ângulo, formato, produto, CTA, creator e público
+// de cada peça, o que cada valor entrega e os padrões vencedores por produto (insumo de brief).
 // Fontes que JÁ existem: título e texto do anúncio do Meta (vw_meta_anuncio_dia_completo, via placar da Central
 // de criativos) e título dos vídeos de creators no TikTok (fact_tiktok_video_dia.titulo).
 // Etiqueta manual (conteudo_etiqueta, migração 20261005160000) sempre vence a regra automática.
 // A regra lê só palavras do texto [INFERÊNCIA]: não vê a imagem nem o áudio. Por isso a tela mostra a cobertura.
-import type { CriativoPlacar } from "@/lib/criativos360";
+import { produtoDoTexto, type CriativoPlacar } from "@/lib/criativos360";
 
 type Row = Record<string, unknown>;
 const n = (v: unknown) => Number(v) || 0;
@@ -14,15 +15,21 @@ const pct = (a: number, b: number) => (b ? (a / b) * 100 : null);
 const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
 
 export const NAO_IDENTIFICADO = "(não identificado)";
-export type Dimensao = "gancho" | "angulo" | "cta";
+export type Dimensao = "gancho" | "angulo" | "formato" | "produto" | "cta" | "publico";
 export const DIMENSOES: { id: Dimensao; nome: string }[] = [
   { id: "gancho", nome: "Gancho" },
   { id: "angulo", nome: "Ângulo" },
+  { id: "formato", nome: "Formato" },
+  { id: "produto", nome: "Produto" },
   { id: "cta", nome: "CTA" },
+  { id: "publico", nome: "Público" },
 ];
+/** Dimensões do roteiro, lidas do texto. Produto vem do catálogo/nome; público só por etiqueta manual. */
+export const DIM_TEXTO = ["gancho", "angulo", "formato", "cta"] as const;
+type DimTexto = (typeof DIM_TEXTO)[number];
 
 // Ordem importa: a primeira regra que bate decide. Texto já sem acento e em minúsculas.
-const REGRAS_DNA: Record<Dimensao, [RegExp, string][]> = {
+const REGRAS_DNA: Record<DimTexto, [RegExp, string][]> = {
   gancho: [
     [/\bpov\b|\bstorytime\b|\bminha (historia|rotina)\b|\bquando eu\b/, "História / POV"],
     [
@@ -69,6 +76,26 @@ const REGRAS_DNA: Record<Dimensao, [RegExp, string][]> = {
       "Dor / problema",
     ],
   ],
+  // Formato do conteúdo (roteiro), não o tipo de mídia (vídeo/imagem/carrossel, que está em "O que funciona").
+  formato: [
+    [/\bunbox|\brecebidinho|\babrindo\b|\bchegou (o|a) meu|\bchegou (o|a) minha/, "Unboxing"],
+    [/\bantes e depois\b|\btransforma(cao|cou)\b/, "Antes e depois"],
+    [/\bvs\b|\bversus\b|\bcompara|\bqual (e|o) melhor\b|\bdiferenca entre\b/, "Comparação"],
+    [
+      /\breceita\b|\bshake\b|\bsmoothie\b|\bpanqueca\b|\bbolo\b|\bvitamina de\b/,
+      "Receita / preparo",
+    ],
+    [
+      /\bcomo (usar|tomar|fazer|preparar)\b|\bpasso a passo\b|\btutorial\b|\bdica(s)?\b|\baprenda\b/,
+      "Tutorial / dica",
+    ],
+    [
+      /\breview\b|\bresenha\b|\bvale a pena\b|\btestei\b|\bminha opiniao\b|\bsincer[oa]\b|\bavaliando\b/,
+      "Review",
+    ],
+    [/\bdepoimento\b|\bminha experiencia\b|\bmeu relato\b|\bstorytime\b/, "Depoimento"],
+    [/\brotina\b|\bvlog\b|\bum dia\b|\btreino de hoje\b|\bmeu dia\b|\bpov\b/, "Rotina / vlog"],
+  ],
   cta: [
     [/\bcupom\b|\bcodigo\b|\buse o\b/, "Cupom"],
     [
@@ -86,13 +113,23 @@ const REGRAS_DNA: Record<Dimensao, [RegExp, string][]> = {
 
 export type DNA = Record<Dimensao, string> & { fonte: "manual" | "regra" | "misto" | "nenhuma" };
 
-/** Lê gancho, ângulo e CTA do texto. Gancho olha só o começo (primeira frase); ângulo e CTA, o texto todo. */
-export function dnaDoTexto(texto: unknown): Record<Dimensao, string> {
+/**
+ * Lê o DNA do texto. Gancho olha só o começo (primeira frase); ângulo, formato e CTA, o texto todo.
+ * Produto: o informado (catálogo/nome da peça) ou o citado no texto. Público: sempre etiqueta manual.
+ */
+export function dnaDoTexto(texto: unknown, produto?: unknown): Record<Dimensao, string> {
   const t = semAcento(txt(texto).toLowerCase());
   const inicio = t.split(/(?<=[.!?])\s|\n/)[0] ?? t;
-  const acha = (d: Dimensao, s: string) =>
+  const acha = (d: DimTexto, s: string) =>
     REGRAS_DNA[d].find(([re]) => re.test(s))?.[1] ?? NAO_IDENTIFICADO;
-  return { gancho: acha("gancho", inicio), angulo: acha("angulo", t), cta: acha("cta", t) };
+  return {
+    gancho: acha("gancho", inicio),
+    angulo: acha("angulo", t),
+    formato: acha("formato", t),
+    produto: produtoDoTexto(produto) || produtoDoTexto(texto) || NAO_IDENTIFICADO,
+    cta: acha("cta", t),
+    publico: NAO_IDENTIFICADO,
+  };
 }
 
 /** Etiquetas manuais atuais por canal + id da peça (vw_conteudo_etiqueta_atual). */
@@ -100,7 +137,7 @@ export function mapaManual(rows: Row[]): Map<string, Partial<Record<Dimensao, st
   const m = new Map<string, Partial<Record<Dimensao, string>>>();
   for (const r of rows) {
     const d = txt(r["dimensao"]) as Dimensao;
-    if (!["gancho", "angulo", "cta"].includes(d) || !txt(r["valor"])) continue;
+    if (!DIMENSOES.some((x) => x.id === d) || !txt(r["valor"])) continue;
     const k = `${txt(r["canal"])}:${txt(r["conteudo_id"])}`;
     m.set(k, { ...(m.get(k) ?? {}), [d]: txt(r["valor"]) });
   }
@@ -113,7 +150,7 @@ export function combina(
 ): DNA {
   const out = { ...auto, ...(manual ?? {}) };
   const temManual = !!manual && Object.keys(manual).length > 0;
-  const temRegra = (["gancho", "angulo", "cta"] as Dimensao[]).some(
+  const temRegra = DIMENSOES.map((x) => x.id).some(
     (d) => !manual?.[d] && auto[d] !== NAO_IDENTIFICADO,
   );
   return {
@@ -145,7 +182,10 @@ export function dnaMeta(
   return placar.map((c) => ({
     id: c.creativeId,
     nome: c.nome,
-    dna: combina(dnaDoTexto(`${c.titulo}. ${c.texto}`), manual.get(`meta:${c.creativeId}`)),
+    dna: combina(
+      dnaDoTexto(`${c.titulo}. ${c.texto}`, c.etiquetas.produto || c.nome),
+      manual.get(`meta:${c.creativeId}`),
+    ),
     gasto: c.gasto,
     impressoes: c.impressoes,
     cliques: c.cliques,
@@ -159,6 +199,7 @@ export function dnaMeta(
 export type PecaTikTok = {
   id: string;
   titulo: string;
+  produtoNome: string;
   creator: string;
   dna: DNA;
   views: number;
@@ -176,7 +217,7 @@ export function dnaTikTok(
 ): PecaTikTok[] {
   const m = new Map<
     string,
-    { titulo: string; creator: string; views: number; gmv: number; un: number }
+    { titulo: string; produto: string; creator: string; views: number; gmv: number; un: number }
   >();
   for (const v of videos) {
     const d = dia(v["data"]);
@@ -185,12 +226,14 @@ export function dnaTikTok(
     if (!id) continue;
     const cur = m.get(id) ?? {
       titulo: txt(v["titulo"]),
+      produto: txt(v["produto_nome"]),
       creator: txt(v["criador"]).replace(/^@/, "").toLowerCase(),
       views: 0,
       gmv: 0,
       un: 0,
     };
     if (!cur.titulo && txt(v["titulo"])) cur.titulo = txt(v["titulo"]);
+    if (!cur.produto && txt(v["produto_nome"])) cur.produto = txt(v["produto_nome"]);
     // views do fact são do dia [INFERÊNCIA pelo nome da tabela *_dia]
     cur.views += n(v["views"]);
     cur.gmv += n(v["gmv"]);
@@ -201,8 +244,9 @@ export function dnaTikTok(
     .map(([id, x]) => ({
       id,
       titulo: x.titulo,
+      produtoNome: x.produto,
       creator: x.creator,
-      dna: combina(dnaDoTexto(x.titulo), manual.get(`tiktok_creator:${id}`)),
+      dna: combina(dnaDoTexto(x.titulo, x.produto), manual.get(`tiktok_creator:${id}`)),
       views: x.views,
       gmv: x.gmv,
       unidades: x.un,
@@ -355,15 +399,16 @@ export function dnaPorCreator(pecas: PecaTikTok[]) {
         gmvMilViews: views ? (gmv / views) * 1000 : null,
         ganchoQueVende: melhor(ps, "gancho"),
         anguloQueVende: melhor(ps, "angulo"),
+        formatoQueVende: melhor(ps, "formato"),
         ctaQueVende: melhor(ps, "cta"),
       };
     })
     .sort((a, b) => b.gmv - a.gmv);
 }
 
-/** Quanto do gasto (Meta) e do GMV (TikTok) tem pelo menos uma dimensão identificada. */
+/** Quanto do gasto (Meta) e do GMV (TikTok) tem pelo menos uma dimensão do roteiro identificada. */
 export function cobertura(meta: PecaMeta[], tiktok: PecaTikTok[]) {
-  const ok = (d: DNA) => d.fonte !== "nenhuma";
+  const ok = (d: DNA) => DIM_TEXTO.some((k) => d[k] !== NAO_IDENTIFICADO);
   const gM = meta.reduce((s, p) => s + p.gasto, 0);
   const gT = tiktok.reduce((s, p) => s + p.gmv, 0);
   return {
@@ -379,6 +424,95 @@ export function cobertura(meta: PecaMeta[], tiktok: PecaTikTok[]) {
       .length,
   };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Padrões vencedores por produto (cap. 8.12): o melhor valor de cada dimensão do roteiro,
+// comparado com a média do próprio produto. Vira brief para creators e para a próxima leva de anúncios.
+
+export type Padrao = {
+  produto: string;
+  pecas: number;
+  base: number; // views (TikTok) ou gasto (Meta) do produto
+  media: number | null; // GMV por mil views ou ROAS do produto
+  escolhas: {
+    dimensao: DimTexto;
+    valor: string;
+    pecas: number;
+    resultado: number | null;
+    indice: number | null;
+  }[];
+  brief: string;
+  confianca: "alta" | "média" | "baixa";
+};
+
+type Medida<T> = { resultado: (x: T) => number; base: (x: T) => number; escala: number };
+
+export function padroesVencedores<T extends { dna: DNA }>(
+  pecas: T[],
+  m: Medida<T>,
+  minPecasProduto = 4,
+  minPecasValor = 2,
+): Padrao[] {
+  const nome: Record<string, string> = {
+    gancho: "abrir com",
+    angulo: "ângulo",
+    formato: "formato",
+    cta: "fechar com",
+  };
+  const porProduto = new Map<string, T[]>();
+  for (const p of pecas) {
+    const k = p.dna.produto;
+    porProduto.set(k, [...(porProduto.get(k) ?? []), p]);
+  }
+  const taxa = (ps: T[]) => {
+    const b = ps.reduce((s, p) => s + m.base(p), 0);
+    return b ? (ps.reduce((s, p) => s + m.resultado(p), 0) / b) * m.escala : null;
+  };
+  const out: Padrao[] = [];
+  for (const [produto, ps] of porProduto) {
+    if (produto === NAO_IDENTIFICADO || ps.length < minPecasProduto) continue;
+    const media = taxa(ps);
+    const escolhas: Padrao["escolhas"] = [];
+    for (const dim of DIM_TEXTO) {
+      const g = new Map<string, T[]>();
+      for (const p of ps)
+        if (p.dna[dim] !== NAO_IDENTIFICADO) g.set(p.dna[dim], [...(g.get(p.dna[dim]) ?? []), p]);
+      const melhor = [...g.entries()]
+        .filter(([, xs]) => xs.length >= minPecasValor)
+        .map(([valor, xs]) => ({ valor, pecas: xs.length, resultado: taxa(xs) }))
+        .sort((a, b) => (b.resultado ?? -1) - (a.resultado ?? -1))[0];
+      if (melhor && melhor.resultado != null && media != null && melhor.resultado > media)
+        escolhas.push({
+          dimensao: dim,
+          ...melhor,
+          indice: media ? melhor.resultado / media : null,
+        });
+    }
+    if (!escolhas.length) continue;
+    const menor = Math.min(...escolhas.map((e) => e.pecas));
+    out.push({
+      produto,
+      pecas: ps.length,
+      base: ps.reduce((s, p) => s + m.base(p), 0),
+      media,
+      escolhas,
+      brief: `${produto}: ${escolhas.map((e) => `${nome[e.dimensao]} ${e.valor}`).join(", ")}.`,
+      confianca: menor >= 10 ? "alta" : menor >= 5 ? "média" : "baixa",
+    });
+  }
+  return out.sort((a, b) => b.base - a.base);
+}
+
+export const MEDIDA_TIKTOK: Medida<PecaTikTok> = {
+  resultado: (p) => p.gmv,
+  base: (p) => p.views,
+  escala: 1000,
+};
+export const MEDIDA_META: Medida<PecaMeta> = {
+  resultado: (p) => p.receitaMeta,
+  base: (p) => p.gasto,
+  escala: 1,
+};
 
 // ---------------------------------------------------------------------------------------------
 // Alertas

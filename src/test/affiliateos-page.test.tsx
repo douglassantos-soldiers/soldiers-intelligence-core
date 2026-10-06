@@ -35,6 +35,9 @@ describe("tela Affiliate OS", () => {
     expect(screen.getAllByText("publicou sem venda").length).toBeGreaterThan(0);
     aba("Outreach");
     expect(screen.getByText("Creatina Q4")).toBeTruthy();
+    aba("Conteúdo (DNA)");
+    expect(screen.getByText("O que vende para cada creator em Creatina")).toBeTruthy();
+    expect(screen.getAllByText(/^Creatina: /).length).toBeGreaterThan(0);
     aba("Comissão");
     expect(screen.getByText("comissão maior compensa")).toBeTruthy();
     aba("Risco e concorrentes");

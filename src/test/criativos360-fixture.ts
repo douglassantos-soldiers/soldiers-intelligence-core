@@ -16,6 +16,9 @@ import {
   dnaPorCreator,
   cobertura,
   alertasDNA,
+  padroesVencedores,
+  MEDIDA_TIKTOK,
+  MEDIDA_META,
 } from "@/lib/dna";
 
 export const DE = "2026-09-01";
@@ -281,6 +284,8 @@ export const videos = [
   ...v("t5", "gym.gama", "Quanto custa? Whey em promoção com desconto", 25000, 900),
   ...v("t6", "gym.gama", "Antes e depois de 60 dias com creatina", 12000, 1200),
   ...v("t7", "gym.gama", "unboxing", 5000, 100),
+  ...v("t8", "fit.beta", "Review sincero da creatina, vale a pena? Link na bio", 8000, 1000),
+  ...v("t9", "fit.beta", "3 erros com creatina. Testei com laudo, carrinho amarelo", 9000, 1300),
 ];
 export const etiquetasManuais = [
   { canal: "tiktok_creator", conteudo_id: "t7", dimensao: "gancho", valor: "Novidade" },
@@ -307,6 +312,8 @@ export function criativosFixture() {
     totalBiblioteca: biblio.length,
     migracaoPendente: false,
     dna: {
+      padroesTikTok: padroesVencedores(pt, MEDIDA_TIKTOK),
+      padroesMeta: padroesVencedores(pm, MEDIDA_META, 3),
       meta: rm,
       tiktok: rt,
       combinacoes: combinacoesTikTok(pt, 1),

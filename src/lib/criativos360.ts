@@ -34,6 +34,10 @@ const PRODUTOS: [RegExp, string][] = [
   [/multivit|vitamina/i, "Vitaminas"],
 ];
 
+/** Produto pelo nome ou texto (Creatina, Whey, Pré-treino…); "" quando não reconhece. */
+export const produtoDoTexto = (texto: unknown) =>
+  PRODUTOS.find(([re]) => re.test(txt(texto)))?.[1] ?? "";
+
 export function etiquetas(nome: unknown, texto: unknown, tipo: unknown): Etiquetas {
   const s = `${txt(nome)} ${txt(texto)}`;
   const t = txt(tipo).toUpperCase();

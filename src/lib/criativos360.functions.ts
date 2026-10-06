@@ -19,6 +19,9 @@ import {
   dnaPorCreator,
   cobertura,
   alertasDNA,
+  padroesVencedores,
+  MEDIDA_TIKTOK,
+  MEDIDA_META,
 } from "@/lib/dna";
 
 type Rows = Record<string, unknown>[];
@@ -158,21 +161,18 @@ export async function dadosCriativos(p: { de: string; ate: string }) {
           () =>
             c
               .from("fact_tiktok_video_dia")
-              .select("data,video_id,titulo,criador,views,gmv,unidades")
+              .select("data,video_id,titulo,produto_nome,criador,views,gmv,unidades")
               .gte("data", p.de)
               .lte("data", p.ate),
           "tiktok videos",
           150000,
         ),
       ),
-      safe(
-        "etiquetasManuais",
-        fetchAll(
-          () => c.from("vw_conteudo_etiqueta_atual").select("canal,conteudo_id,dimensao,valor"),
-          "conteudo etiqueta",
-        ),
-        true,
-      ),
+      // Opcional e sem aviso próprio: sem a tabela, vale só a regra automática.
+      fetchAll(
+        () => c.from("vw_conteudo_etiqueta_atual").select("canal,conteudo_id,dimensao,valor"),
+        "conteudo etiqueta",
+      ).catch(() => [] as Rows),
     ]);
   // Margem de contribuição do site antes de Ads (a mídia do criativo é descontada no placar).
   const site = pl.filter((r) => /site|shopify/i.test(String(r["canal"] ?? "")));
@@ -212,6 +212,8 @@ export async function dadosCriativos(p: { de: string; ate: string }) {
       pecasMeta: pecasMeta.slice(0, 200),
       pecasTikTok: pecasTT.slice(0, 200),
       cobertura: dnaCob,
+      padroesTikTok: padroesVencedores(pecasTT, MEDIDA_TIKTOK).slice(0, 20),
+      padroesMeta: padroesVencedores(pecasMeta, MEDIDA_META, 3).slice(0, 20),
     },
     alertas: [
       ...alertasCriativos(placar, biblio),

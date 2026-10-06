@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { reconciliacaoMeta, criativosMeta, segmentosMeta, funilMeta, ritmoMeta, metasDoMes } from "@/lib/metaads";
+import {
+  reconciliacaoMeta,
+  criativosMeta,
+  segmentosMeta,
+  funilMeta,
+  ritmoMeta,
+  metasDoMes,
+} from "@/lib/metaads";
 import {
   campanhasGoogle,
   ritmoIntraday,

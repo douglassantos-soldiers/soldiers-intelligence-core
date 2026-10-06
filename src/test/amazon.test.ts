@@ -274,7 +274,6 @@ describe("reposicaoFba e recompraAsin", () => {
   });
 });
 
-
 describe("organicoVsAds", () => {
   const brand = [
     { semana_fim: "2026-09-20", termo: "creatina", nosso: true, click_share: 0.4, rank_busca: 2 },

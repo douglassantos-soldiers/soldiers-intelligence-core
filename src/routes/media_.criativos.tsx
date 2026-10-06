@@ -17,6 +17,7 @@ import {
   CsvButton,
 } from "@/components/kit";
 import { ErrosLeitura } from "@/components/erros-leitura";
+import { PadroesVencedores } from "@/components/padroes-conteudo";
 import { getCriativos } from "@/lib/criativos360.functions";
 import { REGRAS } from "@/lib/criativos360";
 import { fmtBRL, fmtNum, fmtPct, fmtX, fmtDate, periodo } from "@/lib/format";
@@ -327,7 +328,15 @@ function Funciona({ g }: { g: D["oQueFunciona"] }) {
   );
 }
 
-const NOME_DIM: Record<string, string> = { gancho: "Gancho", angulo: "Ângulo", cta: "CTA" };
+const NOME_DIM: Record<string, string> = {
+  gancho: "Gancho",
+  angulo: "Ângulo",
+  formato: "Formato",
+  produto: "Produto",
+  cta: "CTA",
+  publico: "Público",
+};
+type Dim = "gancho" | "angulo" | "formato" | "produto" | "cta" | "publico";
 const FONTE: Record<string, string> = {
   manual: "manual",
   misto: "manual + regra",
@@ -337,7 +346,7 @@ const FONTE: Record<string, string> = {
 
 function Dna({ d }: { d: D["dna"] }) {
   const [canal, setCanal] = useState<"tiktok" | "meta">("tiktok");
-  const [dim, setDim] = useState<"gancho" | "angulo" | "cta">("angulo");
+  const [dim, setDim] = useState<Dim>("angulo");
   const cob = d.cobertura;
   return (
     <div className="space-y-6">
@@ -370,7 +379,10 @@ function Dna({ d }: { d: D["dna"] }) {
           options={[
             { id: "gancho", label: "Gancho" },
             { id: "angulo", label: "Ângulo" },
+            { id: "formato", label: "Formato" },
+            { id: "produto", label: "Produto" },
             { id: "cta", label: "CTA" },
+            { id: "publico", label: "Público" },
           ]}
         />
       </div>
@@ -463,6 +475,21 @@ function Dna({ d }: { d: D["dna"] }) {
           )}
         </Panel>
       )}
+      {canal === "tiktok" ? (
+        <PadroesVencedores
+          padroes={d.padroesTikTok}
+          titulo="Padrões vencedores por produto (vídeos de creators)"
+          medida="gmvMil"
+          csv="padroes-tiktok"
+        />
+      ) : (
+        <PadroesVencedores
+          padroes={d.padroesMeta}
+          titulo="Padrões vencedores por produto (anúncios do Meta)"
+          medida="roas"
+          csv="padroes-meta"
+        />
+      )}
       <div className="grid gap-6 2xl:grid-cols-2">
         <Panel title="Combinações que mais vendem por view (TikTok)">
           {d.combinacoes.length ? (
@@ -487,7 +514,16 @@ function Dna({ d }: { d: D["dna"] }) {
         >
           {d.creators.length ? (
             <Table
-              head={["Creator", "Vídeos", "GMV", "GMV / mil views", "Gancho", "Ângulo", "CTA"]}
+              head={[
+                "Creator",
+                "Vídeos",
+                "GMV",
+                "GMV / mil views",
+                "Gancho",
+                "Ângulo",
+                "Formato",
+                "CTA",
+              ]}
             >
               {d.creators.slice(0, 30).map((c) => (
                 <tr key={c.creator}>
@@ -497,6 +533,7 @@ function Dna({ d }: { d: D["dna"] }) {
                   <Td mono>{fmtBRL(c.gmvMilViews)}</Td>
                   <Td>{c.ganchoQueVende || "—"}</Td>
                   <Td>{c.anguloQueVende || "—"}</Td>
+                  <Td>{c.formatoQueVende || "—"}</Td>
                   <Td>{c.ctaQueVende || "—"}</Td>
                 </tr>
               ))}
@@ -520,13 +557,28 @@ function Dna({ d }: { d: D["dna"] }) {
         }
       >
         {canal === "tiktok" ? (
-          <Table head={["Vídeo", "Creator", "Gancho", "Ângulo", "CTA", "Fonte", "Views", "GMV"]}>
+          <Table
+            head={[
+              "Vídeo",
+              "Creator",
+              "Produto",
+              "Gancho",
+              "Ângulo",
+              "Formato",
+              "CTA",
+              "Fonte",
+              "Views",
+              "GMV",
+            ]}
+          >
             {d.pecasTikTok.slice(0, 60).map((p) => (
               <tr key={p.id}>
                 <Td className="max-w-[320px] truncate">{p.titulo || p.id}</Td>
                 <Td>{p.creator ? `@${p.creator}` : "—"}</Td>
+                <Td>{p.dna.produto}</Td>
                 <Td>{p.dna.gancho}</Td>
                 <Td>{p.dna.angulo}</Td>
+                <Td>{p.dna.formato}</Td>
                 <Td>{p.dna.cta}</Td>
                 <Td>{FONTE[p.dna.fonte]}</Td>
                 <Td mono>{fmtNum(p.views)}</Td>
@@ -536,13 +588,25 @@ function Dna({ d }: { d: D["dna"] }) {
           </Table>
         ) : (
           <Table
-            head={["Criativo", "Gancho", "Ângulo", "CTA", "Fonte", "Gasto", "Contribuição LTV"]}
+            head={[
+              "Criativo",
+              "Produto",
+              "Gancho",
+              "Ângulo",
+              "Formato",
+              "CTA",
+              "Fonte",
+              "Gasto",
+              "Contribuição LTV",
+            ]}
           >
             {d.pecasMeta.slice(0, 60).map((p) => (
               <tr key={p.id}>
                 <Td className="max-w-[320px] truncate">{p.nome}</Td>
+                <Td>{p.dna.produto}</Td>
                 <Td>{p.dna.gancho}</Td>
                 <Td>{p.dna.angulo}</Td>
+                <Td>{p.dna.formato}</Td>
                 <Td>{p.dna.cta}</Td>
                 <Td>{FONTE[p.dna.fonte]}</Td>
                 <Td mono>{fmtBRL(p.gasto)}</Td>
@@ -553,11 +617,14 @@ function Dna({ d }: { d: D["dna"] }) {
         )}
       </Panel>
       <p className="text-xs text-muted-foreground">
-        A regra lê palavras do texto do anúncio (Meta) e do título do vídeo (TikTok): o gancho pela
-        primeira frase, ângulo e CTA pelo texto todo. Ela não vê a imagem nem ouve o áudio, então
-        &quot;(não identificado)&quot; é comum. Etiqueta manual na tabela{" "}
-        <span className="font-mono">conteudo_etiqueta</span> (migração 20261005160000) sempre vence
-        a regra. GMV por mil views compara vídeos de tamanhos diferentes; é correlação, não causa.
+        Content DNA do cap. 8.11. A regra lê palavras do texto do anúncio (Meta) e do título do
+        vídeo (TikTok): o gancho pela primeira frase; ângulo, formato e CTA pelo texto todo. O
+        produto vem do produto do vídeo ou do nome do anúncio; o creator, do @ público; o público só
+        por etiqueta manual. A regra não vê a imagem nem ouve o áudio (formatos como talking head só
+        por etiqueta), então &quot;(não identificado)&quot; é comum. Etiqueta manual na tabela{" "}
+        <span className="font-mono">conteudo_etiqueta</span> (migrações 20261005160000 e
+        20261006120000) sempre vence a regra. GMV por mil views compara vídeos de tamanhos
+        diferentes; é correlação, não causa.
       </p>
     </div>
   );

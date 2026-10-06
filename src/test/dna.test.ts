@@ -11,17 +11,25 @@ import {
   alertasDNA,
   resumoMeta,
   dnaMeta,
+  padroesVencedores,
+  MEDIDA_TIKTOK,
+  MEDIDA_META,
   NAO_IDENTIFICADO,
 } from "@/lib/dna";
 import { placarMeta } from "@/lib/criativos360";
 import { cr, videos, etiquetasManuais, DE, ATE } from "./criativos360-fixture";
 
-describe("DNA do conteúdo", () => {
-  it("lê gancho pela primeira frase e ângulo/CTA pelo texto todo", () => {
+const NI = NAO_IDENTIFICADO;
+
+describe("DNA do conteúdo (cap. 8.11)", () => {
+  it("lê gancho pela primeira frase e ângulo, formato, produto e CTA pelo texto todo", () => {
     expect(dnaDoTexto("Pare de tomar creatina assim! Creapure com laudo, link na bio")).toEqual({
       gancho: "Erro / mito",
       angulo: "Ciência / pureza",
+      formato: NI,
+      produto: "Creatina",
       cta: "Link / carrinho",
+      publico: NI,
     });
     expect(dnaDoTexto("Você toma creatina do jeito errado? Use o cupom X").gancho).toBe(
       "Erro / mito",
@@ -35,66 +43,92 @@ describe("DNA do conteúdo", () => {
       angulo: "Preço / oferta",
       cta: "Compre agora",
     });
-    expect(dnaDoTexto("unboxing")).toEqual({
-      gancho: NAO_IDENTIFICADO,
-      angulo: NAO_IDENTIFICADO,
-      cta: NAO_IDENTIFICADO,
-    });
-    // pergunta depois da primeira frase não é gancho
-    expect(dnaDoTexto("Treino de hoje. Bora?").gancho).toBe(NAO_IDENTIFICADO);
+    expect(dnaDoTexto("Treino de hoje. Bora?").gancho).toBe(NI);
+    // formato do roteiro
+    expect(dnaDoTexto("unboxing").formato).toBe("Unboxing");
+    expect(dnaDoTexto("Review sincero, vale a pena?").formato).toBe("Review");
+    expect(dnaDoTexto("Whey vs creatina: qual é melhor").formato).toBe("Comparação");
+    expect(dnaDoTexto("Receita de shake proteico").formato).toBe("Receita / preparo");
+    expect(dnaDoTexto("Como tomar creatina do jeito certo").formato).toBe("Tutorial / dica");
+    expect(dnaDoTexto("Treino de hoje com pré-treino").formato).toBe("Rotina / vlog");
+    // produto: o informado vence o citado no texto
+    expect(dnaDoTexto("creatina", "Whey 900g").produto).toBe("Whey");
+    expect(dnaDoTexto("Pré-treino novo").produto).toBe("Pré-treino");
+    expect(dnaDoTexto("bom dia").produto).toBe(NI);
   });
 
-  it("etiqueta manual vence a regra e a fonte é informada", () => {
-    const m = mapaManual(etiquetasManuais);
+  it("etiqueta manual vence a regra (inclusive formato, produto e público)", () => {
+    const m = mapaManual([
+      ...etiquetasManuais,
+      { canal: "meta", conteudo_id: "c4", dimensao: "publico", valor: "Iniciante" },
+      { canal: "meta", conteudo_id: "c4", dimensao: "cor", valor: "azul" },
+    ]);
     expect(m.get("tiktok_creator:t7")).toEqual({ gancho: "Novidade" });
-    const auto = dnaDoTexto("unboxing");
-    expect(combina(auto, m.get("tiktok_creator:t7"))).toMatchObject({
-      gancho: "Novidade",
-      fonte: "manual",
-    });
-    expect(combina(dnaDoTexto("cupom X"), { gancho: "Oferta" }).fonte).toBe("misto");
-    expect(combina(auto).fonte).toBe("nenhuma");
+    expect(m.get("meta:c4")).toEqual({ angulo: "Autoridade", publico: "Iniciante" });
+    const unbox = combina(dnaDoTexto("unboxing"), m.get("tiktok_creator:t7"));
+    expect(unbox).toMatchObject({ gancho: "Novidade", formato: "Unboxing", fonte: "misto" });
+    expect(combina(dnaDoTexto("bom dia"), { gancho: "Oferta" }).fonte).toBe("manual");
+    expect(combina(dnaDoTexto("bom dia")).fonte).toBe("nenhuma");
   });
 
   it("TikTok: soma os dias por vídeo e compara GMV por mil views com a média", () => {
     const pt = dnaTikTok(videos, mapaManual([]), DE, ATE);
-    expect(pt).toHaveLength(7);
+    expect(pt).toHaveLength(9);
     const t1 = pt.find((p) => p.id === "t1")!;
-    expect(t1.views).toBe(20000);
-    expect(t1.gmv).toBe(3000);
-    expect(t1.gmvMilViews).toBe(150);
+    expect(t1).toMatchObject({ views: 20000, gmv: 3000, gmvMilViews: 150 });
+    expect(t1.dna.produto).toBe("Creatina");
     const r = resumoTikTok(pt);
     const ciencia = r.find((g) => g.dimensao === "angulo" && g.valor === "Ciência / pureza")!;
-    expect(ciencia.videos).toBe(3);
-    expect(ciencia.creators).toBe(2);
-    // média geral: 9300 / 117000 × 1000 = 79,49; ciência: 6500 / 45000 × 1000 = 144,4
-    expect(ciencia.indice!).toBeCloseTo(144.444 / 79.487, 2);
-    const fora = dnaTikTok(videos, mapaManual([]), "2026-10-01", "2026-10-31");
-    expect(fora).toHaveLength(0);
+    expect(ciencia).toMatchObject({ videos: 4, creators: 2, views: 54000, gmv: 7800 });
+    // média geral: 11600 / 134000 × 1000; ciência: 7800 / 54000 × 1000
+    expect(ciencia.indice!).toBeCloseTo(144.444 / 86.567, 2);
+    expect(r.some((g) => g.dimensao === "formato" && g.valor === "Review")).toBe(true);
+    expect(dnaTikTok(videos, mapaManual([]), "2026-10-01", "2026-10-31")).toHaveLength(0);
   });
 
   it("DNA por creator, combinações e cobertura", () => {
     const pt = dnaTikTok(videos, mapaManual(etiquetasManuais), DE, ATE);
     const cs = dnaPorCreator(pt);
     expect(cs[0]).toMatchObject({ creator: "atleta.alfa", anguloQueVende: "Ciência / pureza" });
-    expect(combinacoesTikTok(pt)).toHaveLength(0); // nenhuma com 3 vídeos
-    expect(
-      combinacoesTikTok(pt, 1)
-        .slice(0, 2)
-        .map((c) => c.combinacao),
-    ).toContain("Erro / mito + Ciência / pureza");
+    expect(cs.find((c) => c.creator === "fit.beta")!.formatoQueVende).toBe("Review");
+    expect(combinacoesTikTok(pt).map((c) => c.combinacao)).toEqual([
+      "Erro / mito + Ciência / pureza",
+    ]);
     const placar = placarMeta(cr.anuncios, cr.cliente, 40, DE, ATE);
     const pm = dnaMeta(placar, mapaManual(etiquetasManuais));
     expect(pm.find((p) => p.id === "c4")!.dna).toMatchObject({
       angulo: "Autoridade",
       fonte: "manual",
     });
+    expect(pm.find((p) => p.id === "c1")!.dna.produto).toBe("Creatina");
     const cob = cobertura(pm, pt);
-    expect(cob.tiktokPct).toBe(100); // t7 tem etiqueta manual
+    expect(cob.tiktokPct).toBe(100);
     expect(cob.manuais).toBe(2);
   });
 
-  it("alertas: ângulo subaproveitado no TikTok e ângulo caro no Meta", () => {
+  it("padrões vencedores por produto (cap. 8.12) viram brief", () => {
+    const pt = dnaTikTok(videos, mapaManual([]), DE, ATE);
+    const ps = padroesVencedores(pt, MEDIDA_TIKTOK);
+    expect(ps).toHaveLength(1); // Whey tem só 3 vídeos (mínimo 4)
+    const c = ps[0]!;
+    expect(c).toMatchObject({ produto: "Creatina", pecas: 5, confianca: "baixa" });
+    expect(c.media!).toBeCloseTo((8000 / 59000) * 1000, 3);
+    expect(c.escolhas.map((e) => [e.dimensao, e.valor])).toEqual([
+      ["gancho", "Erro / mito"],
+      ["angulo", "Ciência / pureza"],
+      ["cta", "Link / carrinho"],
+    ]);
+    // Review (t8 + t9) vende abaixo da média da creatina e fica de fora
+    expect(c.escolhas.some((e) => e.valor === "Review")).toBe(false);
+    expect(c.brief).toBe(
+      "Creatina: abrir com Erro / mito, ângulo Ciência / pureza, fechar com Link / carrinho.",
+    );
+    expect(padroesVencedores(pt, MEDIDA_TIKTOK, 20)).toHaveLength(0);
+    const pm = dnaMeta(placarMeta(cr.anuncios, cr.cliente, 40, DE, ATE), mapaManual([]));
+    expect(padroesVencedores(pm, MEDIDA_META, 3)).toEqual([]); // poucos anúncios por produto
+  });
+
+  it("alertas: ângulo subaproveitado no TikTok e cobertura baixa no Meta", () => {
     const pt = dnaTikTok(videos, mapaManual([]), DE, ATE);
     const rt = resumoTikTok(pt);
     const rm = resumoMeta(

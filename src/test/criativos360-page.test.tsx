@@ -34,8 +34,12 @@ describe("tela Central de criativos", () => {
     expect(screen.getByText("Ângulo nos vídeos de creators")).toBeTruthy();
     expect(screen.getAllByText("Ciência / pureza").length).toBeGreaterThan(0);
     expect(screen.getAllByText("@atleta.alfa").length).toBeGreaterThan(0);
+    expect(screen.getByText("Padrões vencedores por produto (vídeos de creators)")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Anúncios (Meta)" }));
     expect(screen.getByText("Ângulo nos anúncios do Meta")).toBeTruthy();
+    expect(screen.getByText("Padrões vencedores por produto (anúncios do Meta)")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Formato" }));
+    expect(screen.getByText("Formato nos anúncios do Meta")).toBeTruthy();
     aba("Renovar e cortar");
     expect(screen.getByText("gastou sem nenhuma compra")).toBeTruthy();
     aba("Outros canais");

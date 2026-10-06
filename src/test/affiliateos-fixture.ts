@@ -9,6 +9,16 @@ import {
   qualidadePorCreator,
   alertasAffiliateOS,
 } from "@/lib/affiliateos";
+import {
+  mapaManual,
+  dnaTikTok,
+  dnaPorCreator,
+  padroesVencedores,
+  MEDIDA_TIKTOK,
+  NAO_IDENTIFICADO,
+} from "@/lib/dna";
+import { produtoDoTexto } from "@/lib/criativos360";
+import { videos as videosConteudo } from "./criativos360-fixture";
 
 export const REF = "2026-09-30";
 export const HOJE = "2026-10-01";
@@ -241,9 +251,20 @@ export function affiliateOSFixture(foco = "Creatina") {
   const nomes = new Map(
     ao.cadastro.filter((c) => c.cupom).map((c) => [String(c.cupom).toUpperCase(), c.nome]),
   );
+  // Conteúdo usa vídeos com título (fixture da Central de criativos), para não mexer nos números acima.
+  const pecas = dnaTikTok(videosConteudo, mapaManual([]), "2026-07-01", REF);
+  const focoNome = produtoDoTexto(foco) || foco;
+  const pecasFoco = pecas.filter((x) => x.dna.produto === focoNome);
   return {
     ref: REF,
     foco,
+    conteudo: {
+      padroes: padroesVencedores(pecas, MEDIDA_TIKTOK),
+      creators: dnaPorCreator(pecasFoco),
+      videos: pecasFoco,
+      videosFoco: pecasFoco.length,
+      semProduto: pecas.filter((x) => x.dna.produto === NAO_IDENTIFICADO).length,
+    },
     margemAfiliadoPct: 20,
     creators,
     totalCreators: creators.length,

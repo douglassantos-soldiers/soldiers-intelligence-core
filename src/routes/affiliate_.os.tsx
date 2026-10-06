@@ -16,6 +16,7 @@ import {
   CsvButton,
 } from "@/components/kit";
 import { ErrosLeitura } from "@/components/erros-leitura";
+import { PadroesVencedores } from "@/components/padroes-conteudo";
 import { getAffiliateOS } from "@/lib/affiliateos.functions";
 import { ESTAGIO_LABEL, STATUS_AMOSTRA, STATUS_AMOSTRA_LABEL } from "@/lib/affiliateos";
 import { fmtBRL, fmtNum, fmtPct, fmtX, fmtDate } from "@/lib/format";
@@ -37,7 +38,8 @@ export const Route = createFileRoute("/affiliate_/os")({
 });
 
 type D = Awaited<ReturnType<typeof getAffiliateOS>>;
-type Aba = "creators" | "funil" | "amostras" | "outreach" | "comissao" | "risco" | "qualidade";
+type Aba =
+  "creators" | "funil" | "amostras" | "outreach" | "conteudo" | "comissao" | "risco" | "qualidade";
 const T = (r: unknown) => r as Record<string, unknown>[];
 const FOCOS = ["Creatina", "Whey", "Pré-treino", "Glutamina"] as const;
 const TOM_CONC: Record<string, "success" | "warn" | "danger" | "primary" | "muted"> = {
@@ -144,6 +146,7 @@ function Body({ d }: { d: D }) {
           { id: "funil", label: "Funil" },
           { id: "amostras", label: "Amostras" },
           { id: "outreach", label: "Outreach" },
+          { id: "conteudo", label: "Conteúdo (DNA)" },
           { id: "comissao", label: "Comissão" },
           { id: "risco", label: "Risco e concorrentes" },
           { id: "qualidade", label: "Qualidade do cliente" },
@@ -153,6 +156,7 @@ function Body({ d }: { d: D }) {
       {aba === "funil" && <Funil f={d.funil} />}
       {aba === "amostras" && <Amostras a={d.amostras} margem={d.margemAfiliadoPct} />}
       {aba === "outreach" && <Outreach o={d.outreach} />}
+      {aba === "conteudo" && <Conteudo d={d} />}
       {aba === "comissao" && <Comissao e={d.elasticidade} />}
       {aba === "risco" && <Risco d={d} />}
       {aba === "qualidade" && <Qualidade q={d.qualidade} />}
@@ -394,6 +398,83 @@ function Outreach({ o }: { o: D["outreach"] }) {
       <p className="text-xs text-muted-foreground">
         Sugestões respeitam a nota mínima, o fit mínimo e o GMV mínimo da campanha, e deixam de fora
         quem já foi convidado.
+      </p>
+    </div>
+  );
+}
+
+function Conteudo({ d }: { d: D }) {
+  const c = d.conteudo;
+  const foco = c.padroes.filter((p) => p.produto === d.foco);
+  const outros = c.padroes.filter((p) => p.produto !== d.foco);
+  return (
+    <div className="space-y-6">
+      <PadroesVencedores
+        padroes={[...foco, ...outros]}
+        titulo={`Padrões vencedores (cap. 8.12): brief para ${d.foco} e demais produtos`}
+        medida="gmvMil"
+        csv="affiliate-os-padroes"
+        vazio="Ainda não há produto com vídeos suficientes e DNA identificado (mínimo de 4 vídeos)."
+      />
+      <Panel
+        title={`O que vende para cada creator em ${d.foco}`}
+        right={<CsvButton name="affiliate-os-dna-creators" rows={T(c.creators)} />}
+      >
+        {c.creators.length ? (
+          <Table
+            head={[
+              "Creator",
+              "Vídeos",
+              "GMV",
+              "GMV / mil views",
+              "Gancho",
+              "Ângulo",
+              "Formato",
+              "CTA",
+            ]}
+          >
+            {c.creators.slice(0, 40).map((x) => (
+              <tr key={x.creator}>
+                <Td className="font-medium">@{x.creator}</Td>
+                <Td mono>{fmtNum(x.videos)}</Td>
+                <Td mono>{fmtBRL(x.gmv)}</Td>
+                <Td mono>{fmtBRL(x.gmvMilViews)}</Td>
+                <Td>{x.ganchoQueVende || "—"}</Td>
+                <Td>{x.anguloQueVende || "—"}</Td>
+                <Td>{x.formatoQueVende || "—"}</Td>
+                <Td>{x.ctaQueVende || "—"}</Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Empty>Nenhum vídeo de {d.foco} nos últimos 90 dias.</Empty>
+        )}
+      </Panel>
+      <Panel title={`Vídeos de ${d.foco} e DNA lido (${fmtNum(c.videosFoco)})`}>
+        {c.videos.length ? (
+          <Table head={["Vídeo", "Creator", "Gancho", "Ângulo", "Formato", "CTA", "Views", "GMV"]}>
+            {c.videos.slice(0, 40).map((v) => (
+              <tr key={v.id}>
+                <Td className="max-w-[320px] truncate">{v.titulo || v.id}</Td>
+                <Td>{v.creator ? `@${v.creator}` : "—"}</Td>
+                <Td>{v.dna.gancho}</Td>
+                <Td>{v.dna.angulo}</Td>
+                <Td>{v.dna.formato}</Td>
+                <Td>{v.dna.cta}</Td>
+                <Td mono>{fmtNum(v.views)}</Td>
+                <Td mono>{fmtBRL(v.gmv)}</Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Empty>Sem vídeos no período.</Empty>
+        )}
+      </Panel>
+      <p className="text-xs text-muted-foreground">
+        Content DNA (cap. 8.11) dos vídeos de creators no TikTok, últimos 90 dias, lido do título do
+        vídeo. {c.semProduto ? `${fmtNum(c.semProduto)} vídeo(s) sem produto reconhecido. ` : ""}
+        Transcrição, problema e prova pedem a leitura do áudio pela IA, que entra com login e
+        aprovação. A visão completa (Meta e TikTok) está na Central de criativos.
       </p>
     </div>
   );

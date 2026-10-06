@@ -13,6 +13,15 @@ import {
   qualidadePorCreator,
   alertasAffiliateOS,
 } from "@/lib/affiliateos";
+import {
+  mapaManual,
+  dnaTikTok,
+  dnaPorCreator,
+  padroesVencedores,
+  MEDIDA_TIKTOK,
+  NAO_IDENTIFICADO,
+} from "@/lib/dna";
+import { produtoDoTexto } from "@/lib/criativos360";
 
 type Rows = Record<string, unknown>[];
 const menos = (iso: string, d: number) =>
@@ -49,6 +58,7 @@ export async function dadosAffiliateOS(p: { foco: string }) {
     cupons,
     qual,
     influ,
+    etiq,
   ] = await Promise.all([
     safe(
       "videos",
@@ -56,7 +66,7 @@ export async function dadosAffiliateOS(p: { foco: string }) {
         () =>
           c
             .from("fact_tiktok_video_dia")
-            .select("data,criador,produto_nome,gmv,views,video_id")
+            .select("data,criador,produto_nome,gmv,views,video_id,titulo,unidades")
             .gte("data", de90)
             .lte("data", hoje),
         "tiktok videos",
@@ -173,6 +183,12 @@ export async function dadosAffiliateOS(p: { foco: string }) {
       "influenciadores",
       fetchAll(() => c.from("dim_influenciador").select("nome,cupom"), "influenciadores"),
     ),
+    // DNA do conteúdo (cap. 8.11): etiquetas manuais, se a migração 20261005160000 foi aplicada.
+    // Opcional e sem aviso próprio: sem a tabela, vale só a regra automática.
+    fetchAll(
+      () => c.from("vw_conteudo_etiqueta_atual").select("canal,conteudo_id,dimensao,valor"),
+      "conteudo etiqueta",
+    ).catch(() => [] as Rows),
   ]);
   const ref =
     videos.reduce(
@@ -201,9 +217,21 @@ export async function dadosAffiliateOS(p: { foco: string }) {
   const nomes = new Map<string, string>();
   for (const r of [...influ, ...cadastro])
     if (r["cupom"]) nomes.set(String(r["cupom"]).toUpperCase(), String(r["nome"] ?? ""));
+  // Content DNA (8.11) e padrões vencedores (8.12) dos vídeos de creators nos últimos 90 dias.
+  const pecas = dnaTikTok(videos, mapaManual(etiq), de90, ref);
+  const focoNome = produtoDoTexto(p.foco) || p.foco;
+  const pecasFoco = pecas.filter((x) => x.dna.produto === focoNome);
+  const conteudo = {
+    padroes: padroesVencedores(pecas, MEDIDA_TIKTOK),
+    creators: dnaPorCreator(pecasFoco).slice(0, 60),
+    videos: pecasFoco.slice(0, 80),
+    videosFoco: pecasFoco.length,
+    semProduto: pecas.filter((x) => x.dna.produto === NAO_IDENTIFICADO).length,
+  };
   return {
     ref,
     foco: p.foco,
+    conteudo,
     margemAfiliadoPct: margemAfiliado,
     creators: creators.slice(0, 300),
     totalCreators: creators.length,
