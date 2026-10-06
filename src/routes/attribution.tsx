@@ -149,32 +149,35 @@ function Body({ d }: { d: D }) {
           <Table
             head={[
               "Plataforma",
-              "Vende em",
               "Investido",
               "Informa",
-              "ROAS informado",
               "Site com UTM dela",
-              "ROAS pela UTM",
+              "ROAS informado / UTM",
               "Informa ×",
-              "Venda do canal",
-              "% do canal",
+              "% da venda do canal",
               "Leitura",
             ]}
           >
             {d.plataformas.map((p) => (
               <tr key={p.chave}>
-                <Td className="font-medium">{p.plataforma}</Td>
-                <Td className="text-xs">{p.destino}</Td>
+                <Td>
+                  <div className="font-medium">{p.plataforma}</div>
+                  <div className="text-xs text-muted-foreground">vende em {p.destino}</div>
+                </Td>
                 <Td mono>{fmtBRL(p.invest)}</Td>
                 <Td mono>{fmtBRL(p.informada)}</Td>
-                <Td mono>{fmtX(p.roasInformado)}</Td>
                 <Td mono>{p.utm == null ? "—" : fmtBRL(p.utm)}</Td>
-                <Td mono>{fmtX(p.roasUtm)}</Td>
+                <Td mono>
+                  {fmtX(p.roasInformado)} / {p.roasUtm == null ? "—" : fmtX(p.roasUtm)}
+                </Td>
                 <Td mono className={(p.razao ?? 0) > 2 ? "text-warning" : ""}>
                   {p.razao == null ? "—" : fmtX(p.razao)}
                 </Td>
-                <Td mono>{p.realizadaCanal == null ? "—" : fmtBRL(p.realizadaCanal)}</Td>
-                <Td mono>{fmtPct(p.fatiaCanalPct, 0)}</Td>
+                <Td mono>
+                  {p.realizadaCanal == null
+                    ? "—"
+                    : `${fmtPct(p.fatiaCanalPct, 0)} de ${fmtBRL(p.realizadaCanal)}`}
+                </Td>
                 <Td>
                   <StatusTag tone={p.tom}>{p.leitura}</StatusTag>
                 </Td>
@@ -191,9 +194,10 @@ function Body({ d }: { d: D }) {
             do banco.
           </li>
           <li>
-            Marketplaces não têm UTM: a contraparte é a venda realizada do canal. &quot;% do
-            canal&quot; = quanto da venda a plataforma reivindica; acima de 100% é janela longa ou
-            dado duplicado. TikTok Ads aparece com as duas pontas (site e TikTok Shop).
+            Marketplaces não têm UTM: a contraparte é a venda realizada do canal. &quot;% da venda
+            do canal&quot; = quanto dela a plataforma reivindica; acima de 100% é janela longa ou
+            dado duplicado. TikTok Ads aparece com as duas pontas (site e TikTok Shop). &quot;Acima
+            do site&quot; = informa mais de 2× a venda com UTM dela.
           </li>
           <li>
             &quot;Sem UTM no site&quot;: houve gasto e nenhum pedido com a UTM da plataforma. No

@@ -163,7 +163,7 @@ describe("linha do tempo, transições e consentimento registrado", () => {
       realizadaCanal: 50000,
       fatiaCanalPct: 90,
     });
-    expect(por("mercado_livre").leitura).toBe("reivindica quase toda a venda");
+    expect(por("mercado_livre").leitura).toBe("quase toda a venda");
     expect(por("amazon").leitura).toBe("sem contraparte");
     // fontes do site somam a venda com UTM
     expect(d.siteFontes.map((f) => f.fonte)).toEqual([
@@ -209,7 +209,7 @@ describe("linha do tempo, transições e consentimento registrado", () => {
       fatiaCanalPct: 120,
       tom: "danger",
     });
-    expect(ps.find((p) => p.chave === "google")!.leitura).toBe("site vê mais que a plataforma");
+    expect(ps.find((p) => p.chave === "google")!.leitura).toBe("site vê mais");
     // sem nenhum dado de UTM no período, não acusa "sem UTM"
     const semDado = plataformasVsUtm([], "2026-09-01", "2026-09-30", {
       funil: [{ data: "2026-09-05", canal: "Google Ads", invest: 1000, receita_ads: 3000 }],

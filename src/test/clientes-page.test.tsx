@@ -64,7 +64,7 @@ describe("CRM: base, cliente e atribuição", () => {
       screen.getByText("Plataforma × venda (Google, Meta, TikTok e marketplaces)"),
     ).toBeTruthy();
     expect(screen.getByText("sem UTM no site")).toBeTruthy();
-    expect(screen.getByText("reivindica quase toda a venda")).toBeTruthy();
+    expect(screen.getByText("quase toda a venda")).toBeTruthy();
     expect(screen.getByText("Site por fonte de UTM")).toBeTruthy();
     expect(screen.getByText("Google orgânico")).toBeTruthy();
   });

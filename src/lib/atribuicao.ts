@@ -180,7 +180,7 @@ function leituraDe(
 ): Pick<PlataformaVsUtm, "leitura" | "tom"> {
   const L = LIMITES_PLATAFORMA;
   if (p.fatiaCanalPct != null && p.fatiaCanalPct > 100)
-    return { leitura: "informa mais que a venda do canal", tom: "danger" };
+    return { leitura: "acima da venda do canal", tom: "danger" };
   if (
     p.destino !== "marketplace" &&
     (p.invest ?? 0) >= L.investMinimo &&
@@ -190,16 +190,15 @@ function leituraDe(
     return { leitura: "sem UTM no site", tom: "danger" };
   if (p.razao != null && p.razao > L.razaoAlta)
     return {
-      leitura: `informa ${p.razao.toFixed(1).replace(".", ",")}× o que o site vê`,
+      leitura: "acima do site",
       tom: "warn",
     };
-  if (p.razao != null && p.razao < L.razaoBaixa)
-    return { leitura: "site vê mais que a plataforma", tom: "warn" };
+  if (p.razao != null && p.razao < L.razaoBaixa) return { leitura: "site vê mais", tom: "warn" };
   if (p.fatiaCanalPct != null && p.fatiaCanalPct >= L.fatiaAlta)
-    return { leitura: "reivindica quase toda a venda", tom: "warn" };
+    return { leitura: "quase toda a venda", tom: "warn" };
   if (p.razao == null && p.fatiaCanalPct == null)
     return { leitura: "sem contraparte", tom: "muted" };
-  return { leitura: "dentro do esperado", tom: "success" };
+  return { leitura: "ok", tom: "success" };
 }
 
 /**
