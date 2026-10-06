@@ -141,6 +141,68 @@ function Body({ d }: { d: D }) {
         </ul>
       </Panel>
 
+      <Panel
+        title="Plataforma × venda (Google, Meta, TikTok e marketplaces)"
+        right={<CsvButton name="atribuicao-plataformas" rows={T(d.plataformas)} />}
+      >
+        {d.plataformas.length ? (
+          <Table
+            head={[
+              "Plataforma",
+              "Vende em",
+              "Investido",
+              "Informa",
+              "ROAS informado",
+              "Site com UTM dela",
+              "ROAS pela UTM",
+              "Informa ×",
+              "Venda do canal",
+              "% do canal",
+              "Leitura",
+            ]}
+          >
+            {d.plataformas.map((p) => (
+              <tr key={p.chave}>
+                <Td className="font-medium">{p.plataforma}</Td>
+                <Td className="text-xs">{p.destino}</Td>
+                <Td mono>{fmtBRL(p.invest)}</Td>
+                <Td mono>{fmtBRL(p.informada)}</Td>
+                <Td mono>{fmtX(p.roasInformado)}</Td>
+                <Td mono>{p.utm == null ? "—" : fmtBRL(p.utm)}</Td>
+                <Td mono>{fmtX(p.roasUtm)}</Td>
+                <Td mono className={(p.razao ?? 0) > 2 ? "text-warning" : ""}>
+                  {p.razao == null ? "—" : fmtX(p.razao)}
+                </Td>
+                <Td mono>{p.realizadaCanal == null ? "—" : fmtBRL(p.realizadaCanal)}</Td>
+                <Td mono>{fmtPct(p.fatiaCanalPct, 0)}</Td>
+                <Td>
+                  <StatusTag tone={p.tom}>{p.leitura}</StatusTag>
+                </Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Empty>Sem investimento em Ads no período.</Empty>
+        )}
+        <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+          <li>
+            Informa = o que a plataforma atribui a si, na janela dela. Site com UTM = pedidos do
+            Shopify cujo último clique tem a UTM da plataforma. No Meta vale a reconciliação pronta
+            do banco.
+          </li>
+          <li>
+            Marketplaces não têm UTM: a contraparte é a venda realizada do canal. &quot;% do
+            canal&quot; = quanto da venda a plataforma reivindica; acima de 100% é janela longa ou
+            dado duplicado. TikTok Ads aparece com as duas pontas (site e TikTok Shop).
+          </li>
+          <li>
+            &quot;Sem UTM no site&quot;: houve gasto e nenhum pedido com a UTM da plataforma. No
+            Google isso costuma ser auto-tagging (gclid) sem utm_source no modelo de URL da conta.
+          </li>
+          <li>Nenhuma coluna se soma com outra: são visões diferentes da mesma venda.</li>
+        </ul>
+      </Panel>
+
       <div className="grid gap-6 2xl:grid-cols-2">
         <Panel
           title="Site por origem (UTM, último clique)"
@@ -166,26 +228,31 @@ function Body({ d }: { d: D }) {
           </p>
         </Panel>
         <div className="space-y-6">
-          <Panel title="Plataforma × UTM no Shopify">
-            {d.plataformas.length ? (
-              <Table head={["Plataforma", "Informa", "Com UTM dela", "Informa ×"]}>
-                {d.plataformas.map((p) => (
-                  <tr key={p.plataforma}>
-                    <Td>{p.plataforma}</Td>
-                    <Td mono>{fmtBRL(p.informada)}</Td>
-                    <Td mono>{fmtBRL(p.utm)}</Td>
-                    <Td mono className={(p.razao ?? 0) > 2 ? "text-warning" : ""}>
-                      {p.razao == null ? "—" : `${p.razao.toFixed(1).replace(".", ",")}×`}
+          <Panel
+            title="Site por fonte de UTM"
+            right={<CsvButton name="atribuicao-site-fonte-utm" rows={T(d.siteFontes)} />}
+          >
+            {d.siteFontes.length ? (
+              <Table head={["Fonte", "Pedidos", "Receita", "%", "utm_source / medium vistos"]}>
+                {d.siteFontes.map((f) => (
+                  <tr key={f.fonte}>
+                    <Td>{f.fonte}</Td>
+                    <Td mono>{fmtNum(f.pedidos)}</Td>
+                    <Td mono>{fmtBRL(f.receita)}</Td>
+                    <Td mono>{fmtPct(f.sharePct, 1)}</Td>
+                    <Td className="max-w-[260px] truncate text-xs text-muted-foreground">
+                      {f.exemplos || "—"}
                     </Td>
                   </tr>
                 ))}
               </Table>
             ) : (
-              <Empty />
+              <Empty>Sem pedidos com UTM no período.</Empty>
             )}
             <p className="mt-3 text-xs text-muted-foreground">
-              Hoje só o Meta tem as duas pontas no banco. Google, TikTok e marketplaces entram
-              quando houver venda com UTM ligada a cada um.
+              Agrupa o utm_source do último clique por plataforma. [HIPÓTESE] google/youtube =
+              Google Ads, a não ser que o medium diga organic; facebook/instagram = Meta. Os
+              exemplos mostram o que veio de fato, para conferir.
             </p>
           </Panel>
           <Panel title="Modelo registrado">

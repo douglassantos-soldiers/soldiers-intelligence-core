@@ -18,6 +18,7 @@ import {
   atribuicaoPorCanal,
   siteUtm,
   plataformasVsUtm,
+  siteUtmPorFonte,
   modelosRegistrados,
   resumoAtribuicao,
   alertasAtribuicao,
@@ -307,7 +308,7 @@ export async function dadosAtribuicao(p: { de: string; ate: string }) {
     }
   };
   const hoje = new Date().toISOString().slice(0, 10);
-  const [consol, origem, recon, config] = await Promise.all([
+  const [consol, origem, recon, config, funil, utmSite] = await Promise.all([
     safe(
       "consolidada",
       fetchAll(
@@ -355,10 +356,42 @@ export async function dadosAtribuicao(p: { de: string; ate: string }) {
         "config atribuicao",
       ),
     ),
+    // Receita que cada plataforma de Ads informa (Google, TikTok, ML, Amazon, Shopee…)
+    safe(
+      "adsFunil",
+      fetchAll(
+        () =>
+          c
+            .from("vw_ads_funil_canal_dia")
+            .select("data,canal,invest,receita_ads")
+            .gte("data", p.de)
+            .lte("data", p.ate),
+        "ads funil",
+      ),
+    ),
+    // Pedidos do site por utm_source / utm_medium (último clique)
+    safe(
+      "siteUtm",
+      fetchAll(
+        () =>
+          c
+            .from("vw_site_pedido_origem_dia")
+            .select("data,utm_source,utm_medium,pedidos,receita")
+            .gte("data", p.de)
+            .lte("data", p.ate),
+        "site utm",
+        60000,
+      ),
+    ),
   ]);
   const canais = atribuicaoPorCanal(consol, p.de, p.ate);
   const site = siteUtm(origem, p.de, p.ate);
-  const plataformas = plataformasVsUtm(recon, p.de, p.ate);
+  const plataformas = plataformasVsUtm(recon, p.de, p.ate, {
+    funil,
+    utmSite,
+    consolidada: consol,
+  });
+  const siteFontes = siteUtmPorFonte(utmSite, p.de, p.ate);
   const realizadaSite = canais.find((x) => /site|shopify/i.test(x.canal))?.realizada ?? null;
   return {
     resumo: resumoAtribuicao(canais),
@@ -366,6 +399,7 @@ export async function dadosAtribuicao(p: { de: string; ate: string }) {
     site,
     realizadaSite,
     plataformas,
+    siteFontes,
     modelos: modelosRegistrados(config, hoje),
     alertas: alertasAtribuicao({ canais, plataformas, site, realizadaSite }),
     erros,

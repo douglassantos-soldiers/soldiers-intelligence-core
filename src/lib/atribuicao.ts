@@ -2,7 +2,8 @@
 // ATRIBUÍDA por UTM (último clique do site) e de AFILIADOS, sem somar uma com a outra. A receita incremental
 // não é medida (precisa de grupo de controle) e aparece como lacuna.
 // Objetos que JÁ existem: vw_receita_consolidada, vw_site_origem_dia, vw_reconciliacao_shopify_meta_dia
-// e config_atribuicao_site (modelo registrado, com início de vigência).
+// config_atribuicao_site (modelo registrado, com início de vigência), vw_ads_funil_canal_dia (receita que
+// cada plataforma de Ads informa) e vw_site_pedido_origem_dia (pedidos do site por utm_source / utm_medium).
 
 import { reconciliacaoMeta } from "@/lib/metaads";
 
@@ -93,25 +94,232 @@ export function siteUtm(rows: Row[], de: string, ate: string) {
   };
 }
 
-export type PlataformaVsUtm = {
-  plataforma: string;
-  informada: number;
-  utm: number;
-  razao: number | null;
+// ---------------------------------------------------------------------------------------------
+// Plataforma × UTM (site) × venda do canal (marketplaces). Cap. 13.2: cada número na sua coluna.
+
+/** Classifica utm_source / utm_medium do pedido do site. [HIPÓTESE] valores livres; regra por palavra. */
+export function fonteUtm(source: unknown, medium: unknown): string {
+  const s = txt(source).toLowerCase();
+  const m = txt(medium).toLowerCase();
+  if (!s && !m) return "Sem UTM";
+  if (/facebook|^fb\b|instagram|^ig\b|^meta\b/.test(s)) return "Meta Ads";
+  if (/google|youtube|gads|adwords/.test(s))
+    return /organic/.test(m) ? "Google orgânico" : "Google Ads";
+  if (/tiktok/.test(s)) return /organic/.test(m) ? "TikTok orgânico" : "TikTok Ads";
+  if (/klaviyo|^rd\b|rdstation|e-?mail|newsletter|whatsapp/.test(s + " " + m)) return "CRM";
+  if (/influ|afiliad|creator|parceir/.test(s + " " + m)) return "Influência / afiliados";
+  if (/bing|microsoft/.test(s)) return "Bing";
+  return "Outras";
+}
+
+/** Plataforma de Ads a partir do canal de vw_ads_funil_canal_dia. */
+export function plataformaDe(canal: unknown): { chave: string; nome: string; destino: Destino } {
+  const s = txt(canal)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (/meta|facebook|instagram/.test(s))
+    return { chave: "meta", nome: "Meta Ads", destino: "site" };
+  if (/google|gads|youtube/.test(s))
+    return { chave: "google", nome: "Google Ads", destino: "site" };
+  if (/tiktok/.test(s))
+    return { chave: "tiktok", nome: "TikTok Ads", destino: "site + TikTok Shop" };
+  if (/mercado ?livre|meli|^ml\b/.test(s))
+    return { chave: "mercado_livre", nome: "Mercado Livre Ads", destino: "marketplace" };
+  if (/amazon/.test(s)) return { chave: "amazon", nome: "Amazon Ads", destino: "marketplace" };
+  if (/shopee/.test(s)) return { chave: "shopee", nome: "Shopee Ads", destino: "marketplace" };
+  return { chave: s || "outro", nome: txt(canal) || "Outro", destino: "marketplace" };
+}
+
+/** Canal de venda (vw_receita_consolidada.canal) → chave da plataforma que anuncia nele. */
+const canalVenda = (canal: unknown) => {
+  const s = txt(canal)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (/mercado ?livre|meli|^ml\b/.test(s)) return "mercado_livre";
+  if (/amazon/.test(s)) return "amazon";
+  if (/shopee/.test(s)) return "shopee";
+  if (/tiktok/.test(s)) return "tiktok";
+  return "";
 };
 
-/** O que a plataforma diz × o que o Shopify mostra com UTM dela. Hoje só o Meta tem as duas pontas no banco. */
-export function plataformasVsUtm(reconMeta: Row[], de: string, ate: string): PlataformaVsUtm[] {
+export type Destino = "site" | "marketplace" | "site + TikTok Shop";
+
+export type PlataformaVsUtm = {
+  chave: string;
+  plataforma: string;
+  destino: Destino;
+  invest: number | null;
+  /** Receita que a plataforma atribui a si (janela dela). */
+  informada: number;
+  /** Venda do site com UTM da plataforma (último clique). null quando a plataforma não vende no site. */
+  utm: number | null;
+  pedidosUtm: number | null;
+  /** informada ÷ UTM. */
+  razao: number | null;
+  /** Venda realizada do marketplace onde a plataforma anuncia. null para site. */
+  realizadaCanal: number | null;
+  /** informada ÷ venda do canal: quanto da venda do marketplace a plataforma reivindica. */
+  fatiaCanalPct: number | null;
+  roasInformado: number | null;
+  roasUtm: number | null;
+  leitura: string;
+  tom: "success" | "warn" | "danger" | "muted" | "primary";
+};
+
+export const LIMITES_PLATAFORMA = {
+  razaoAlta: 2, // informa 2× o que o site vê com UTM
+  razaoBaixa: 0.8, // UTM vê mais do que a plataforma (conversão perdida no pixel/CAPI)
+  fatiaAlta: 60, // plataforma reivindica 60%+ da venda do marketplace
+  investMinimo: 300,
+} as const;
+
+function leituraDe(
+  p: Omit<PlataformaVsUtm, "leitura" | "tom">,
+): Pick<PlataformaVsUtm, "leitura" | "tom"> {
+  const L = LIMITES_PLATAFORMA;
+  if (p.fatiaCanalPct != null && p.fatiaCanalPct > 100)
+    return { leitura: "informa mais que a venda do canal", tom: "danger" };
+  if (
+    p.destino !== "marketplace" &&
+    (p.invest ?? 0) >= L.investMinimo &&
+    p.utm === 0 &&
+    !p.realizadaCanal
+  )
+    return { leitura: "sem UTM no site", tom: "danger" };
+  if (p.razao != null && p.razao > L.razaoAlta)
+    return {
+      leitura: `informa ${p.razao.toFixed(1).replace(".", ",")}× o que o site vê`,
+      tom: "warn",
+    };
+  if (p.razao != null && p.razao < L.razaoBaixa)
+    return { leitura: "site vê mais que a plataforma", tom: "warn" };
+  if (p.fatiaCanalPct != null && p.fatiaCanalPct >= L.fatiaAlta)
+    return { leitura: "reivindica quase toda a venda", tom: "warn" };
+  if (p.razao == null && p.fatiaCanalPct == null)
+    return { leitura: "sem contraparte", tom: "muted" };
+  return { leitura: "dentro do esperado", tom: "success" };
+}
+
+/**
+ * O que cada plataforma diz × o que a venda mostra.
+ * - Site (Meta, Google, TikTok): venda do Shopify com utm_source da plataforma (vw_site_pedido_origem_dia).
+ *   No Meta, a reconciliação pronta (vw_reconciliacao_shopify_meta_dia) tem prioridade.
+ * - Marketplaces (ML, Amazon, Shopee) e TikTok Shop: não há UTM; a contraparte é a venda realizada do canal.
+ * Sem `extra`, devolve só o Meta (compatível com a v1).
+ */
+export function plataformasVsUtm(
+  reconMeta: Row[],
+  de: string,
+  ate: string,
+  extra?: { funil: Row[]; utmSite: Row[]; consolidada: Row[] },
+): PlataformaVsUtm[] {
   const r = reconciliacaoMeta(reconMeta, de, ate);
-  if (!r.gasto && !r.receitaInformada && !r.receitaUtm) return [];
-  return [
-    {
-      plataforma: "Meta Ads",
+  const noPeriodo = (x: Row) => {
+    const d = dia(x["data"]);
+    return d >= de && d <= ate;
+  };
+  // Plataformas pelo funil de Ads
+  const plat = new Map<
+    string,
+    { nome: string; destino: Destino; invest: number; informada: number }
+  >();
+  for (const x of (extra?.funil ?? []).filter(noPeriodo)) {
+    const p = plataformaDe(x["canal"]);
+    const cur = plat.get(p.chave) ?? { nome: p.nome, destino: p.destino, invest: 0, informada: 0 };
+    cur.invest += n(x["invest"]);
+    cur.informada += n(x["receita_ads"]);
+    plat.set(p.chave, cur);
+  }
+  // UTM do site por plataforma
+  const utm = new Map<string, { receita: number; pedidos: number }>();
+  for (const x of (extra?.utmSite ?? []).filter(noPeriodo)) {
+    const f = fonteUtm(x["utm_source"], x["utm_medium"]);
+    const k =
+      f === "Meta Ads"
+        ? "meta"
+        : f === "Google Ads"
+          ? "google"
+          : f === "TikTok Ads"
+            ? "tiktok"
+            : "";
+    if (!k) continue;
+    const cur = utm.get(k) ?? { receita: 0, pedidos: 0 };
+    cur.receita += n(x["receita"]);
+    cur.pedidos += n(x["pedidos"]);
+    utm.set(k, cur);
+  }
+  const temUtmSite = (extra?.utmSite ?? []).some(noPeriodo);
+  // Venda realizada dos canais de marketplace (e TikTok Shop)
+  const venda = new Map<string, number>();
+  for (const x of (extra?.consolidada ?? []).filter(noPeriodo)) {
+    const k = canalVenda(x["canal"]);
+    if (k) venda.set(k, (venda.get(k) ?? 0) + n(x["faturamento"]));
+  }
+  // Meta: a reconciliação pronta vence (mesma janela e mesma regra de UTM do pipeline)
+  if (r.gasto || r.receitaInformada || r.receitaUtm)
+    plat.set("meta", {
+      nome: "Meta Ads",
+      destino: "site",
+      invest: r.gasto || plat.get("meta")?.invest || 0,
       informada: r.receitaInformada,
-      utm: r.receitaUtm,
-      razao: r.receitaUtm ? r.receitaInformada / r.receitaUtm : null,
-    },
-  ];
+    });
+  const out: PlataformaVsUtm[] = [];
+  for (const [chave, x] of plat) {
+    const usaRecon = chave === "meta" && (r.gasto || r.receitaInformada || r.receitaUtm);
+    const u = usaRecon
+      ? { receita: r.receitaUtm, pedidos: r.pedidosUtm }
+      : x.destino === "marketplace"
+        ? null
+        : (utm.get(chave) ?? (temUtmSite ? { receita: 0, pedidos: 0 } : null));
+    const realizadaCanal = x.destino === "site" ? null : (venda.get(chave) ?? null);
+    const base = {
+      chave,
+      plataforma: x.nome,
+      destino: x.destino,
+      invest: x.invest || null,
+      informada: x.informada,
+      utm: u ? u.receita : null,
+      pedidosUtm: u ? u.pedidos : null,
+      razao: u && u.receita ? x.informada / u.receita : null,
+      realizadaCanal,
+      fatiaCanalPct: realizadaCanal ? (x.informada / realizadaCanal) * 100 : null,
+      roasInformado: x.invest ? x.informada / x.invest : null,
+      roasUtm: u && x.invest ? u.receita / x.invest : null,
+    };
+    out.push({ ...base, ...leituraDe(base) });
+  }
+  return out.sort((a, b) => (b.invest ?? 0) - (a.invest ?? 0));
+}
+
+/** Venda do site por fonte de UTM agrupada (Meta, Google, TikTok, CRM, sem UTM…). Soma = venda do site. */
+export function siteUtmPorFonte(rows: Row[], de: string, ate: string) {
+  const m = new Map<
+    string,
+    { fonte: string; receita: number; pedidos: number; sources: Set<string> }
+  >();
+  for (const r of rows) {
+    const d = dia(r["data"]);
+    if (d < de || d > ate) continue;
+    const f = fonteUtm(r["utm_source"], r["utm_medium"]);
+    const cur = m.get(f) ?? { fonte: f, receita: 0, pedidos: 0, sources: new Set<string>() };
+    cur.receita += n(r["receita"]);
+    cur.pedidos += n(r["pedidos"]);
+    const src = [txt(r["utm_source"]), txt(r["utm_medium"])].filter(Boolean).join(" / ");
+    if (src && cur.sources.size < 6) cur.sources.add(src);
+    m.set(f, cur);
+  }
+  const tot = [...m.values()].reduce((s, x) => s + x.receita, 0);
+  return [...m.values()]
+    .map((x) => ({
+      fonte: x.fonte,
+      receita: x.receita,
+      pedidos: x.pedidos,
+      sharePct: pct(x.receita, tot),
+      exemplos: [...x.sources].join(", "),
+    }))
+    .sort((a, b) => b.receita - a.receita);
 }
 
 export type Modelo = {
@@ -177,14 +385,37 @@ export function alertasAtribuicao(i: {
       tom: "warn",
       texto: `No ${c.canal}, Ads e afiliados somados passam de 100% da venda real: as fontes contam a mesma venda.`,
     });
-  for (const p of i.plataformas)
-    if (p.razao != null && p.razao > 2)
+  const f1 = (v: number) => v.toFixed(1).replace(".", ",");
+  for (const p of i.plataformas) {
+    if (p.razao != null && p.razao > LIMITES_PLATAFORMA.razaoAlta)
       out.push({
         tipo: "problema",
         tag: "Atribuição",
         tom: "warn",
-        texto: `${p.plataforma} informa ${p.razao.toFixed(1).replace(".", ",")}× a venda com UTM dele no Shopify.`,
+        texto: `${p.plataforma} informa ${f1(p.razao)}× a venda com UTM dele no Shopify.`,
       });
+    else if (p.leitura === "sem UTM no site")
+      out.push({
+        tipo: "problema",
+        tag: "Atribuição",
+        tom: "warn",
+        texto: `${p.plataforma} investiu ${Math.round(p.invest ?? 0).toLocaleString("pt-BR")} reais e nenhum pedido do site chegou com UTM dele. Conferir o modelo de URL (utm_source) da conta.`,
+      });
+    else if (p.razao != null && p.razao < LIMITES_PLATAFORMA.razaoBaixa)
+      out.push({
+        tipo: "problema",
+        tag: "Atribuição",
+        tom: "warn",
+        texto: `O site vê mais venda com UTM do ${p.plataforma} do que a plataforma informa: conversões podem não estar chegando a ela.`,
+      });
+    if (p.fatiaCanalPct != null && p.fatiaCanalPct > 100)
+      out.push({
+        tipo: "problema",
+        tag: "Atribuição",
+        tom: "danger",
+        texto: `${p.plataforma} informa ${Math.round(p.fatiaCanalPct)}% da venda do canal: janela de atribuição ou dado duplicado.`,
+      });
+  }
   const semOrigem = i.site.origens.find((o) =>
     /sem origem|direto|direct|\(none\)|none/i.test(o.origem),
   );

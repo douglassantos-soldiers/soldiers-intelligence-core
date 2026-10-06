@@ -8,6 +8,7 @@ import {
   linhaDoTempo,
   transicoes,
 } from "@/lib/clientes360";
+import { fonteUtm, plataformaDe, plataformasVsUtm } from "@/lib/atribuicao";
 import {
   cli,
   clienteAcaoFixture,
@@ -106,7 +107,7 @@ describe("Attribution Engine v1", () => {
       ["ultimo_clique", "2026-01-01", false],
     ]);
     expect(d.modelos[0]!.futuro).toBe(true);
-    expect(d.alertas).toHaveLength(3);
+    expect(d.alertas).toHaveLength(5);
   });
 });
 
@@ -140,5 +141,81 @@ describe("linha do tempo, transições e consentimento registrado", () => {
         .canal,
     ).toBe("E-mail (RD / Klaviyo)");
     expect(consentimentoRegistrado([])).toBeNull();
+  });
+
+  it("plataforma × venda: Google, TikTok e marketplaces além do Meta", () => {
+    const d = atribuicaoFixture();
+    const por = (k: string) => d.plataformas.find((p) => p.chave === k)!;
+    // Meta: a reconciliação pronta vence o funil
+    expect(por("meta")).toMatchObject({ invest: 10000, informada: 60000, utm: 20000, razao: 3 });
+    // Google: só google/cpc conta; google/organic fica de fora; agosto fora do período
+    expect(por("google")).toMatchObject({ invest: 3000, informada: 15000, utm: 6000, razao: 2.5 });
+    expect(por("google").roasUtm).toBe(2);
+    // TikTok: gastou, nenhum pedido do site com UTM e sem venda do TikTok Shop no período
+    expect(por("tiktok")).toMatchObject({
+      destino: "site + TikTok Shop",
+      utm: 0,
+      leitura: "sem UTM no site",
+    });
+    // Mercado Livre: sem UTM; contraparte é a venda do canal
+    expect(por("mercado_livre")).toMatchObject({
+      utm: null,
+      realizadaCanal: 50000,
+      fatiaCanalPct: 90,
+    });
+    expect(por("mercado_livre").leitura).toBe("reivindica quase toda a venda");
+    expect(por("amazon").leitura).toBe("sem contraparte");
+    // fontes do site somam a venda com UTM
+    expect(d.siteFontes.map((f) => f.fonte)).toEqual([
+      "Sem UTM",
+      "Meta Ads",
+      "Google Ads",
+      "Google orgânico",
+      "CRM",
+    ]);
+    expect(d.siteFontes.reduce((s, f) => s + f.receita, 0)).toBe(95000);
+    expect(d.alertas.some((a) => a.texto.includes("TikTok Ads investiu"))).toBe(true);
+  });
+
+  it("classifica utm_source e canal de Ads", () => {
+    expect(fonteUtm("ig", "paid_social")).toBe("Meta Ads");
+    expect(fonteUtm("Google", "CPC")).toBe("Google Ads");
+    expect(fonteUtm("google", "organic")).toBe("Google orgânico");
+    expect(fonteUtm("youtube", "video")).toBe("Google Ads");
+    expect(fonteUtm("tiktok", "cpc")).toBe("TikTok Ads");
+    expect(fonteUtm("rdstation", "email")).toBe("CRM");
+    expect(fonteUtm("", "")).toBe("Sem UTM");
+    expect(fonteUtm("pinterest", "")).toBe("Outras");
+    expect(plataformaDe("Meli Product Ads")).toMatchObject({
+      chave: "mercado_livre",
+      destino: "marketplace",
+    });
+    expect(plataformaDe("Shopee Ads").chave).toBe("shopee");
+    expect(plataformaDe("Google Ads").destino).toBe("site");
+  });
+
+  it("marketplace que informa mais que a venda do canal e plataforma que perde conversão", () => {
+    const ps = plataformasVsUtm([], "2026-09-01", "2026-09-30", {
+      funil: [
+        { data: "2026-09-05", canal: "Amazon Ads", invest: 1000, receita_ads: 12000 },
+        { data: "2026-09-05", canal: "Google Ads", invest: 1000, receita_ads: 3000 },
+      ],
+      utmSite: [
+        { data: "2026-09-05", utm_source: "google", utm_medium: "cpc", pedidos: 30, receita: 5000 },
+      ],
+      consolidada: [{ data: "2026-09-05", canal: "Amazon", faturamento: 10000 }],
+    });
+    expect(ps.find((p) => p.chave === "amazon")).toMatchObject({
+      fatiaCanalPct: 120,
+      tom: "danger",
+    });
+    expect(ps.find((p) => p.chave === "google")!.leitura).toBe("site vê mais que a plataforma");
+    // sem nenhum dado de UTM no período, não acusa "sem UTM"
+    const semDado = plataformasVsUtm([], "2026-09-01", "2026-09-30", {
+      funil: [{ data: "2026-09-05", canal: "Google Ads", invest: 1000, receita_ads: 3000 }],
+      utmSite: [],
+      consolidada: [],
+    });
+    expect(semDado[0]).toMatchObject({ utm: null, leitura: "sem contraparte" });
   });
 });

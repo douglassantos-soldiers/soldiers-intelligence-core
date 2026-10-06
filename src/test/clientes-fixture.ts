@@ -11,6 +11,7 @@ import {
   atribuicaoPorCanal,
   siteUtm,
   plataformasVsUtm,
+  siteUtmPorFonte,
   modelosRegistrados,
   resumoAtribuicao,
   alertasAtribuicao,
@@ -100,6 +101,27 @@ export const atr = {
       pedidos_totais: 100,
     },
   ],
+  funil: [
+    { data: "2026-09-10", canal: "Meta Ads", invest: 9000, receita_ads: 50000 },
+    { data: "2026-09-10", canal: "Google Ads", invest: 3000, receita_ads: 15000 },
+    { data: "2026-09-10", canal: "TikTok Ads", invest: 2000, receita_ads: 9000 },
+    { data: "2026-09-10", canal: "Mercado Livre Ads", invest: 5000, receita_ads: 45000 },
+    { data: "2026-09-10", canal: "Amazon Ads", invest: 800, receita_ads: 4000 },
+    { data: "2026-08-10", canal: "Google Ads", invest: 99999, receita_ads: 1 },
+  ],
+  utmSite: [
+    {
+      data: "2026-09-10",
+      utm_source: "facebook",
+      utm_medium: "paid",
+      pedidos: 100,
+      receita: 20000,
+    },
+    { data: "2026-09-10", utm_source: "google", utm_medium: "cpc", pedidos: 40, receita: 6000 },
+    { data: "2026-09-10", utm_source: "google", utm_medium: "organic", pedidos: 30, receita: 5000 },
+    { data: "2026-09-10", utm_source: "klaviyo", utm_medium: "email", pedidos: 20, receita: 4000 },
+    { data: "2026-09-10", utm_source: "", utm_medium: "", pedidos: 300, receita: 60000 },
+  ],
   modelos: [
     { chave: "ultimo_clique", inicio: "2026-01-01", obs: "UTM do último clique" },
     { chave: "ultimo_clique", inicio: "2026-09-15", obs: "Inclui cupom de influenciador" },
@@ -175,7 +197,11 @@ export function clienteAcaoFixture() {
 export function atribuicaoFixture() {
   const canais = atribuicaoPorCanal(atr.consol, DE, HOJE);
   const site = siteUtm(atr.origem, DE, HOJE);
-  const plataformas = plataformasVsUtm(atr.recon, DE, HOJE);
+  const plataformas = plataformasVsUtm(atr.recon, DE, HOJE, {
+    funil: atr.funil,
+    utmSite: atr.utmSite,
+    consolidada: atr.consol,
+  });
   const realizadaSite = canais.find((c) => c.canal === "Site")?.realizada ?? null;
   return {
     resumo: resumoAtribuicao(canais),
@@ -183,6 +209,7 @@ export function atribuicaoFixture() {
     site,
     realizadaSite,
     plataformas,
+    siteFontes: siteUtmPorFonte(atr.utmSite, DE, HOJE),
     modelos: modelosRegistrados(atr.modelos, HOJE),
     alertas: alertasAtribuicao({ canais, plataformas, site, realizadaSite }),
     erros: {} as Record<string, string>,
