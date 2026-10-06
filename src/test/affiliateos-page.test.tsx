@@ -50,6 +50,8 @@ describe("tela Affiliate OS", () => {
     expect(screen.getAllByText("publicou sem venda").length).toBeGreaterThan(0);
     aba("Outreach");
     expect(screen.getByText("Creatina Q4")).toBeTruthy();
+    expect(screen.getByText("Parecidos com os melhores creators")).toBeTruthy();
+    expect(screen.getByText("66%")).toBeTruthy();
     aba("Conteúdo (DNA)");
     expect(screen.getByText("O que vende para cada creator em Creatina")).toBeTruthy();
     expect(screen.getAllByText(/^Creatina: /).length).toBeGreaterThan(0);
@@ -65,6 +67,15 @@ describe("tela Affiliate OS", () => {
     expect(screen.getByText("vence em 4 dia(s)")).toBeTruthy();
     expect(screen.getByText("Candidatos a Spark Ads")).toBeTruthy();
     expect(screen.getByText(/Solicitado: 1 · Ativo: 1/)).toBeTruthy();
+    aba("Workflows");
+    expect(screen.getByText("Workflows: quem dispararia hoje (8)")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Da amostra ao post/ }));
+    expect(screen.getByText("Mensagem de entrega")).toBeTruthy();
+    expect(screen.getByText("Eventos de resposta (7)")).toBeTruthy();
+    aba("Placar do creator");
+    expect(screen.getByText("1º de 2")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Creator"), { target: { value: "@coach.beta" } });
+    expect(screen.getByText("faltam R$ 3.000 em vendas para 7%")).toBeTruthy();
     aba("Risco e concorrentes");
     expect(screen.getByText("desconto alto")).toBeTruthy();
     expect(screen.getByText("migrável")).toBeTruthy();

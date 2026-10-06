@@ -316,6 +316,7 @@ export function affiliateOSFixture(foco = "Creatina") {
     foco,
     ...programa,
     onda2Pendente: false,
+    onda3Pendente: false,
     conteudo: {
       padroes,
       creators: dnaPorCreator(pecasFoco),

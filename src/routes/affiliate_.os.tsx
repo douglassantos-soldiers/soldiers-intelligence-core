@@ -26,6 +26,7 @@ import {
   STATUS_ENCERRADOS,
 } from "@/lib/affiliateos";
 import { PLAYBOOKS, PLAYBOOK_TITULO, LIMIARES_PLAYBOOK } from "@/lib/playbooks";
+import { EVENTOS_RESPOSTA } from "@/lib/workflows";
 import {
   STATUS_DIREITO,
   STATUS_DIREITO_LABEL,
@@ -62,6 +63,8 @@ type Aba =
   | "conteudo"
   | "comissao"
   | "direitos"
+  | "workflows"
+  | "placar"
   | "risco"
   | "qualidade";
 const T = (r: unknown) => r as Record<string, unknown>[];
@@ -174,6 +177,8 @@ function Body({ d }: { d: D }) {
           { id: "conteudo", label: "Conteúdo (DNA)" },
           { id: "comissao", label: "Comissão" },
           { id: "direitos", label: "Direitos de uso" },
+          { id: "workflows", label: "Workflows" },
+          { id: "placar", label: "Placar do creator" },
           { id: "risco", label: "Risco e concorrentes" },
           { id: "qualidade", label: "Qualidade do cliente" },
         ]}
@@ -184,10 +189,17 @@ function Body({ d }: { d: D }) {
       {aba === "amostras" && (
         <Amostras a={d.amostras} margem={d.margemAfiliadoPct} funil={d.funilAmostras} />
       )}
-      {aba === "outreach" && <Outreach o={d.outreach} />}
+      {aba === "outreach" && (
+        <div className="space-y-6">
+          <Outreach o={d.outreach} />
+          <Parecidos d={d} />
+        </div>
+      )}
       {aba === "conteudo" && <Conteudo d={d} />}
       {aba === "comissao" && <Comissao d={d} />}
       {aba === "direitos" && <Direitos d={d} />}
+      {aba === "workflows" && <Workflows d={d} />}
+      {aba === "placar" && <PlacarCreator d={d} />}
       {aba === "risco" && <Risco d={d} />}
       {aba === "qualidade" && <Qualidade q={d.qualidade} />}
     </div>
@@ -1165,5 +1177,278 @@ function BriefProduto({ d }: { d: D }) {
         hipótese até o jurídico validar.
       </p>
     </Panel>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Onda 3 do benchmark Cruva: workflows (definição + simulação), creators parecidos e placar do creator
+
+const TOM_PASSO = {
+  gatilho: "border-primary/50 bg-primary/10",
+  condicao: "border-border bg-muted/40",
+  espera: "border-border bg-transparent",
+  acao: "border-success/50 bg-success/10",
+} as const;
+const ROTULO_PASSO = { gatilho: "Quando", condicao: "Se", espera: "Espera", acao: "Ação" } as const;
+
+function Workflows({ d }: { d: D }) {
+  const [aberto, setAberto] = useState<string>(d.workflows[0]?.chave ?? "");
+  const total = d.workflows.reduce((s, w) => s + w.disparos.length, 0);
+  return (
+    <div className="space-y-6">
+      {d.onda3Pendente && (
+        <div className="rounded-lg border border-warning/50 bg-warning/10 p-4 text-sm">
+          Workflows próprios precisam da migração{" "}
+          <span className="font-mono">20261006160000_affiliate_workflow.sql</span>. Sem ela, valem
+          os 6 modelos.
+        </div>
+      )}
+      <Panel
+        title={`Workflows: quem dispararia hoje (${fmtNum(total)})`}
+        right={
+          <CsvButton
+            name="affiliate-workflows-simulacao"
+            rows={d.workflows.flatMap((w) => w.disparos.map((x) => ({ workflow: w.nome, ...x })))}
+          />
+        }
+      >
+        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          {d.workflows.map((w) => (
+            <button
+              key={w.chave}
+              type="button"
+              onClick={() => setAberto(w.chave)}
+              className={`rounded-lg border p-4 text-left transition ${aberto === w.chave ? "border-primary" : "border-border hover:border-primary/50"}`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">{w.nome}</span>
+                <StatusTag tone={!w.ativo ? "muted" : w.disparos.length ? "primary" : "muted"}>
+                  {!w.ativo ? "inativo" : `${w.disparos.length} hoje`}
+                </StatusTag>
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {w.fonte === "modelo" ? "modelo" : `cadastrado, v${w.versao}`} · base: {w.origem}
+              </div>
+            </button>
+          ))}
+        </div>
+        {d.workflows
+          .filter((w) => w.chave === aberto)
+          .map((w) => (
+            <div key={w.chave} className="mt-6 space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {w.passos.map((p, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    {i > 0 && <span className="text-muted-foreground">→</span>}
+                    <div className={`rounded-md border px-3 py-2 text-xs ${TOM_PASSO[p.tipo]}`}>
+                      <div className="font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+                        {ROTULO_PASSO[p.tipo]}
+                        {p.aprovacao ? " · com aprovação" : ""}
+                      </div>
+                      <div>{p.texto}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {w.disparos.length ? (
+                <Table head={["Creator", "Etapa que dispararia", "Por quê"]}>
+                  {w.disparos.map((x, i) => (
+                    <tr key={`${x.handle || x.creator}-${i}`}>
+                      <Td>
+                        <div>{x.creator}</div>
+                        {x.handle && x.handle !== x.creator && (
+                          <div className="text-xs text-muted-foreground">{x.handle}</div>
+                        )}
+                      </Td>
+                      <Td className="font-medium">{x.etapa}</Td>
+                      <Td className="min-w-[260px] !whitespace-normal text-xs">{x.motivo}</Td>
+                    </tr>
+                  ))}
+                </Table>
+              ) : (
+                <Empty>{w.ativo ? "Ninguém dispararia hoje." : "Workflow inativo."}</Empty>
+              )}
+            </div>
+          ))}
+        <p className="mt-4 text-xs text-muted-foreground">
+          Simulação: nada é enviado nem muda de estado. Os modelos seguem os 6 fluxos da Cruva,
+          adaptados (R$, contribuição no lugar de GMV, revisão humana no lugar de blacklist). Toda
+          ação nasce com aprovação; o motor que espera e executa entra na Fase 3. Versões próprias
+          ficam em affiliate_workflow (só inserção).
+        </p>
+      </Panel>
+      <Panel title="Eventos de resposta (7)">
+        <Table head={["Evento", "De onde viria", "Hoje"]}>
+          {EVENTOS_RESPOSTA.map((x) => (
+            <tr key={x.evento}>
+              <Td className="font-medium">{x.evento}</Td>
+              <Td className="text-xs">{x.fonte}</Td>
+              <Td>
+                <StatusTag tone="muted">sem fonte</StatusTag>
+              </Td>
+            </tr>
+          ))}
+        </Table>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Os gatilhos de resposta automática da Cruva dependem de mensagens e da API oficial do
+          TikTok Shop, que ainda não estão ligadas. Ficam listados para o motor da Fase 3.
+        </p>
+      </Panel>
+    </div>
+  );
+}
+
+function Parecidos({ d }: { d: D }) {
+  const p = d.parecidos;
+  return (
+    <Panel
+      title="Parecidos com os melhores creators"
+      right={<CsvButton name="affiliate-creators-parecidos" rows={T(p.parecidos)} />}
+    >
+      <p className="mb-3 text-xs text-muted-foreground">
+        Referências: {p.referencias.map((r) => `${r.handle} (${fmtBRL(r.gmv)})`).join(" · ") || "—"}
+      </p>
+      {p.parecidos.length ? (
+        <Table
+          head={[
+            "Creator",
+            "Parecido com",
+            "Similaridade",
+            "Em comum",
+            "Vídeos",
+            "GMV 90d",
+            "GMV / mil views",
+          ]}
+        >
+          {p.parecidos.map((x) => (
+            <tr key={x.handle}>
+              <Td>
+                <div className="font-medium">{x.nome}</div>
+                <div className="text-xs text-muted-foreground">
+                  {x.nome !== x.handle ? `${x.handle} · ` : ""}
+                  {x.cadastrado ? "no cadastro" : "fora do cadastro"}
+                </div>
+              </Td>
+              <Td>{x.parecidoCom}</Td>
+              <Td mono>{x.similaridade}%</Td>
+              <Td className="min-w-[220px] !whitespace-normal text-xs">
+                {x.emComum.join(" · ") || "—"}
+              </Td>
+              <Td mono>{fmtNum(x.videos)}</Td>
+              <Td mono>{fmtBRL(x.gmv)}</Td>
+              <Td mono>{fmtBRL(x.gmvMilViews)}</Td>
+            </tr>
+          ))}
+        </Table>
+      ) : (
+        <Empty>Nenhum creator com conteúdo parecido o bastante (similaridade ≥ 50%).</Empty>
+      )}
+      <p className="mt-3 text-xs text-muted-foreground">
+        Só creators que já postaram vídeo de produto Soldiers no TikTok ({fmtNum(p.avaliados)} com
+        2+ vídeos em 90 dias), sem base de terceiros. Perfil = produto, gancho, ângulo, formato e
+        CTA dos vídeos; similaridade de cosseno com os creators de maior GMV. Sugestão para olhar
+        primeiro, não previsão de venda. Contas de loja ficam fora.
+      </p>
+    </Panel>
+  );
+}
+
+function PlacarCreator({ d }: { d: D }) {
+  const [sel, setSel] = useState<string>(d.placares[0]?.handle ?? "");
+  const p = d.placares.find((x) => x.handle === sel) ?? d.placares[0];
+  if (!p) return <Empty>Nenhum creator com venda nos últimos 90 dias.</Empty>;
+  const brief = d.briefs.find((b) => b.produto === p.briefProduto);
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="text-sm text-muted-foreground" htmlFor="placar-creator">
+          Creator
+        </label>
+        <select
+          id="placar-creator"
+          value={p.handle}
+          onChange={(e) => setSel(e.target.value)}
+          className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+        >
+          {d.placares.map((x) => (
+            <option key={x.handle} value={x.handle}>
+              {x.posicao}º · {x.nome}
+            </option>
+          ))}
+        </select>
+        <span className="text-xs text-muted-foreground">
+          Prévia interna do portal do creator: nada é publicado para ele.
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi
+          label="Posição no ranking"
+          value={`${p.posicao}º de ${p.de}`}
+          hint="GMV no TikTok, 90 dias"
+        />
+        <Kpi
+          label="Vendas em 90 dias"
+          value={fmtBRL(p.gmv)}
+          hint={`${fmtBRL(p.gmv28)} nos últimos 28`}
+        />
+        <Kpi
+          label="Comissão"
+          value={`${p.faixaPct}%`}
+          hint={
+            p.proximaFaixa
+              ? `faltam ${fmtBRL(p.proximaFaixa.faltaVendas)} em vendas para ${p.proximaFaixa.comissaoPct}%`
+              : "na faixa mais alta"
+          }
+          tone="up"
+        />
+        <Kpi
+          label="Vídeos"
+          value={fmtNum(p.videos)}
+          hint={p.ultimaVenda ? `última venda em ${fmtDate(p.ultimaVenda)}` : "sem venda"}
+        />
+      </div>
+      <div className="grid gap-6 2xl:grid-cols-2">
+        <Panel title="Amostras em andamento">
+          {p.amostras.length ? (
+            <Table head={["Produto", "Situação", "Dias", "Aviso"]}>
+              {p.amostras.map((a, i) => (
+                <tr key={`${a.produto}-${i}`}>
+                  <Td>{a.produto}</Td>
+                  <Td>{a.status}</Td>
+                  <Td mono>{a.dias == null ? "—" : fmtNum(a.dias)}</Td>
+                  <Td className="text-xs">{a.alerta || "—"}</Td>
+                </tr>
+              ))}
+            </Table>
+          ) : (
+            <Empty>Nenhuma amostra em andamento.</Empty>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            Direitos de uso ativos: {fmtNum(p.direitosAtivos)}.
+          </p>
+        </Panel>
+        <Panel
+          title={brief ? `Brief: ${brief.produto}` : "Brief"}
+          right={brief ? <CopiarTexto texto={brief.texto} rotulo="Copiar brief" /> : null}
+        >
+          {brief ? (
+            <ul className="space-y-1 text-sm">
+              {brief.usar.map((u) => (
+                <li key={u.dimensao}>
+                  <span className="font-medium">{u.dimensao}:</span> {u.valor}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Empty>Sem padrão vencedor para a categoria principal deste creator ainda.</Empty>
+          )}
+        </Panel>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        O que o portal mostraria ao creator: posição, comissão e quanto falta para a próxima faixa
+        (em vendas, sem expor a margem), amostras e o brief do produto que ele mais vende. O portal
+        em si (login do creator, PIX, comunidade) fica para depois da Fase 3.
+      </p>
+    </div>
   );
 }

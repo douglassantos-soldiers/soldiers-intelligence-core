@@ -48,6 +48,7 @@ export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: 
     }
   };
   let onda2Pendente = false;
+  let onda3Pendente = false;
   const opcionalOnda2 = (pr: Promise<Rows>) =>
     pr.catch((e) => {
       const msg = e instanceof Error ? e.message : String(e);
@@ -75,6 +76,7 @@ export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: 
     videosAno,
     regras,
     direitosRows,
+    workflowRows,
   ] = await Promise.all([
     safe(
       "videos",
@@ -267,6 +269,17 @@ export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: 
         "affiliate_direito_uso",
       ),
     ),
+    // Onda 3: workflows cadastrados (migração 20261006160000). Sem ela, valem os 6 modelos do código.
+    fetchAll(
+      () =>
+        c.from("affiliate_workflow").select("chave,nome,versao,vigente_desde,gatilho,passos,ativo"),
+      "affiliate_workflow",
+    ).catch((e) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/does not exist|não existe|schema cache|Could not find/i.test(msg)) onda3Pendente = true;
+      else erros["workflows"] = msg;
+      return [] as Rows;
+    }),
   ]);
   const ref =
     videos.reduce(
@@ -313,6 +326,7 @@ export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: 
     creators,
     regras,
     direitos: direitosRows,
+    workflows: workflowRows,
     pecas,
     padroes: [...conteudo.padroes].sort(
       (a, b) => Number(b.produto === focoNome) - Number(a.produto === focoNome),
@@ -328,6 +342,7 @@ export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: 
     conteudo,
     ...programa,
     onda2Pendente,
+    onda3Pendente,
     margemAfiliadoPct: margemAfiliado,
     creators: creators.slice(0, 300),
     totalCreators: creators.length,

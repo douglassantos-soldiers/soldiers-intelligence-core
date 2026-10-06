@@ -18,6 +18,9 @@ import {
   type DireitoUso,
 } from "@/lib/programa";
 import { NAO_IDENTIFICADO, type DNA, type Padrao } from "@/lib/dna";
+import { workflowsVigentes, simularWorkflows } from "@/lib/workflows";
+import { creatorsParecidos } from "@/lib/lookalike";
+import { placares } from "@/lib/placar";
 
 type Row = Record<string, unknown>;
 const n = (v: unknown) => Number(v) || 0;
@@ -395,6 +398,8 @@ export function programaAffiliate(i: {
   creators: CreatorOS[];
   regras: Row[];
   direitos: Row[];
+  /** Onda 3: workflows cadastrados (affiliate_workflow). Vazio = os 6 modelos. */
+  workflows?: Row[];
   pecas: PecaPrograma[];
   padroes: Padrao[];
   margemPct: number;
@@ -425,11 +430,29 @@ export function programaAffiliate(i: {
     ref: i.ref,
     hoje: i.hoje,
   });
+  const briefs = i.padroes.slice(0, 8).map((p) => briefDoProduto(p, i.pecas));
   return {
     recomendacoes: recomendacoes.slice(0, 200),
     playbooks: contagemPlaybooks(recomendacoes),
     faixas: { ...faixas, creators: faixas.creators.slice(0, 200) },
     direitos: { ...direitos, lista: direitos.lista.slice(0, 300) },
-    briefs: i.padroes.slice(0, 8).map((p) => briefDoProduto(p, i.pecas)),
+    briefs,
+    workflows: simularWorkflows(workflowsVigentes(i.workflows ?? [], i.hoje), {
+      recomendacoes,
+      amostras: i.amostras,
+      creators: i.creators,
+      faixas: faixas.creators,
+      hoje: i.hoje,
+    }),
+    parecidos: creatorsParecidos(i.pecas, i.creators),
+    placares: placares({
+      creators: i.creators,
+      faixas: faixas.creators,
+      regra: faixas.regra,
+      margemPct: i.margemPct,
+      amostras: i.amostras,
+      direitos: direitos.lista,
+      briefs,
+    }).slice(0, 150),
   };
 }
