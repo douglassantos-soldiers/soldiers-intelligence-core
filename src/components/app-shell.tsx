@@ -1,66 +1,9 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import {
-  LayoutGrid, Users, Package, ShoppingCart, Megaphone, Handshake, Store, Boxes, HeartHandshake,
-  Brain, GitBranch, Coins, Bot, Sun, Moon, Menu, X, Activity, BookOpen, Sparkles, Receipt,
-} from "lucide-react";
+import { Sun, Moon, Menu, X, ChevronRight } from "lucide-react";
+import { GRUPOS, TOPO, RODAPE, grupoDaRota, type ItemNav } from "@/components/nav-config";
 
-type Item = { to: string; label: string; icon: typeof LayoutGrid; params?: Record<string, string> };
-const GROUPS: { title?: string; items: Item[] }[] = [
-  { items: [{ to: "/", label: "Command Center", icon: LayoutGrid }] },
-  {
-    title: "Core 360",
-    items: [
-      { to: "/clientes", label: "Customer 360", icon: Users },
-      { to: "/produtos", label: "Product 360", icon: Package },
-      { to: "/pedidos", label: "Orders", icon: ShoppingCart },
-    ],
-  },
-  {
-    title: "Canais",
-    items: [
-      { to: "/media", label: "Media", icon: Megaphone },
-      { to: "/media/google", label: "Google Ads", icon: Megaphone },
-      { to: "/media/meta", label: "Meta Ads", icon: Megaphone },
-      { to: "/media/criativos", label: "Central de criativos", icon: Megaphone },
-      { to: "/media/meta/criativos", label: "Meta: subir criativos", icon: Megaphone },
-      { to: "/media/tiktok", label: "TikTok Ads", icon: Megaphone },
-      { to: "/media/meli-dsp", label: "Meli DSP", icon: Megaphone },
-      { to: "/media/produtos", label: "Mídia por produto", icon: Megaphone },
-      { to: "/affiliate", label: "Affiliate", icon: Handshake },
-      { to: "/afiliados/hoje", label: "Affiliate: hoje", icon: Sparkles },
-      { to: "/affiliate/creators", label: "Creators 360", icon: Handshake },
-      { to: "/affiliate/os", label: "Affiliate OS", icon: Handshake },
-      { to: "/affiliate/fechamento", label: "Fechamento de comissões", icon: Handshake },
-      { to: "/commerce", label: "Commerce", icon: Store },
-      { to: "/marketplace", label: "Marketplace", icon: Boxes },
-      { to: "/marketplace/tiktok", label: "TikTok Shop: economia", icon: Receipt },
-      { to: "/marketplace/amazon", label: "Amazon: ASIN 360°", icon: Boxes },
-      { to: "/marketplace/mercado-livre", label: "Mercado Livre: economia", icon: Receipt },
-      { to: "/marketplace/shopee", label: "Shopee: economia", icon: Receipt },
-      { to: "/marketplace/devolucoes", label: "Devoluções e ranking", icon: Boxes },
-      { to: "/crm", label: "CRM / Growth", icon: HeartHandshake },
-      { to: "/crm/acao", label: "CRM 2.0: ação", icon: HeartHandshake },
-      { to: "/crm/base", label: "CRM: estado da base", icon: HeartHandshake },
-    ],
-  },
-  {
-    title: "Plataforma",
-    items: [
-      { to: "/intelligence", label: "Intelligence", icon: Brain },
-      { to: "/attribution", label: "Attribution", icon: GitBranch },
-      { to: "/data-health", label: "Data Health", icon: Activity },
-      { to: "/glossario", label: "Glossário de métricas", icon: BookOpen },
-    ],
-  },
-  {
-    title: "Em breve",
-    items: [
-      { to: "/em-breve/$modulo", params: { modulo: "profit" }, label: "Profit", icon: Coins },
-      { to: "/em-breve/$modulo", params: { modulo: "ai" }, label: "AI", icon: Bot },
-    ],
-  },
-];
+const CHAVE_ABERTOS = "sp-nav-abertos";
 
 function ThemeToggle() {
   const [light, setLight] = useState(false);
@@ -85,39 +28,122 @@ function ThemeToggle() {
   );
 }
 
-function Nav({ onNavigate }: { onNavigate?: () => void }) {
+const CLASSE_ITEM =
+  "group flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground";
+const CLASSE_ATIVO = "!bg-sidebar-accent !text-sidebar-foreground font-medium";
+
+function LinkNav({
+  it,
+  onNavigate,
+  icon: Icon,
+  recuo,
+}: {
+  it: ItemNav;
+  onNavigate?: (() => void) | undefined;
+  icon?: typeof Sun | undefined;
+  recuo?: boolean | undefined;
+}) {
   return (
-    <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-6">
-      {GROUPS.map((g, i) => (
-        <div key={i}>
-          {g.title && (
-            <div className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/45">
-              {g.title}
-            </div>
+    <Link
+      to={it.to}
+      params={it.params as never}
+      onClick={onNavigate}
+      activeOptions={{ exact: !!it.exato, includeSearch: false }}
+      className={`${CLASSE_ITEM} ${recuo ? "pl-9" : ""}`}
+      activeProps={{ className: CLASSE_ATIVO }}
+    >
+      {({ isActive }) => (
+        <>
+          {Icon ? (
+            <Icon className="h-4 w-4 opacity-70" />
+          ) : (
+            <span
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${isActive ? "bg-primary" : "bg-sidebar-foreground/25 group-hover:bg-primary/60"}`}
+            />
           )}
-          <div className="space-y-0.5">
-            {g.items.map((it) => (
-              <Link
-                key={it.label}
-                to={it.to}
-                params={it.params as never}
-                onClick={onNavigate}
-                activeOptions={{ exact: it.to === "/" }}
-                className="group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                activeProps={{ className: "!bg-sidebar-accent !text-sidebar-foreground font-medium" }}
+          <span className="truncate">{it.label}</span>
+          {it.emBreve && (
+            <span className="ml-auto rounded border border-sidebar-foreground/20 px-1 text-[9px] uppercase tracking-wide text-sidebar-foreground/50">
+              em breve
+            </span>
+          )}
+        </>
+      )}
+    </Link>
+  );
+}
+
+function Nav({ onNavigate }: { onNavigate?: (() => void) | undefined }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const atual = grupoDaRota(pathname);
+  const [abertos, setAbertos] = useState<string[]>([]);
+  // Grupos que a pessoa deixou abertos ficam salvos neste navegador (conveniência; sem isso, abre só o atual).
+  useEffect(() => {
+    try {
+      const salvo = JSON.parse(localStorage.getItem(CHAVE_ABERTOS) ?? "[]");
+      if (Array.isArray(salvo)) setAbertos(salvo.filter((x) => typeof x === "string"));
+    } catch {
+      /* sem armazenamento: segue só com o grupo atual */
+    }
+  }, []);
+  const alterna = (id: string) =>
+    setAbertos((prev) => {
+      const aberto = prev.includes(id) || (id === atual && !prev.includes(`-${id}`));
+      const next = aberto
+        ? [...prev.filter((x) => x !== id), ...(id === atual ? [`-${id}`] : [])]
+        : [...prev.filter((x) => x !== `-${id}`), id];
+      try {
+        // Só os abertos de propósito ficam salvos; fechar o grupo atual vale até trocar de módulo.
+        localStorage.setItem(CHAVE_ABERTOS, JSON.stringify(next.filter((x) => !x.startsWith("-"))));
+      } catch {
+        /* ignora */
+      }
+      return next;
+    });
+  // Ao trocar de módulo, o grupo novo volta a abrir sozinho.
+  useEffect(() => {
+    setAbertos((prev) => prev.filter((x) => !x.startsWith("-")));
+  }, [atual]);
+  // O grupo da tela atual abre sozinho, a não ser que a pessoa tenha fechado ("-id").
+  const estaAberto = (id: string) =>
+    abertos.includes(id) || (id === atual && !abertos.includes(`-${id}`));
+  return (
+    <nav aria-label="Menu principal" className="flex flex-1 flex-col overflow-y-auto px-3 pb-4">
+      <LinkNav it={TOPO} icon={TOPO.icon} onNavigate={onNavigate} />
+      <div className="mt-3 space-y-1">
+        {GRUPOS.map((g) => {
+          const aberto = estaAberto(g.id);
+          return (
+            <div key={g.id}>
+              <button
+                type="button"
+                onClick={() => alterna(g.id)}
+                aria-expanded={aberto}
+                aria-controls={`nav-${g.id}`}
+                className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent ${g.id === atual ? "text-sidebar-foreground" : "text-sidebar-foreground/80"}`}
               >
-                {({ isActive }) => (
-                  <>
-                    <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-primary" : "bg-sidebar-foreground/25 group-hover:bg-primary/60"}`} />
-                    <it.icon className="h-4 w-4 opacity-70" />
-                    {it.label}
-                  </>
-                )}
-              </Link>
-            ))}
-          </div>
-        </div>
-      ))}
+                <g.icon className={`h-4 w-4 ${g.id === atual ? "text-primary" : "opacity-70"}`} />
+                <span className="flex-1">{g.title}</span>
+                <ChevronRight
+                  className={`h-3.5 w-3.5 opacity-50 transition-transform ${aberto ? "rotate-90" : ""}`}
+                />
+              </button>
+              {aberto && (
+                <div id={`nav-${g.id}`} className="mt-0.5 space-y-0.5 pb-1">
+                  {g.items.map((it) => (
+                    <LinkNav key={it.label} it={it} onNavigate={onNavigate} recuo />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-auto space-y-0.5 border-t border-sidebar-border pt-3">
+        {RODAPE.map((it) => (
+          <LinkNav key={it.label} it={it} icon={it.icon} onNavigate={onNavigate} />
+        ))}
+      </div>
     </nav>
   );
 }
@@ -125,10 +151,14 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
 function Logo() {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary font-display text-xl font-bold text-primary-foreground">S</div>
+      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary font-display text-xl font-bold text-primary-foreground">
+        S
+      </div>
       <div className="leading-none">
         <div className="font-display text-base font-bold text-sidebar-foreground">Soldiers</div>
-        <div className="font-display text-[10px] font-semibold tracking-[0.2em] text-primary">Platform</div>
+        <div className="font-display text-[10px] font-semibold tracking-[0.2em] text-primary">
+          Platform
+        </div>
       </div>
     </div>
   );
@@ -150,7 +180,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           <aside className="flex h-full w-64 flex-col bg-sidebar">
             <div className="flex items-center justify-between px-5 py-5">
               <Logo />
-              <button aria-label="Fechar menu" onClick={() => setOpen(false)} className="text-sidebar-foreground"><X className="h-5 w-5" /></button>
+              <button
+                aria-label="Fechar menu"
+                onClick={() => setOpen(false)}
+                className="text-sidebar-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
             <Nav onNavigate={() => setOpen(false)} />
           </aside>
@@ -159,7 +195,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3 lg:hidden">
-          <button aria-label="Abrir menu" onClick={() => setOpen(true)} className="text-sidebar-foreground"><Menu className="h-5 w-5" /></button>
+          <button
+            aria-label="Abrir menu"
+            onClick={() => setOpen(true)}
+            className="text-sidebar-foreground"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
           <Logo />
         </div>
         <main className="mx-auto max-w-[1600px] px-4 py-6 md:px-8 md:py-8">{children}</main>
