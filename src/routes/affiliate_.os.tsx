@@ -18,7 +18,12 @@ import {
 import { ErrosLeitura } from "@/components/erros-leitura";
 import { PadroesVencedores } from "@/components/padroes-conteudo";
 import { getAffiliateOS } from "@/lib/affiliateos.functions";
-import { ESTAGIO_LABEL, STATUS_AMOSTRA, STATUS_AMOSTRA_LABEL } from "@/lib/affiliateos";
+import {
+  ESTAGIO_LABEL,
+  STATUS_AMOSTRA,
+  STATUS_AMOSTRA_LABEL,
+  STATUS_ENCERRADOS,
+} from "@/lib/affiliateos";
 import { fmtBRL, fmtNum, fmtPct, fmtX, fmtDate } from "@/lib/format";
 
 // Affiliate OS (Plano Mestre cap. 8): Discovery → Qualification → Outreach → Sample → Content → Sales → Contribution.
@@ -122,9 +127,9 @@ function Body({ d }: { d: D }) {
           hint="Product Fit ≥ 50"
         />
         <Kpi
-          label="Amostras"
-          value={fmtNum(d.amostras.length)}
-          hint={`${fmtNum(alertasAm)} com alerta`}
+          label="Amostras em andamento"
+          value={fmtNum(d.amostras.filter((a) => !a.encerrada).length)}
+          hint={`${fmtNum(alertasAm)} com alerta · ${fmtNum(d.amostras.filter((a) => a.encerrada).length)} encerrada(s)`}
           {...(alertasAm ? { tone: "warn" as const } : {})}
         />
         <Kpi
@@ -153,8 +158,10 @@ function Body({ d }: { d: D }) {
         ]}
       />
       {aba === "creators" && <Creators d={d} />}
-      {aba === "funil" && <Funil f={d.funil} />}
-      {aba === "amostras" && <Amostras a={d.amostras} margem={d.margemAfiliadoPct} />}
+      {aba === "funil" && <Funil f={d.funil} d={d} />}
+      {aba === "amostras" && (
+        <Amostras a={d.amostras} margem={d.margemAfiliadoPct} funil={d.funilAmostras} />
+      )}
       {aba === "outreach" && <Outreach o={d.outreach} />}
       {aba === "conteudo" && <Conteudo d={d} />}
       {aba === "comissao" && <Comissao e={d.elasticidade} />}
@@ -165,12 +172,27 @@ function Body({ d }: { d: D }) {
 }
 
 function Creators({ d }: { d: D }) {
+  const [tipo, setTipo] = useState<"creator" | "loja" | "todos">("creator");
+  const lista = d.creators.filter((c) => tipo === "todos" || c.tipoConta === tipo);
   return (
     <Panel
       title={`Creators por oportunidade (${d.foco})`}
-      right={<CsvButton name="affiliate-os-creators" rows={T(d.creators)} />}
+      right={
+        <div className="flex flex-wrap items-center gap-2">
+          <Pills
+            value={tipo}
+            onChange={setTipo}
+            options={[
+              { id: "creator", label: "Creators" },
+              { id: "loja", label: `Contas de loja (${d.contasLoja})` },
+              { id: "todos", label: "Todos" },
+            ]}
+          />
+          <CsvButton name="affiliate-os-creators" rows={T(lista)} />
+        </div>
+      }
     >
-      {d.creators.length ? (
+      {lista.length ? (
         <Table
           head={[
             "Creator",
@@ -185,7 +207,7 @@ function Creators({ d }: { d: D }) {
             "Categoria principal",
           ]}
         >
-          {d.creators.slice(0, 100).map((c) => (
+          {lista.slice(0, 100).map((c) => (
             <tr key={c.chave}>
               <Td>
                 <span className="font-medium">{c.nome}</span>
@@ -198,6 +220,17 @@ function Creators({ d }: { d: D }) {
                 {c.risco && (
                   <span className="ml-1">
                     <StatusTag tone="warn">revisar risco</StatusTag>
+                  </span>
+                )}
+                {c.tipoConta !== "creator" && (
+                  <span className="ml-1" title={c.tipoMotivo}>
+                    <StatusTag tone="muted">
+                      {c.tipoConta === "loja"
+                        ? c.tipoFonte === "regra"
+                          ? "provável conta de loja"
+                          : "conta de loja"
+                        : "agência"}
+                    </StatusTag>
                   </span>
                 )}
               </Td>
@@ -237,50 +270,123 @@ function Creators({ d }: { d: D }) {
           Score × Fit × crescimento × disponibilidade ÷ quantos creators já vendem a categoria.
         </li>
         <li>
-          Creator com sinal de risco tem a Opportunity cortada pela metade até a revisão. Estágio
-          cinza = deduzido pelas vendas; azul = do cadastro do Affiliate OS. Fonte: vídeos do TikTok
-          Shop dos últimos 90 dias.
+          Conta de loja (vende R$ 2 mil+ com menos de 1 mil seguidores, ou sem seguidores no
+          cadastro e menos de 2 mil views em 90 dias) fica fora do ranking: Opportunity zero. O tipo
+          informado no cadastro (tipo_conta) vence a regra. Creator com sinal de risco tem a
+          Opportunity cortada pela metade até a revisão. Estágio cinza = deduzido pelas vendas; azul
+          = do cadastro do Affiliate OS. Fonte: vídeos do TikTok Shop dos últimos 90 dias.
         </li>
       </ul>
     </Panel>
   );
 }
 
-function Funil({ f }: { f: D["funil"] }) {
+function Funil({ f, d }: { f: D["funil"]; d: D }) {
   const max = Math.max(1, ...f.map((x) => x.chegaram));
   return (
-    <Panel title="Funil do creator">
-      <Table head={["Etapa", "Chegaram", "", "Passagem", "Parados aqui"]}>
-        {f.map((x) => (
-          <tr key={x.estagio}>
-            <Td>{x.label}</Td>
-            <Td mono>{fmtNum(x.chegaram)}</Td>
-            <Td>
-              <div className="h-2 w-40 rounded bg-muted">
-                <div
-                  className="h-2 rounded bg-primary"
-                  style={{ width: `${(x.chegaram / max) * 100}%` }}
-                />
-              </div>
-            </Td>
-            <Td mono>{fmtPct(x.passagemPct, 0)}</Td>
-            <Td mono>{fmtNum(x.agora)}</Td>
-          </tr>
-        ))}
-      </Table>
+    <div className="space-y-6">
+      <Panel title="Funil do creator">
+        <Table head={["Etapa", "Chegaram", "", "Passagem", "Parados aqui"]}>
+          {f.map((x) => (
+            <tr key={x.estagio}>
+              <Td>{x.label}</Td>
+              <Td mono>{fmtNum(x.chegaram)}</Td>
+              <Td>
+                <div className="h-2 w-40 rounded bg-muted">
+                  <div
+                    className="h-2 rounded bg-primary"
+                    style={{ width: `${(x.chegaram / max) * 100}%` }}
+                  />
+                </div>
+              </Td>
+              <Td mono>{fmtPct(x.passagemPct, 0)}</Td>
+              <Td mono>{fmtNum(x.agora)}</Td>
+            </tr>
+          ))}
+        </Table>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Sem cadastro, só as etapas a partir de "Conteúdo" aparecem (vêm das vendas). Encontrado,
+          qualificado, convidado e amostra dependem do cadastro do Affiliate OS.
+        </p>
+      </Panel>
+      <Coortes d={d} />
+    </div>
+  );
+}
+
+function Coortes({ d }: { d: D }) {
+  const c = d.coortes;
+  const n = c[0]?.meses.length ?? 0;
+  const tom = (v: number | null) =>
+    v == null
+      ? ""
+      : v >= 50
+        ? "bg-success/25"
+        : v >= 25
+          ? "bg-primary/20"
+          : v > 0
+            ? "bg-warning/15"
+            : "";
+  return (
+    <Panel title="Retenção por coorte (creators que voltam a postar)">
+      {c.length ? (
+        <Table
+          head={[
+            "Coorte (1º vídeo)",
+            "Creators",
+            ...Array.from({ length: n }, (_, k) => `Mês ${k}`),
+          ]}
+        >
+          {c.map((x) => (
+            <tr key={x.coorte}>
+              <Td mono>
+                {x.coorte.slice(5, 7)}/{x.coorte.slice(2, 4)}
+              </Td>
+              <Td mono>{fmtNum(x.creators)}</Td>
+              {x.meses.map((v, k) => (
+                <Td key={k} mono className={tom(v)}>
+                  {v == null ? "" : fmtPct(v, 0)}
+                </Td>
+              ))}
+            </tr>
+          ))}
+        </Table>
+      ) : (
+        <Empty>Sem vídeos de creators nos últimos 6 meses.</Empty>
+      )}
       <p className="mt-3 text-xs text-muted-foreground">
-        Sem cadastro, só as etapas a partir de "Conteúdo" aparecem (vêm das vendas). Encontrado,
-        qualificado, convidado e amostra dependem do cadastro do Affiliate OS.
+        Coorte = mês do primeiro vídeo do creator no TikTok Shop. Mês N = % da coorte que publicou
+        vídeo novo naquele mês. Mês 0 é sempre 100%. Fonte: 12 meses de vídeos.
+        {d.coorteIncompleta &&
+          " A leitura atingiu o limite de linhas: os meses mais antigos podem estar incompletos."}
       </p>
     </Panel>
   );
 }
 
-function Amostras({ a, margem }: { a: D["amostras"]; margem: number }) {
+function Amostras({
+  a,
+  margem,
+  funil,
+}: {
+  a: D["amostras"];
+  margem: number;
+  funil: D["funilAmostras"];
+}) {
   if (!a.length) return <Empty>Nenhuma amostra cadastrada em affiliate_amostra.</Empty>;
-  const colunas = STATUS_AMOSTRA.map((s) => ({ s, itens: a.filter((x) => x.status === s) }));
+  const ativas = a.filter((x) => !x.encerrada);
+  const colunas = STATUS_AMOSTRA.map((s) => ({ s, itens: ativas.filter((x) => x.status === s) }));
+  const atrasadas = ativas.filter((x) => x.atrasada).length;
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap gap-2 text-xs">
+        <StatusTag tone={atrasadas ? "warn" : "muted"}>Atrasadas: {atrasadas}</StatusTag>
+        {STATUS_ENCERRADOS.map((s) => (
+          <StatusTag key={s} tone="muted">
+            {STATUS_AMOSTRA_LABEL[s]}: {a.filter((x) => x.status === s).length}
+          </StatusTag>
+        ))}
+      </div>
       <div className="grid gap-3 md:grid-cols-4 2xl:grid-cols-8">
         {colunas.map(({ s, itens }) => (
           <div key={s} className="rounded-lg border border-border bg-card p-3">
@@ -309,6 +415,39 @@ function Amostras({ a, margem }: { a: D["amostras"]; margem: number }) {
           </div>
         ))}
       </div>
+      <Panel title="Funil de amostras por semana de entrega">
+        {funil.length ? (
+          <Table
+            head={[
+              "Semana",
+              "Entregues",
+              "Publicadas",
+              "Cumprimento",
+              "Dias até postar (mediana)",
+              "",
+            ]}
+          >
+            {funil.map((w) => (
+              <tr key={w.semana}>
+                <Td mono>{fmtDate(w.semana)}</Td>
+                <Td mono>{fmtNum(w.entregues)}</Td>
+                <Td mono>{fmtNum(w.publicadas)}</Td>
+                <Td mono>{fmtPct(w.cumprimentoPct, 0)}</Td>
+                <Td mono>{w.diasAtePostar == null ? "—" : fmtNum(w.diasAtePostar)}</Td>
+                <Td className="text-xs text-muted-foreground">
+                  {w.emAberto ? "ainda em prazo" : ""}
+                </Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Empty>Nenhuma amostra recebida nas últimas 8 semanas.</Empty>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Semana em que o creator recebeu a amostra. Cumprimento = quantas dessas já viraram post.
+          Semanas recentes ainda podem subir.
+        </p>
+      </Panel>
       <Panel title="ROI por amostra" right={<CsvButton name="affiliate-amostras" rows={T(a)} />}>
         <Table
           head={[
@@ -322,7 +461,7 @@ function Amostras({ a, margem }: { a: D["amostras"]; margem: number }) {
           ]}
         >
           {a.map((x) => (
-            <tr key={x.id}>
+            <tr key={x.id} className={x.encerrada ? "opacity-60" : ""}>
               <Td>{x.creator}</Td>
               <Td>{x.produto}</Td>
               <Td>{STATUS_AMOSTRA_LABEL[x.status] ?? x.status}</Td>
@@ -338,8 +477,10 @@ function Amostras({ a, margem }: { a: D["amostras"]; margem: number }) {
         <p className="mt-3 text-xs text-muted-foreground">
           Investimento = produto + frete + desconto + outros. Contribuição = GMV do creator no
           TikTok depois do envio × {fmtPct(margem, 0)} (margem da venda via afiliado, já sem
-          comissão). Alertas: 7 dias sem publicar, 14 dias sem confirmar recebimento, publicou sem
-          venda em 14 dias, ROI abaixo de 1× após 30 dias.
+          comissão). Atrasada: 3+ dias para revisar, 5+ dias sem envio depois de aprovada, 14 dias
+          sem confirmar recebimento ou 7 dias sem publicar. Também alerta publicou sem venda em 14
+          dias e ROI abaixo de 1× após 30 dias. Rejeitada, expirada, ignorada e cancelada saem do
+          kanban.
         </p>
       </Panel>
     </div>

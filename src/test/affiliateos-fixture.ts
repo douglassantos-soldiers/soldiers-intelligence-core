@@ -8,6 +8,8 @@ import {
   sinaisDeRisco,
   qualidadePorCreator,
   alertasAffiliateOS,
+  funilAmostrasSemanal,
+  retencaoCoortes,
 } from "@/lib/affiliateos";
 import {
   mapaManual,
@@ -270,6 +272,10 @@ export function affiliateOSFixture(foco = "Creatina") {
     totalCreators: creators.length,
     funil: funilCreators(creators),
     amostras,
+    funilAmostras: funilAmostrasSemanal(amostras, HOJE),
+    coortes: retencaoCoortes(ao.videos, HOJE),
+    coorteIncompleta: false,
+    contasLoja: creators.filter((c) => c.tipoConta === "loja").length,
     outreach: outreachOS(ao.campanhas, ao.convites, ao.cadastro, ao.videos, ao.skuNome, REF),
     elasticidade: [
       elasticidade("Mercado Livre", ao.ml, { taxa: "taxa_efetiva_pct", gmv: "gmv" }, 30),

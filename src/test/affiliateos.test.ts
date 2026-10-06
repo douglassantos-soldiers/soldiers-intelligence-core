@@ -24,8 +24,14 @@ describe("três notas", () => {
     expect(productFit(alfa, "Creatina")).toBe(100);
     expect(productFit(tt.get("coach.beta")!, "Creatina")).toBe(0);
     expect(por("@atleta.alfa").creatorScore).toBe(87);
+    // @fit.gama vende R$ 3 mil com 100 views: provável conta de loja, fora do ranking (onda 1 Cruva)
+    expect(por("@fit.gama")).toMatchObject({
+      tipoConta: "loja",
+      tipoFonte: "regra",
+      opportunity: 0,
+    });
     expect(new Set(d.creators.slice(0, 2).map((c) => c.handle))).toEqual(
-      new Set(["@fit.gama", "@atleta.alfa"]),
+      new Set(["@atleta.alfa", "@coach.beta"]),
     );
     expect(d.creators[0]!.opportunity).toBe(100);
     expect(por("@novato").creatorScore).toBe(0);
@@ -61,7 +67,9 @@ describe("funil, amostras e outreach", () => {
     });
   });
   it("amostras com alertas e ROI", () => {
-    expect(d.amostras.map((a) => a.id)).toEqual(["a3", "a1", "a2"]);
+    // encerradas (cancelada) ficam no fim, sem alerta
+    expect(d.amostras.map((a) => a.id)).toEqual(["a3", "a1", "a2", "a4"]);
+    expect(d.amostras.find((a) => a.id === "a4")).toMatchObject({ encerrada: true, alertas: [] });
     const a1 = d.amostras.find((a) => a.id === "a1")!;
     expect(a1).toMatchObject({
       investimento: 63,

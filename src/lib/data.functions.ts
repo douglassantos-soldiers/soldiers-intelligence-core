@@ -538,7 +538,7 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
     so(dadosDevolucoes(p30)),
     so(dadosAtribuicao(p30)),
     so(dadosInteligencia(p30)),
-    so(dadosAffiliateOS({ foco: "Creatina" })),
+    so(dadosAffiliateOS({ foco: "Creatina" }, { coortes: false })),
     so(dadosCriativos(p14)),
     so(dadosFechamento({ mes: mesAnterior(), base: "faturamento_liquido" })),
   ]);

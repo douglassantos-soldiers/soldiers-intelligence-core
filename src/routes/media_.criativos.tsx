@@ -361,7 +361,11 @@ function Dna({ d }: { d: D["dna"] }) {
           value={fmtPct(cob.tiktokPct, 0)}
           hint="pelo título do vídeo"
         />
-        <Kpi label="Vídeos de creators" value={fmtNum(d.pecasTikTok.length)} />
+        <Kpi
+          label="Vida útil do vídeo"
+          value={d.vidaUtil.mediana == null ? "—" : `${fmtNum(d.vidaUtil.mediana)} dias`}
+          hint={`mediana de ${fmtNum(d.vidaUtil.videosMaduros)} vídeos com 21+ dias`}
+        />
         <Kpi label="Etiquetas manuais" value={fmtNum(cob.manuais)} hint="vencem a regra" />
       </div>
       <div className="flex flex-wrap items-center gap-4">
@@ -401,7 +405,9 @@ function Dna({ d }: { d: D["dna"] }) {
                 "GMV",
                 "% do GMV",
                 "GMV / mil views",
-                "× média",
+                "Lift",
+                "Impacto",
+                "Vida útil",
               ]}
             >
               {d.tiktok
@@ -425,6 +431,12 @@ function Dna({ d }: { d: D["dna"] }) {
                           {fmtX(g.indice)}
                         </StatusTag>
                       )}
+                    </Td>
+                    <Td mono className={(g.impacto ?? 0) < 0 ? "text-destructive" : "text-success"}>
+                      {g.impacto == null ? "—" : fmtBRL(g.impacto)}
+                    </Td>
+                    <Td mono>
+                      {g.vidaUtilMediana == null ? "—" : `${fmtNum(g.vidaUtilMediana)} d`}
                     </Td>
                   </tr>
                 ))}
@@ -624,7 +636,10 @@ function Dna({ d }: { d: D["dna"] }) {
         por etiqueta), então &quot;(não identificado)&quot; é comum. Etiqueta manual na tabela{" "}
         <span className="font-mono">conteudo_etiqueta</span> (migrações 20261005160000 e
         20261006120000) sempre vence a regra. GMV por mil views compara vídeos de tamanhos
-        diferentes; é correlação, não causa.
+        diferentes; é correlação, não causa. Lift = GMV por mil views do grupo ÷ média. Impacto =
+        GMV a mais (ou a menos) que a média faria com as mesmas views. Vida útil = dias da
+        publicação até as views diárias caírem abaixo de 10% do pico (só vídeos publicados no
+        período e com 21 dias ou mais; quem ainda está no ar fica de fora).
       </p>
     </div>
   );

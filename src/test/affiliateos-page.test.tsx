@@ -28,10 +28,17 @@ describe("tela Affiliate OS", () => {
     expect(await screen.findByText("Creators por oportunidade (Creatina)")).toBeTruthy();
     expect(screen.getByText("Atleta Alfa")).toBeTruthy();
     const aba = (n: string) => fireEvent.click(screen.getByRole("button", { name: n }));
+    // conta de loja fica numa aba separada da lista de creators
+    expect(screen.queryByText("@fit.gama")).toBeNull();
+    aba("Contas de loja (1)");
+    expect(screen.getByText("provável conta de loja")).toBeTruthy();
     aba("Funil");
     expect(screen.getByText("Funil do creator")).toBeTruthy();
+    expect(screen.getByText("Retenção por coorte (creators que voltam a postar)")).toBeTruthy();
     aba("Amostras");
     expect(screen.getByText("ROI por amostra")).toBeTruthy();
+    expect(screen.getByText("Funil de amostras por semana de entrega")).toBeTruthy();
+    expect(screen.getByText(/Cancelado: 1/)).toBeTruthy();
     expect(screen.getAllByText("publicou sem venda").length).toBeGreaterThan(0);
     aba("Outreach");
     expect(screen.getByText("Creatina Q4")).toBeTruthy();

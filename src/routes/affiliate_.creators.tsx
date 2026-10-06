@@ -126,9 +126,14 @@ function Body({ d }: { d: D }) {
 function ListaCreators({ d }: { d: D }) {
   const [fonte, setFonte] = useState("todas");
   const [estado, setEstado] = useState("todos");
+  const [tag, setTag] = useState("todas");
   const lista = d.creators.filter(
-    (x) => (fonte === "todas" || x.fonte === fonte) && (estado === "todos" || x.estado === estado),
+    (x) =>
+      (fonte === "todas" || x.fonte === fonte) &&
+      (estado === "todos" || x.estado === estado) &&
+      (tag === "todas" || x.tags.includes(tag)),
   );
+  const nomeTag = Object.fromEntries(d.tags.map((t) => [t.id, t.label]));
   return (
     <Panel
       title="Creator 360"
@@ -159,10 +164,24 @@ function ListaCreators({ d }: { d: D }) {
         </div>
       }
     >
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">Tags automáticas:</span>
+        <Pills
+          value={tag}
+          onChange={setTag}
+          options={[
+            { id: "todas", label: "Todas" },
+            ...d.tags
+              .filter((t) => t.creators > 0)
+              .map((t) => ({ id: t.id, label: `${t.label} (${t.creators})` })),
+          ]}
+        />
+      </div>
       {lista.length ? (
         <Table
           head={[
             "Creator",
+            "Tags",
             "Fonte",
             "GMV",
             "Custo",
@@ -182,6 +201,22 @@ function ListaCreators({ d }: { d: D }) {
                 <span className="font-medium">{x.nome}</span>
                 {x.handle && <span className="ml-1 text-xs text-muted-foreground">{x.handle}</span>}
                 {x.tier && <span className="ml-1 text-xs text-muted-foreground">· {x.tier}</span>}
+              </Td>
+              <Td className="max-w-[220px]">
+                <div className="flex flex-wrap gap-1">
+                  {x.tags.map((t) => (
+                    <StatusTag
+                      key={t}
+                      tone={
+                        t === "em_risco" || t === "devolucao_alta" || t === "pago_sem_venda"
+                          ? "warn"
+                          : "primary"
+                      }
+                    >
+                      {nomeTag[t] ?? t}
+                    </StatusTag>
+                  ))}
+                </div>
               </Td>
               <Td>{x.fonte}</Td>
               <Td mono>
@@ -224,6 +259,10 @@ function ListaCreators({ d }: { d: D }) {
           Estado pela última venda: ativo até {DIAS_ESTADO.ativo} dias, esfriando até{" "}
           {DIAS_ESTADO.esfriando}, parado depois disso. Afiliados da Shopee e do TikTok Shop não vêm
           por creator nas views atuais.
+        </li>
+        <li>
+          Tags automáticas recalculadas a cada leitura:{" "}
+          {d.tags.map((t) => `${t.label} = ${t.regra}`).join("; ")}.
         </li>
       </ul>
     </Panel>

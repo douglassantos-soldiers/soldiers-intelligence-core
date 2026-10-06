@@ -215,7 +215,41 @@ export type CreatorOS = {
   categoriaPrincipal: string;
   concorrencia: "Soldiers" | "híbrido" | "exclusivo concorrente" | "migrável" | "—";
   risco: boolean;
+  tipoConta: "creator" | "loja" | "agencia";
+  tipoFonte: "cadastro" | "regra";
+  tipoMotivo: string;
 };
+
+/**
+ * Conta de loja × creator (benchmark Cruva §10.2: o ranking de "top afiliados" deles mistura contas com 2 a 42
+ * seguidores e milhões em GMV). [HIPÓTESE] Vender muito sem audiência própria indica conta de loja/operação
+ * (LIVE da própria marca, anúncio, link direto), não creator. O cadastro (affiliate_creator.tipo_conta) vence a regra.
+ */
+export const REGRA_CONTA_LOJA = { gmvMin: 2000, seguidoresMax: 1000, viewsMax: 2000 } as const;
+
+export function tipoDeConta(
+  c: { gmv: number; views: number },
+  cad?: Row,
+): Pick<CreatorOS, "tipoConta" | "tipoFonte" | "tipoMotivo"> {
+  const manual = txt(cad?.["tipo_conta"]);
+  if (manual === "creator" || manual === "loja" || manual === "agencia")
+    return { tipoConta: manual, tipoFonte: "cadastro", tipoMotivo: "informado no cadastro" };
+  const R = REGRA_CONTA_LOJA;
+  const seg = cad?.["seguidores"] == null || cad["seguidores"] === "" ? null : n(cad["seguidores"]);
+  if (c.gmv >= R.gmvMin && seg != null && seg < R.seguidoresMax)
+    return {
+      tipoConta: "loja",
+      tipoFonte: "regra",
+      tipoMotivo: `vende R$ ${Math.round(c.gmv).toLocaleString("pt-BR")} com ${seg} seguidores`,
+    };
+  if (c.gmv >= R.gmvMin && seg == null && c.views < R.viewsMax)
+    return {
+      tipoConta: "loja",
+      tipoFonte: "regra",
+      tipoMotivo: `vende R$ ${Math.round(c.gmv).toLocaleString("pt-BR")} com ${c.views.toLocaleString("pt-BR")} views em 90 dias`,
+    };
+  return { tipoConta: "creator", tipoFonte: "regra", tipoMotivo: "" };
+}
 
 const NICHO_COMPATIVEL =
   /suplement|fitness|academia|treino|nutri|muscula|crossfit|corrida|saude|saúde|esporte/i;
@@ -281,6 +315,7 @@ export function listaCreatorsOS(
           ? 0.5
           : 1) * (risco ? 0.5 : 1);
     const catTop = [...c.produtos.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+    const tipo = tipoDeConta(c, cad);
     const concorrentes = Array.isArray(cad?.["concorrentes"])
       ? (cad!["concorrentes"] as unknown[]).map(txt).filter(Boolean)
       : [];
@@ -300,10 +335,13 @@ export function listaCreatorsOS(
       ultimaVenda: c.ultimaVenda,
       creatorScore: score,
       productFit: fit,
-      opportunity: opportunityBruta(score, fit, c, disponivel, comp),
+      // Conta de loja não entra no ranking de quem convidar (fica visível, marcada).
+      opportunity:
+        tipo.tipoConta === "loja" ? 0 : opportunityBruta(score, fit, c, disponivel, comp),
       categoriaPrincipal: catTop,
       concorrencia: classificaConcorrencia(concorrentes, c.gmv, cad ? txt(cad["nicho"]) : ""),
       risco,
+      ...tipo,
     };
   });
   const max = Math.max(0, ...lista.map((l) => l.opportunity));
@@ -342,17 +380,24 @@ export const STATUS_AMOSTRA = [
   "publicado",
   "vendeu",
 ] as const;
+/** Saíram do fluxo (migração 20261006140000). "Atrasado" não é estado: é calculado pelos prazos. */
+export const STATUS_ENCERRADOS = ["rejeitado", "expirado", "ignorado", "cancelado"] as const;
 export const STATUS_AMOSTRA_LABEL: Record<string, string> = {
-  solicitou: "Solicitou",
+  solicitou: "Para revisar",
   aprovado: "Aprovado",
-  aguardando_envio: "Aguardando envio",
-  enviado: "Enviado",
+  aguardando_envio: "Pronto para enviar",
+  enviado: "Em transporte",
   recebido: "Recebido",
   conteudo_pendente: "Conteúdo pendente",
   publicado: "Publicado",
   vendeu: "Vendeu",
+  rejeitado: "Rejeitado",
+  expirado: "Expirado",
+  ignorado: "Ignorado",
   cancelado: "Cancelado",
 };
+/** Prazos que marcam a amostra como atrasada (alertas do cap. 8.9). */
+export const PRAZOS_AMOSTRA = { revisar: 3, envio: 5, recebimento: 14, publicar: 7 } as const;
 
 export type Amostra = {
   id: string;
@@ -367,6 +412,10 @@ export type Amostra = {
   contribuicao: number;
   roi: number | null;
   alertas: string[];
+  atrasada: boolean;
+  encerrada: boolean;
+  recebidoEm: string;
+  publicadoEm: string;
 };
 
 /**
@@ -382,7 +431,6 @@ export function amostrasOS(
 ): Amostra[] {
   const creators = new Map(cadastro.map((c) => [txt(c["id"]), c]));
   return amostras
-    .filter((a) => txt(a["status"]) !== "cancelado")
     .map((a) => {
       const c = creators.get(txt(a["creator_id"])) ?? {};
       const h = handle((c as Row)["tiktok_username"]);
@@ -400,6 +448,8 @@ export function amostrasOS(
         publicado,
         vendeu: dia(a["primeira_venda_em"]),
       };
+      const encerrada = (STATUS_ENCERRADOS as readonly string[]).includes(status);
+      if (encerrada) dataEtapa[status] = dia(a["encerrado_em"]);
       const desde = dataEtapa[status] || dia(a["solicitado_em"]);
       const diasNaEtapa = desde ? diasEntre(desde, hoje) : null;
       const gmvDepois =
@@ -413,6 +463,15 @@ export function amostrasOS(
       const contribuicao = (gmvDepois * margemAfiliadoPct) / 100;
       const roi = div(contribuicao, investimento);
       const alertas: string[] = [];
+      const P = PRAZOS_AMOSTRA;
+      if (status === "solicitou" && diasNaEtapa != null && diasNaEtapa >= P.revisar)
+        alertas.push(`${P.revisar}+ dias para revisar`);
+      if (
+        (status === "aprovado" || status === "aguardando_envio") &&
+        diasNaEtapa != null &&
+        diasNaEtapa >= P.envio
+      )
+        alertas.push(`${P.envio}+ dias sem envio`);
       if (
         (status === "recebido" || status === "conteudo_pendente") &&
         recebido &&
@@ -437,14 +496,116 @@ export function amostrasOS(
         gmvDepois,
         contribuicao,
         roi,
-        alertas,
+        alertas: encerrada ? [] : alertas,
+        atrasada: !encerrada && alertas.some((t) => /dias/.test(t)),
+        encerrada,
+        recebidoEm: recebido,
+        publicadoEm: publicado,
       };
     })
     .sort(
       (a, b) =>
+        Number(a.encerrada) - Number(b.encerrada) ||
         b.alertas.length - a.alertas.length ||
         STATUS_AMOSTRA.indexOf(a.status as never) - STATUS_AMOSTRA.indexOf(b.status as never),
     );
+}
+
+/** Semana (segunda-feira) de uma data AAAA-MM-DD. */
+const semanaDe = (d: string) => {
+  const t = new Date(d + "T00:00:00Z");
+  const dow = (t.getUTCDay() + 6) % 7;
+  return new Date(t.getTime() - dow * 86400000).toISOString().slice(0, 10);
+};
+
+/**
+ * Funil de amostras por semana de entrega (benchmark Cruva §10.2): entregues, quantas já viraram post e a taxa de
+ * cumprimento. Mediana de dias entre receber e postar. Semanas recentes ainda podem subir (creator tem prazo).
+ */
+export function funilAmostrasSemanal(amostras: Amostra[], hoje: string, semanas = 8) {
+  const limite = semanaDe(
+    new Date(Date.parse(hoje + "T00:00:00Z") - (semanas - 1) * 7 * 86400000)
+      .toISOString()
+      .slice(0, 10),
+  );
+  const m = new Map<string, { entregues: number; publicadas: number; dias: number[] }>();
+  for (const a of amostras) {
+    if (!a.recebidoEm) continue;
+    const w = semanaDe(a.recebidoEm);
+    if (w < limite) continue;
+    const cur = m.get(w) ?? { entregues: 0, publicadas: 0, dias: [] };
+    cur.entregues += 1;
+    if (a.publicadoEm) {
+      cur.publicadas += 1;
+      cur.dias.push(diasEntre(a.recebidoEm, a.publicadoEm));
+    }
+    m.set(w, cur);
+  }
+  const mediana = (xs: number[]) => {
+    if (!xs.length) return null;
+    const o = [...xs].sort((x, y) => x - y);
+    const k = Math.floor(o.length / 2);
+    return o.length % 2 ? o[k]! : (o[k - 1]! + o[k]!) / 2;
+  };
+  return [...m.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([semana, x]) => ({
+      semana,
+      entregues: x.entregues,
+      publicadas: x.publicadas,
+      cumprimentoPct: pct(x.publicadas, x.entregues),
+      diasAtePostar: mediana(x.dias),
+      emAberto: diasEntre(semana, hoje) < PRAZOS_AMOSTRA.publicar + 7,
+    }));
+}
+
+/**
+ * Retenção por coorte (benchmark Cruva §10.2): coorte = mês do primeiro vídeo do creator; ativo no mês N = publicou
+ * vídeo novo naquele mês. Usa publicado_em do vídeo (ou o primeiro dia em que ele aparece).
+ */
+export function retencaoCoortes(videos: Row[], hoje: string, meses = 6) {
+  const primeiro = new Map<string, string>(); // vídeo → data de publicação
+  const dono = new Map<string, string>();
+  for (const v of videos) {
+    const id = txt(v["video_id"]);
+    const h = handle(v["criador"]);
+    if (!id || !h) continue;
+    const d = dia(v["publicado_em"]) || dia(v["data"]);
+    if (!d) continue;
+    if (!primeiro.has(id) || d < primeiro.get(id)!) primeiro.set(id, d);
+    dono.set(id, h);
+  }
+  const mesesPorCreator = new Map<string, Set<string>>();
+  for (const [id, d] of primeiro) {
+    const h = dono.get(id)!;
+    const s = mesesPorCreator.get(h) ?? new Set<string>();
+    s.add(d.slice(0, 7));
+    mesesPorCreator.set(h, s);
+  }
+  const mesAtual = hoje.slice(0, 7);
+  const soma = (mes: string, k: number) => {
+    const [a, m] = mes.split("-").map(Number);
+    return new Date(Date.UTC(a!, m! - 1 + k, 1)).toISOString().slice(0, 7);
+  };
+  const inicio = soma(mesAtual, -(meses - 1));
+  const coortes = new Map<string, string[]>();
+  for (const [h, ms] of mesesPorCreator) {
+    const c = [...ms].sort()[0]!;
+    if (c < inicio) continue;
+    coortes.set(c, [...(coortes.get(c) ?? []), h]);
+  }
+  return [...coortes.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([coorte, hs]) => ({
+      coorte,
+      creators: hs.length,
+      meses: Array.from({ length: meses }, (_, k) => {
+        const mes = soma(coorte, k);
+        if (mes > mesAtual) return null;
+        const ativos = hs.filter((h) => mesesPorCreator.get(h)!.has(mes)).length;
+        return pct(ativos, hs.length);
+      }),
+    }));
 }
 
 // ---------------------------------------------------------------------------------------------

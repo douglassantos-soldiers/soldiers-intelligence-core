@@ -6,6 +6,8 @@ import { db, fetchAll } from "@/lib/db-helpers";
 import {
   listaCreatorsOS,
   funilCreators,
+  funilAmostrasSemanal,
+  retencaoCoortes,
   amostrasOS,
   outreachOS,
   elasticidade,
@@ -24,10 +26,12 @@ import {
 import { produtoDoTexto } from "@/lib/criativos360";
 
 type Rows = Record<string, unknown>[];
+const LIMITE_COORTE = 300000;
 const menos = (iso: string, d: number) =>
   new Date(Date.parse(iso + "T00:00:00Z") - d * 86400000).toISOString().slice(0, 10);
 
-export async function dadosAffiliateOS(p: { foco: string }) {
+/** `coortes: false` pula a leitura de 12 meses de vídeos (usado pelos alertas do Command Center). */
+export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: boolean } = {}) {
   const c = await db();
   const erros: Record<string, string> = {};
   let migracaoPendente = false;
@@ -59,6 +63,7 @@ export async function dadosAffiliateOS(p: { foco: string }) {
     qual,
     influ,
     etiq,
+    videosAno,
   ] = await Promise.all([
     safe(
       "videos",
@@ -66,7 +71,7 @@ export async function dadosAffiliateOS(p: { foco: string }) {
         () =>
           c
             .from("fact_tiktok_video_dia")
-            .select("data,criador,produto_nome,gmv,views,video_id,titulo,unidades")
+            .select("data,criador,produto_nome,gmv,views,video_id,titulo,unidades,publicado_em")
             .gte("data", de90)
             .lte("data", hoje),
         "tiktok videos",
@@ -79,8 +84,23 @@ export async function dadosAffiliateOS(p: { foco: string }) {
         () =>
           c
             .from("affiliate_creator")
-            .select("id,nome,tiktok_username,cupom,nicho,tier,estagio,concorrentes"),
+            .select(
+              "id,nome,tiktok_username,cupom,nicho,tier,estagio,concorrentes,seguidores,tipo_conta",
+            ),
         "affiliate_creator",
+      ).catch((e) =>
+        // tipo_conta vem da migração 20261006140000; sem ela, lê sem a coluna.
+        /tipo_conta/.test(String(e?.message ?? e))
+          ? fetchAll(
+              () =>
+                c
+                  .from("affiliate_creator")
+                  .select(
+                    "id,nome,tiktok_username,cupom,nicho,tier,estagio,concorrentes,seguidores",
+                  ),
+              "affiliate_creator",
+            )
+          : Promise.reject(e),
       ),
       true,
     ),
@@ -91,9 +111,21 @@ export async function dadosAffiliateOS(p: { foco: string }) {
           c
             .from("affiliate_amostra")
             .select(
-              "id,creator_id,sku,produto,status,solicitado_em,aprovado_em,enviado_em,recebido_em,publicado_em,primeira_venda_em,custo_produto,frete,desconto,outros_custos",
+              "id,creator_id,sku,produto,status,solicitado_em,aprovado_em,enviado_em,recebido_em,publicado_em,primeira_venda_em,encerrado_em,custo_produto,frete,desconto,outros_custos",
             ),
         "affiliate_amostra",
+      ).catch((e) =>
+        /encerrado_em/.test(String(e?.message ?? e))
+          ? fetchAll(
+              () =>
+                c
+                  .from("affiliate_amostra")
+                  .select(
+                    "id,creator_id,sku,produto,status,solicitado_em,aprovado_em,enviado_em,recebido_em,publicado_em,primeira_venda_em,custo_produto,frete,desconto,outros_custos",
+                  ),
+              "affiliate_amostra",
+            )
+          : Promise.reject(e),
       ),
       true,
     ),
@@ -189,6 +221,22 @@ export async function dadosAffiliateOS(p: { foco: string }) {
       () => c.from("vw_conteudo_etiqueta_atual").select("canal,conteudo_id,dimensao,valor"),
       "conteudo etiqueta",
     ).catch(() => [] as Rows),
+    // Retenção por coorte: 12 meses de vídeos, só o necessário (vídeo, creator, publicação).
+    opcoes.coortes === false
+      ? Promise.resolve([] as Rows)
+      : safe(
+          "videosCoorte",
+          fetchAll(
+            () =>
+              c
+                .from("fact_tiktok_video_dia")
+                .select("data,criador,video_id,publicado_em")
+                .gte("data", menos(hoje, 364))
+                .lte("data", hoje),
+            "tiktok videos 12m",
+            LIMITE_COORTE,
+          ),
+        ),
   ]);
   const ref =
     videos.reduce(
@@ -237,6 +285,11 @@ export async function dadosAffiliateOS(p: { foco: string }) {
     totalCreators: creators.length,
     funil: funilCreators(creators),
     amostras: am,
+    funilAmostras: funilAmostrasSemanal(am, hoje),
+    coortes:
+      opcoes.coortes === false ? [] : retencaoCoortes(videosAno.length ? videosAno : videos, hoje),
+    coorteIncompleta: videosAno.length >= LIMITE_COORTE,
+    contasLoja: creators.filter((x) => x.tipoConta === "loja").length,
     outreach: outreachOS(campanhas, convites, cadastro, videos, skuNome, ref),
     elasticidade: [
       elasticidade("Mercado Livre", mlCamp, { taxa: "taxa_efetiva_pct", gmv: "gmv" }, margemSem),

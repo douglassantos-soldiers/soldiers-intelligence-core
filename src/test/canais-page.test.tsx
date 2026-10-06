@@ -67,6 +67,8 @@ describe("telas novas de canais", () => {
     expect(await screen.findByText("Atleta Alfa")).toBeTruthy();
     expect(screen.getByText("@atleta.alfa")).toBeTruthy();
     expect(screen.getAllByText("esfriando").length).toBeGreaterThan(0);
+    expect(screen.getByText("Tags automáticas:")).toBeTruthy();
+    expect(screen.getAllByText("Em risco").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText("Por canal"));
     expect(screen.getByText("12% / 31%")).toBeTruthy();
     fireEvent.click(screen.getByText("Produtos"));
