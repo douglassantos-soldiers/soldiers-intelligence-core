@@ -17,6 +17,7 @@ import {
 } from "@/components/kit";
 import { ErrosLeitura } from "@/components/erros-leitura";
 import { PadroesVencedores } from "@/components/padroes-conteudo";
+import { CopiarTexto } from "@/components/copiar";
 import { getAffiliateOS } from "@/lib/affiliateos.functions";
 import {
   ESTAGIO_LABEL,
@@ -24,6 +25,15 @@ import {
   STATUS_AMOSTRA_LABEL,
   STATUS_ENCERRADOS,
 } from "@/lib/affiliateos";
+import { PLAYBOOKS, PLAYBOOK_TITULO, LIMIARES_PLAYBOOK } from "@/lib/playbooks";
+import {
+  STATUS_DIREITO,
+  STATUS_DIREITO_LABEL,
+  PLATAFORMA_DIREITO_LABEL,
+  DIREITO_VENCENDO_DIAS,
+  SPARK_MIN_VIEWS,
+  rotuloFaixa,
+} from "@/lib/programa";
 import { fmtBRL, fmtNum, fmtPct, fmtX, fmtDate } from "@/lib/format";
 
 // Affiliate OS (Plano Mestre cap. 8): Discovery → Qualification → Outreach → Sample → Content → Sales → Contribution.
@@ -44,7 +54,16 @@ export const Route = createFileRoute("/affiliate_/os")({
 
 type D = Awaited<ReturnType<typeof getAffiliateOS>>;
 type Aba =
-  "creators" | "funil" | "amostras" | "outreach" | "conteudo" | "comissao" | "risco" | "qualidade";
+  | "acoes"
+  | "creators"
+  | "funil"
+  | "amostras"
+  | "outreach"
+  | "conteudo"
+  | "comissao"
+  | "direitos"
+  | "risco"
+  | "qualidade";
 const T = (r: unknown) => r as Record<string, unknown>[];
 const FOCOS = ["Creatina", "Whey", "Pré-treino", "Glutamina"] as const;
 const TOM_CONC: Record<string, "success" | "warn" | "danger" | "primary" | "muted"> = {
@@ -95,7 +114,7 @@ function AffiliateOS() {
 }
 
 function Body({ d }: { d: D }) {
-  const [aba, setAba] = useState<Aba>("creators");
+  const [aba, setAba] = useState<Aba>("acoes");
   const alertasAm = d.amostras.filter((a) => a.alertas.length).length;
   const invest = d.amostras.reduce((s, a) => s + a.investimento, 0);
   const contrib = d.amostras.reduce((s, a) => s + a.contribuicao, 0);
@@ -147,16 +166,19 @@ function Body({ d }: { d: D }) {
         value={aba}
         onChange={setAba}
         options={[
+          { id: "acoes", label: `Ações do dia (${d.recomendacoes.length})` },
           { id: "creators", label: "Creators e notas" },
           { id: "funil", label: "Funil" },
           { id: "amostras", label: "Amostras" },
           { id: "outreach", label: "Outreach" },
           { id: "conteudo", label: "Conteúdo (DNA)" },
           { id: "comissao", label: "Comissão" },
+          { id: "direitos", label: "Direitos de uso" },
           { id: "risco", label: "Risco e concorrentes" },
           { id: "qualidade", label: "Qualidade do cliente" },
         ]}
       />
+      {aba === "acoes" && <Acoes d={d} />}
       {aba === "creators" && <Creators d={d} />}
       {aba === "funil" && <Funil f={d.funil} d={d} />}
       {aba === "amostras" && (
@@ -164,7 +186,8 @@ function Body({ d }: { d: D }) {
       )}
       {aba === "outreach" && <Outreach o={d.outreach} />}
       {aba === "conteudo" && <Conteudo d={d} />}
-      {aba === "comissao" && <Comissao e={d.elasticidade} />}
+      {aba === "comissao" && <Comissao d={d} />}
+      {aba === "direitos" && <Direitos d={d} />}
       {aba === "risco" && <Risco d={d} />}
       {aba === "qualidade" && <Qualidade q={d.qualidade} />}
     </div>
@@ -557,6 +580,7 @@ function Conteudo({ d }: { d: D }) {
         csv="affiliate-os-padroes"
         vazio="Ainda não há produto com vídeos suficientes e DNA identificado (mínimo de 4 vídeos)."
       />
+      <BriefProduto d={d} />
       <Panel
         title={`O que vende para cada creator em ${d.foco}`}
         right={<CsvButton name="affiliate-os-dna-creators" rows={T(c.creators)} />}
@@ -621,44 +645,48 @@ function Conteudo({ d }: { d: D }) {
   );
 }
 
-function Comissao({ e }: { e: D["elasticidade"] }) {
+function Comissao({ d }: { d: D }) {
+  const e = d.elasticidade;
   return (
-    <div className="grid gap-6 2xl:grid-cols-2">
-      {e.map((x) => (
-        <Panel
-          key={x.canal}
-          title={`${x.canal}: comissão × venda`}
-          right={
-            x.compensa == null ? null : (
-              <StatusTag tone={x.compensa ? "success" : "warn"}>
-                {x.compensa ? "comissão maior compensa" : "não compensa"}
-              </StatusTag>
-            )
-          }
-        >
-          {x.faixas.length ? (
-            <Table head={["Comissão efetiva", "Dias", "GMV / dia", "Custo", "GMV líquido / dia"]}>
-              {x.faixas.map((f) => (
-                <tr key={f.faixa}>
-                  <Td mono>{f.faixa}</Td>
-                  <Td mono>{fmtNum(f.dias)}</Td>
-                  <Td mono>{fmtBRL(f.gmvDia)}</Td>
-                  <Td mono>{fmtPct(f.custoPct, 1)}</Td>
-                  <Td mono>{fmtBRL(f.liquidoDia)}</Td>
-                </tr>
-              ))}
-            </Table>
-          ) : (
-            <Empty />
-          )}
-          <p className="mt-3 text-sm">{x.leitura}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Dias agrupados pela comissão efetiva (ML: por campanha; TikTok: por produto), 180 dias.
-            É correlação: outros fatores mudam junto. Para saber de verdade, rodar um experimento
-            com grupo de controle.
-          </p>
-        </Panel>
-      ))}
+    <div className="space-y-6">
+      <Faixas d={d} />
+      <div className="grid gap-6 2xl:grid-cols-2">
+        {e.map((x) => (
+          <Panel
+            key={x.canal}
+            title={`${x.canal}: comissão × venda`}
+            right={
+              x.compensa == null ? null : (
+                <StatusTag tone={x.compensa ? "success" : "warn"}>
+                  {x.compensa ? "comissão maior compensa" : "não compensa"}
+                </StatusTag>
+              )
+            }
+          >
+            {x.faixas.length ? (
+              <Table head={["Comissão efetiva", "Dias", "GMV / dia", "Custo", "GMV líquido / dia"]}>
+                {x.faixas.map((f) => (
+                  <tr key={f.faixa}>
+                    <Td mono>{f.faixa}</Td>
+                    <Td mono>{fmtNum(f.dias)}</Td>
+                    <Td mono>{fmtBRL(f.gmvDia)}</Td>
+                    <Td mono>{fmtPct(f.custoPct, 1)}</Td>
+                    <Td mono>{fmtBRL(f.liquidoDia)}</Td>
+                  </tr>
+                ))}
+              </Table>
+            ) : (
+              <Empty />
+            )}
+            <p className="mt-3 text-sm">{x.leitura}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Dias agrupados pela comissão efetiva (ML: por campanha; TikTok: por produto), 180
+              dias. É correlação: outros fatores mudam junto. Para saber de verdade, rodar um
+              experimento com grupo de controle.
+            </p>
+          </Panel>
+        ))}
+      </div>
     </div>
   );
 }
@@ -756,6 +784,385 @@ function Qualidade({ q }: { q: D["qualidade"] }) {
         Cliente que usou o cupom no site: se a primeira compra dele foi com o cupom (novo), se
         voltou a comprar depois e o LTV. Responde ao cap. 8.14: GMV maior não é necessariamente
         cliente melhor.
+      </p>
+    </Panel>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Onda 2 do benchmark Cruva: ações do dia, faixas de comissão, direitos de uso e brief por produto
+
+const PRIORIDADE: Record<number, { rotulo: string; tom: "danger" | "warn" | "primary" }> = {
+  1: { rotulo: "Alta", tom: "danger" },
+  2: { rotulo: "Média", tom: "warn" },
+  3: { rotulo: "Baixa", tom: "primary" },
+};
+
+function Acoes({ d }: { d: D }) {
+  const [filtro, setFiltro] = useState<string>("todas");
+  const lista =
+    filtro === "todas" ? d.recomendacoes : d.recomendacoes.filter((r) => r.playbook === filtro);
+  return (
+    <div className="space-y-6">
+      <Panel
+        title="Ações sugeridas para hoje"
+        right={<CsvButton name="affiliate-acoes-do-dia" rows={T(lista)} />}
+      >
+        <div className="mb-4">
+          <Pills
+            value={filtro}
+            onChange={setFiltro}
+            options={[
+              { id: "todas", label: `Todas (${d.recomendacoes.length})` },
+              ...d.playbooks
+                .filter((p) => p.total)
+                .map((p) => ({ id: p.id, label: `${p.titulo} (${p.total})` })),
+            ]}
+          />
+        </div>
+        {lista.length ? (
+          <Table head={["Prioridade", "Ação", "Creator", "Por quê", "Sugestão e mensagem"]}>
+            {lista.slice(0, 80).map((r, i) => (
+              <tr key={`${r.playbook}-${r.handle || r.creator}-${i}`}>
+                <Td>
+                  <StatusTag tone={PRIORIDADE[r.prioridade]!.tom}>
+                    {PRIORIDADE[r.prioridade]!.rotulo}
+                  </StatusTag>
+                </Td>
+                <Td className="whitespace-nowrap font-medium">{PLAYBOOK_TITULO[r.playbook]}</Td>
+                <Td>
+                  <div>{r.creator}</div>
+                  {r.handle && r.handle !== r.creator && (
+                    <div className="text-xs text-muted-foreground">{r.handle}</div>
+                  )}
+                </Td>
+                <Td className="min-w-[220px] !whitespace-normal text-xs">{r.motivo}</Td>
+                <Td className="min-w-[220px] !whitespace-normal text-xs">
+                  <div className="mb-1.5">{r.acao}</div>
+                  <CopiarTexto texto={r.mensagem} rotulo="Copiar mensagem" />
+                </Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Empty>Nenhuma ação sugerida hoje.</Empty>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Só sugestão: a mensagem é copiada para uma pessoa revisar e enviar. Enviar, pausar
+          amostras ou mudar a faixa continua fora da plataforma até a Fase 3 (login, aprovação e
+          auditoria). Contas de loja não entram.
+        </p>
+      </Panel>
+      <Panel title="Quando cada ação aparece">
+        <Table head={["Ação", "Gatilho", "O que fazer"]}>
+          {PLAYBOOKS.map((p) => (
+            <tr key={p.id}>
+              <Td className="whitespace-nowrap font-medium">{p.titulo}</Td>
+              <Td className="min-w-[220px] !whitespace-normal text-xs">{p.gatilho}</Td>
+              <Td className="min-w-[220px] !whitespace-normal text-xs">{p.acao}</Td>
+            </tr>
+          ))}
+        </Table>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Limiares iniciais, a validar: primeira venda em {LIMIARES_PLAYBOOK.primeiraVendaDias}{" "}
+          dias, R$ {LIMIARES_PLAYBOOK.categoriaMin} por categoria,{" "}
+          {LIMIARES_PLAYBOOK.videosComVendaVip} vídeos com venda para VIP e{" "}
+          {LIMIARES_PLAYBOOK.pausarDias} dias sem post para pausar. VIP = estágio embaixador no
+          cadastro.
+        </p>
+      </Panel>
+    </div>
+  );
+}
+
+function AvisoOnda2({ d }: { d: D }) {
+  if (!d.onda2Pendente) return null;
+  return (
+    <div className="rounded-lg border border-warning/50 bg-warning/10 p-4 text-sm">
+      Faixas cadastradas e direitos de uso precisam da migração{" "}
+      <span className="font-mono">20261006150000_affiliate_onda2.sql</span>. Sem ela, a tela usa a
+      regra de faixas padrão do código e não lista direitos.
+    </div>
+  );
+}
+
+function Faixas({ d }: { d: D }) {
+  const f = d.faixas;
+  const r = f.regra;
+  return (
+    <>
+      <AvisoOnda2 d={d} />
+      <Panel
+        title={`Faixas de comissão: ${r.nome}${r.versao ? ` (v${r.versao})` : ""}`}
+        right={
+          <div className="flex items-center gap-2">
+            <StatusTag tone={r.fonte === "padrao" ? "warn" : "success"}>
+              {r.fonte === "padrao"
+                ? "regra padrão (hipótese)"
+                : `vigente desde ${fmtDate(r.vigenteDesde)}`}
+            </StatusTag>
+            <CsvButton name="affiliate-faixas" rows={T(f.creators)} />
+          </div>
+        }
+      >
+        <div className="mb-4 grid gap-3 md:grid-cols-4">
+          {f.porFaixa.map((x) => (
+            <Kpi
+              key={x.faixa}
+              label={x.faixa}
+              value={fmtNum(x.creators)}
+              hint={`${fmtBRL(x.gmv)} de GMV · ${fmtBRL(x.custoExtra)} de custo extra`}
+            />
+          ))}
+          <Kpi
+            label="Custo extra total"
+            value={fmtBRL(f.custoExtraTotal)}
+            hint={`janela de ${r.janelaDias} dias`}
+          />
+        </div>
+        {f.creators.length ? (
+          <Table
+            head={[
+              "Creator",
+              `GMV ${r.janelaDias}d`,
+              "Contribuição",
+              "Faixa sugerida",
+              "Custo extra",
+              "Contribuição depois",
+              "Leitura",
+            ]}
+          >
+            {f.creators.slice(0, 60).map((c) => (
+              <tr key={c.handle}>
+                <Td>
+                  <div>{c.nome}</div>
+                  {c.nome !== c.handle && (
+                    <div className="text-xs text-muted-foreground">{c.handle}</div>
+                  )}
+                </Td>
+                <Td mono>{fmtBRL(c.gmvJanela)}</Td>
+                <Td mono>{fmtBRL(c.contribuicao)}</Td>
+                <Td>
+                  <span className="font-mono">{c.faixaSugerida.comissaoPct}%</span>
+                  {c.deltaPp > 0 && (
+                    <span className="ml-1 text-xs text-muted-foreground">(+{c.deltaPp} p.p.)</span>
+                  )}
+                  {c.cruzou && (
+                    <span className="ml-2">
+                      <StatusTag tone="success">passou de faixa</StatusTag>
+                    </span>
+                  )}
+                </Td>
+                <Td mono>{fmtBRL(c.custoExtra)}</Td>
+                <Td mono>{fmtBRL(c.contribuicaoDepois)}</Td>
+                <Td className="min-w-[220px] !whitespace-normal text-xs">{c.leitura}</Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Empty>Nenhum creator com venda na janela.</Empty>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Faixas: {r.faixas.map((x) => rotuloFaixa(x, r.base)).join(" · ")}. Contribuição = GMV do
+          creator no TikTok Shop × margem via afiliado ({fmtPct(d.margemAfiliadoPct, 1)}, já com a
+          comissão base). Custo extra = GMV × p.p. acima da base. A tela nunca sugere faixa que
+          deixe a contribuição negativa. Regra versionada em affiliate_regra_comissao (só inserção).
+        </p>
+      </Panel>
+    </>
+  );
+}
+
+function Direitos({ d }: { d: D }) {
+  const x = d.direitos;
+  return (
+    <div className="space-y-6">
+      <AvisoOnda2 d={d} />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi
+          label="Ativos"
+          value={fmtNum(x.contagem.ativo)}
+          hint={`${fmtBRL(x.valorAtivo)} pagos`}
+        />
+        <Kpi
+          label={`Vencendo em ${DIREITO_VENCENDO_DIAS} dias`}
+          value={fmtNum(x.vencendo.length)}
+          hint={
+            x.vencidos
+              ? `${fmtNum(x.vencidos)} ativo(s) com data vencida`
+              : "renovar ou pausar o anúncio"
+          }
+          {...(x.vencendo.length || x.vencidos ? { tone: "warn" as const } : {})}
+        />
+        <Kpi
+          label="Pagamento pendente"
+          value={fmtNum(x.contagem.pagamento_pendente)}
+          hint={fmtBRL(x.pagamentoPendente)}
+        />
+        <Kpi
+          label="Candidatos a Spark"
+          value={fmtNum(x.candidatos.length)}
+          hint="vídeos acima da média sem direito"
+          tone="up"
+        />
+      </div>
+      <Panel
+        title="Direitos de uso"
+        right={<CsvButton name="affiliate-direitos-uso" rows={T(x.lista)} />}
+      >
+        <p className="mb-3 text-xs text-muted-foreground">
+          {STATUS_DIREITO.map((s) => `${STATUS_DIREITO_LABEL[s]}: ${x.contagem[s]}`).join(" · ")}
+        </p>
+        {x.lista.length ? (
+          <Table
+            head={["Creator", "Vídeo", "Plataforma", "Status", "Início", "Fim", "Valor", "Código"]}
+          >
+            {x.lista.slice(0, 100).map((r) => (
+              <tr key={r.id}>
+                <Td>{r.creator}</Td>
+                <Td mono>{r.videoId}</Td>
+                <Td>{PLATAFORMA_DIREITO_LABEL[r.plataforma] ?? r.plataforma}</Td>
+                <Td>
+                  <StatusTag
+                    tone={
+                      r.vencido
+                        ? "danger"
+                        : r.vencendo
+                          ? "warn"
+                          : r.status === "ativo"
+                            ? "success"
+                            : r.status === "pagamento_pendente" || r.status === "solicitado"
+                              ? "primary"
+                              : "muted"
+                    }
+                  >
+                    {r.vencido
+                      ? "ativo, data vencida"
+                      : r.vencendo
+                        ? `vence em ${r.diasParaVencer} dia(s)`
+                        : (STATUS_DIREITO_LABEL[r.status] ?? r.status)}
+                  </StatusTag>
+                </Td>
+                <Td mono>{r.inicio ? fmtDate(r.inicio) : "—"}</Td>
+                <Td mono>{r.fim ? fmtDate(r.fim) : "—"}</Td>
+                <Td mono>{fmtBRL(r.valor)}</Td>
+                <Td>{r.temCodigo ? "recebido" : "—"}</Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Empty>Nenhum direito de uso cadastrado.</Empty>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          A plataforma só registra se o código foi recebido; o código Spark em si nunca é guardado
+          aqui. Pedir, renovar ou pagar direito continua fora da plataforma até a Fase 3.
+        </p>
+      </Panel>
+      <Panel
+        title="Candidatos a Spark Ads"
+        right={<CsvButton name="affiliate-candidatos-spark" rows={T(x.candidatos)} />}
+      >
+        {x.candidatos.length ? (
+          <Table
+            head={["Vídeo", "Creator", "Produto", "Views", "GMV", "GMV / mil views", "Por quê"]}
+          >
+            {x.candidatos.map((c) => (
+              <tr key={c.videoId}>
+                <Td className="max-w-[280px] truncate">{c.titulo || c.videoId}</Td>
+                <Td>@{c.creator}</Td>
+                <Td>{c.produto || "—"}</Td>
+                <Td mono>{fmtNum(c.views)}</Td>
+                <Td mono>{fmtBRL(c.gmv)}</Td>
+                <Td mono>{fmtBRL(c.gmvMilViews)}</Td>
+                <Td className="min-w-[220px] !whitespace-normal text-xs">{c.motivo}</Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Empty>Nenhum vídeo acima da média sem direito de uso.</Empty>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Vídeos de creators nos últimos 90 dias com pelo menos {fmtNum(SPARK_MIN_VIEWS)} views, GMV
+          por mil views acima da média ({fmtBRL(x.mediaGmvMilViews)}) e sem direito pedido ou ativo.
+        </p>
+      </Panel>
+    </div>
+  );
+}
+
+function BriefProduto({ d }: { d: D }) {
+  const [sel, setSel] = useState<string>("");
+  if (!d.briefs.length) return null;
+  const b = d.briefs.find((x) => x.produto === sel) ?? d.briefs[0]!;
+  return (
+    <Panel
+      title={`Brief para creators: ${b.produto}`}
+      right={<CopiarTexto texto={b.texto} rotulo="Copiar brief" />}
+    >
+      {d.briefs.length > 1 && (
+        <div className="mb-4">
+          <Pills
+            value={b.produto}
+            onChange={setSel}
+            options={d.briefs.map((x) => ({ id: x.produto, label: x.produto }))}
+          />
+        </div>
+      )}
+      <p className="text-sm">{b.objetivo}</p>
+      <div className="mt-4 grid gap-6 md:grid-cols-2">
+        <div>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-success">
+            Use
+          </div>
+          <ul className="space-y-1 text-sm">
+            {b.usar.map((u) => (
+              <li key={u.dimensao}>
+                <span className="font-medium">{u.dimensao}:</span> {u.valor}{" "}
+                <span className="text-xs text-muted-foreground">({u.detalhe})</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-danger">
+            Evite
+          </div>
+          {b.evitar.length ? (
+            <ul className="space-y-1 text-sm">
+              {b.evitar.map((u) => (
+                <li key={u.dimensao}>
+                  <span className="font-medium">{u.dimensao}:</span> {u.valor}{" "}
+                  <span className="text-xs text-muted-foreground">({u.detalhe})</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nada claramente abaixo da média ainda.</p>
+          )}
+        </div>
+        <div>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wider">Prazos</div>
+          <ul className="list-disc space-y-1 pl-4 text-sm">
+            {b.prazos.map((x) => (
+              <li key={x}>{x}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wider">
+            Cuidados (validar com o regulatório)
+          </div>
+          <ul className="list-disc space-y-1 pl-4 text-sm">
+            {b.regulatorio.map((x) => (
+              <li key={x}>{x}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <p className="mt-4 text-xs text-muted-foreground">
+        Gerado dos padrões vencedores do DNA (confiança {b.confianca}, {fmtNum(b.videos)} vídeos).
+        Template sem IA: a IA para reescrever o brief entra com login e aprovação. Os cuidados são
+        hipótese até o jurídico validar.
       </p>
     </Panel>
   );

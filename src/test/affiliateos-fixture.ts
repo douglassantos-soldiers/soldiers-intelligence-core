@@ -20,6 +20,7 @@ import {
   NAO_IDENTIFICADO,
 } from "@/lib/dna";
 import { produtoDoTexto } from "@/lib/criativos360";
+import { programaAffiliate } from "@/lib/playbooks";
 import { videos as videosConteudo } from "./criativos360-fixture";
 
 export const REF = "2026-09-30";
@@ -220,6 +221,42 @@ export const ao = {
       faturamento_bruto: 1000,
     },
   ],
+  // Direitos de uso fictícios: um ativo vencendo, um pedido em andamento e um expirado.
+  direitos: [
+    {
+      id: "d1",
+      creator_id: "c1",
+      video_id: "va0",
+      plataforma: "tiktok_spark",
+      status: "ativo",
+      valor: 300,
+      inicio: "2026-09-05",
+      fim: "2026-10-05",
+      tem_codigo: true,
+    },
+    {
+      id: "d2",
+      creator_id: "c3",
+      video_id: "vb1",
+      plataforma: "tiktok_spark",
+      status: "solicitado",
+      valor: 0,
+      inicio: null,
+      fim: null,
+      tem_codigo: false,
+    },
+    {
+      id: "d3",
+      creator_id: "c1",
+      video_id: "va1",
+      plataforma: "meta_partnership",
+      status: "expirado",
+      valor: 200,
+      inicio: "2026-07-01",
+      fim: "2026-07-31",
+      tem_codigo: false,
+    },
+  ],
   qualidade: [
     {
       cupom: "ALFA10",
@@ -257,11 +294,30 @@ export function affiliateOSFixture(foco = "Creatina") {
   const pecas = dnaTikTok(videosConteudo, mapaManual([]), "2026-07-01", REF);
   const focoNome = produtoDoTexto(foco) || foco;
   const pecasFoco = pecas.filter((x) => x.dna.produto === focoNome);
+  const padroes = padroesVencedores(pecas, MEDIDA_TIKTOK);
+  const programa = programaAffiliate({
+    videos: ao.videos,
+    cadastro: ao.cadastro,
+    amostras,
+    creators,
+    regras: [],
+    direitos: ao.direitos,
+    pecas,
+    padroes: [...padroes].sort(
+      (a, b) => Number(b.produto === focoNome) - Number(a.produto === focoNome),
+    ),
+    margemPct: 20,
+    foco,
+    ref: REF,
+    hoje: HOJE,
+  });
   return {
     ref: REF,
     foco,
+    ...programa,
+    onda2Pendente: false,
     conteudo: {
-      padroes: padroesVencedores(pecas, MEDIDA_TIKTOK),
+      padroes,
       creators: dnaPorCreator(pecasFoco),
       videos: pecasFoco,
       videosFoco: pecasFoco.length,
@@ -284,7 +340,13 @@ export function affiliateOSFixture(foco = "Creatina") {
     sinais,
     qualidade: qualidadePorCreator(ao.qualidade, nomes),
     migracaoPendente: false,
-    alertas: alertasAffiliateOS({ amostras, creators, sinais }),
+    alertas: alertasAffiliateOS({
+      amostras,
+      creators,
+      sinais,
+      recomendacoes: programa.recomendacoes,
+      direitosVencendo: programa.direitos.vencendo.length + programa.direitos.vencidos,
+    }),
     erros: {} as Record<string, string>,
   };
 }

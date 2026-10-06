@@ -120,6 +120,11 @@ describe("comissão, risco e qualidade", () => {
       novosPct: 75,
       recompraPct: 30,
     });
-    expect(d.alertas.map((a) => a.tag)).toEqual(["Amostras", "Risco afiliado"]);
+    expect(d.alertas.map((a) => a.tag)).toEqual([
+      "Amostras",
+      "Risco afiliado",
+      "Direito de uso",
+      "Ações do dia",
+    ]);
   });
 });

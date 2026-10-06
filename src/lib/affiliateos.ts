@@ -870,6 +870,9 @@ export function alertasAffiliateOS(i: {
   amostras: Amostra[];
   creators: CreatorOS[];
   sinais: Sinal[];
+  /** Onda 2: ações sugeridas do dia (playbooks) e direitos de uso vencendo ou vencidos. */
+  recomendacoes?: { playbook: string; creator: string; motivo: string; prioridade: number }[];
+  direitosVencendo?: number;
 }): AlertaCanal[] {
   const out: AlertaCanal[] = [];
   const atras = i.amostras.filter((a) => a.alertas.length);
@@ -886,6 +889,21 @@ export function alertasAffiliateOS(i: {
       tag: "Risco afiliado",
       tom: "warn",
       texto: `${i.sinais.length} sinal(is) para revisar, como ${i.sinais[0]!.quem}: ${i.sinais[0]!.sinal}.`,
+    });
+  if (i.direitosVencendo)
+    out.push({
+      tipo: "problema",
+      tag: "Direito de uso",
+      tom: "warn",
+      texto: `${i.direitosVencendo} direito(s) de uso vencendo em 7 dias ou com a data já vencida. Renovar ou pausar o anúncio.`,
+    });
+  const urgentes = (i.recomendacoes ?? []).filter((r) => r.prioridade === 1);
+  if (urgentes.length)
+    out.push({
+      tipo: "oportunidade",
+      tag: "Ações do dia",
+      tom: "primary",
+      texto: `${urgentes.length} ação(ões) prioritária(s) no Affiliate OS, como ${urgentes[0]!.creator}: ${urgentes[0]!.motivo}`,
     });
   const top = i.creators.find((c) => !c.cadastrado && c.opportunity >= 80);
   if (top)

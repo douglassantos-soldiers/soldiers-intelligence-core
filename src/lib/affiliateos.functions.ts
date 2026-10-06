@@ -24,6 +24,7 @@ import {
   NAO_IDENTIFICADO,
 } from "@/lib/dna";
 import { produtoDoTexto } from "@/lib/criativos360";
+import { programaAffiliate } from "@/lib/playbooks";
 
 type Rows = Record<string, unknown>[];
 const LIMITE_COORTE = 300000;
@@ -46,6 +47,14 @@ export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: 
       return [] as Rows;
     }
   };
+  let onda2Pendente = false;
+  const opcionalOnda2 = (pr: Promise<Rows>) =>
+    pr.catch((e) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/does not exist|não existe|schema cache|Could not find/i.test(msg)) onda2Pendente = true;
+      else erros["programa"] = msg;
+      return [] as Rows;
+    });
   const hoje = new Date().toISOString().slice(0, 10);
   const de90 = menos(hoje, 89);
   const de180 = menos(hoje, 179);
@@ -64,6 +73,8 @@ export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: 
     influ,
     etiq,
     videosAno,
+    regras,
+    direitosRows,
   ] = await Promise.all([
     safe(
       "videos",
@@ -237,6 +248,25 @@ export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: 
             LIMITE_COORTE,
           ),
         ),
+    // Onda 2: faixas de comissão e direitos de uso (migração 20261006150000). Sem ela, vale a regra padrão do código.
+    opcionalOnda2(
+      fetchAll(
+        () =>
+          c
+            .from("affiliate_regra_comissao")
+            .select("nome,versao,vigente_desde,base,janela_dias,faixas"),
+        "affiliate_regra_comissao",
+      ),
+    ),
+    opcionalOnda2(
+      fetchAll(
+        () =>
+          c
+            .from("affiliate_direito_uso")
+            .select("id,creator_id,video_id,plataforma,status,valor,inicio,fim,tem_codigo"),
+        "affiliate_direito_uso",
+      ),
+    ),
   ]);
   const ref =
     videos.reduce(
@@ -276,10 +306,28 @@ export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: 
     videosFoco: pecasFoco.length,
     semProduto: pecas.filter((x) => x.dna.produto === NAO_IDENTIFICADO).length,
   };
+  const programa = programaAffiliate({
+    videos,
+    cadastro,
+    amostras: am,
+    creators,
+    regras,
+    direitos: direitosRows,
+    pecas,
+    padroes: [...conteudo.padroes].sort(
+      (a, b) => Number(b.produto === focoNome) - Number(a.produto === focoNome),
+    ),
+    margemPct: margemAfiliado,
+    foco: p.foco,
+    ref,
+    hoje,
+  });
   return {
     ref,
     foco: p.foco,
     conteudo,
+    ...programa,
+    onda2Pendente,
     margemAfiliadoPct: margemAfiliado,
     creators: creators.slice(0, 300),
     totalCreators: creators.length,
@@ -303,7 +351,13 @@ export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: 
     sinais,
     qualidade: qualidadePorCreator(qual, nomes).slice(0, 200),
     migracaoPendente,
-    alertas: alertasAffiliateOS({ amostras: am, creators, sinais }),
+    alertas: alertasAffiliateOS({
+      amostras: am,
+      creators,
+      sinais,
+      recomendacoes: programa.recomendacoes,
+      direitosVencendo: programa.direitos.vencendo.length + programa.direitos.vencidos,
+    }),
     erros,
   };
 }
