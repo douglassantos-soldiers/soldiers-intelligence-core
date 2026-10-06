@@ -1,4 +1,4 @@
-// Leituras da Central de criativos. Só leitura. mv_criativo_cliente vem da migração 20261005150000;
+// Leituras da Central de criativos. Só leitura. mv_criativo_cliente vem da migração 20261005151000;
 // sem ela, o placar mostra desempenho e contribuição pela receita do Meta, sem cliente nem LTV.
 import { createServerFn } from "@tanstack/react-start";
 import { db, fetchAll, Periodo } from "@/lib/db-helpers";

@@ -5,6 +5,8 @@
 -- [HIPÓTESE] Os anúncios do Meta usam utm_content = {{ad.id}} ou {{ad.name}} (o que estiver nos links).
 -- [HIPÓTESE] dim_cliente.cliente_id é o id do cliente no Shopify.
 -- Pedido sem utm_content que case com um anúncio não entra (fica como "sem anúncio identificado").
+--
+-- MV criada WITH NO DATA: o fill inicial e o diário rodam via pg_cron (evita timeout da API Management).
 
 create materialized view if not exists public.mv_criativo_cliente as
 with pedidos as (
@@ -42,16 +44,35 @@ select c.ad_id,
        now()                                                                               as gerado_em
 from com_cliente c
 left join public.mv_growth_cliente_perfil p on p.cliente_chave = c.cliente_chave
-group by c.ad_id;
+group by c.ad_id
+with no data;
+
 create unique index if not exists mv_criativo_cliente_ad on public.mv_criativo_cliente (ad_id);
 
 create or replace function public.criativo_atualiza_cliente() returns void
-language sql security definer set search_path = public as $$
-  refresh materialized view concurrently public.mv_criativo_cliente;
+language plpgsql security definer set search_path = public as $$
+begin
+  perform set_config('statement_timeout', '0', true);
+  begin
+    refresh materialized view concurrently public.mv_criativo_cliente;
+  exception when others then
+    refresh materialized view public.mv_criativo_cliente;
+  end;
+end;
 $$;
 
 revoke all on public.mv_criativo_cliente from anon, authenticated;
 revoke all on function public.criativo_atualiza_cliente() from public, anon, authenticated;
 
--- (Opcional) Atualizar todo dia depois do atualiza_growth_mv:
--- select cron.schedule('criativo-cliente', '45 7 * * *', $$ select public.criativo_atualiza_cliente(); $$);
+-- Fill inicial (uma vez) + diário depois do atualiza_growth_mv
+select cron.unschedule(jobid) from cron.job where jobname in ('criativo-cliente-init', 'criativo-cliente');
+select cron.schedule(
+  'criativo-cliente-init',
+  '* * * * *',
+  $$select public.criativo_atualiza_cliente(); select cron.unschedule('criativo-cliente-init');$$
+);
+select cron.schedule(
+  'criativo-cliente',
+  '45 7 * * *',
+  $$select public.criativo_atualiza_cliente();$$
+);

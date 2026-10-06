@@ -95,7 +95,7 @@ function Body({ d }: { d: D }) {
       {(d.migracaoPendente || !d.temCliente) && (
         <div className="rounded-lg border border-warning/50 bg-warning/10 p-4 text-sm">
           Cliente, LTV e contribuição por criativo precisam da migração{" "}
-          <span className="font-mono">20261005150000_criativo_cliente.sql</span> e de links do Meta
+          <span className="font-mono">20261005151000_criativo_cliente.sql</span> e de links do Meta
           com <span className="font-mono">utm_content={"{{ad.id}}"}</span> (ou o nome do anúncio).
           Até lá, a tela mostra o desempenho informado pelo Meta.
         </div>
