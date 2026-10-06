@@ -57,7 +57,7 @@ const NOMES_BLOCO: Record<string, string> = {
 };
 
 function Amazon() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getAmazon);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["amazon", p], queryFn: () => fn({ data: p }) });

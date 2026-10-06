@@ -74,7 +74,7 @@ const DIAG = {
 };
 
 function Google() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getGoogle);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["google", p], queryFn: () => fn({ data: p }) });

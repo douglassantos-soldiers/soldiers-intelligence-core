@@ -51,7 +51,7 @@ const NOMES: Record<string, string> = {
 const T = (r: unknown) => r as Record<string, unknown>[];
 
 function TikTokAds() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getTikTokAds);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["tiktok-ads", p], queryFn: () => fn({ data: p }) });

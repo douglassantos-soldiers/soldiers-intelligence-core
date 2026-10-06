@@ -43,7 +43,7 @@ const pp = (v: number | null) =>
   v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(1).replace(".", ",")} p.p.`;
 
 function Devolucoes() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getDevolucoes);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["devolucoes", p], queryFn: () => fn({ data: p }) });

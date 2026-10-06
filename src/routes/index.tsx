@@ -22,7 +22,7 @@ export const Route = createFileRoute("/")({
 });
 
 function CommandCenter() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const q = useOverview(dias);
 
   return (

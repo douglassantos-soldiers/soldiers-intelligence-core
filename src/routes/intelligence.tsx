@@ -62,7 +62,7 @@ const TOM_LEITURA: Record<string, "success" | "danger" | "muted" | "warn"> = {
 };
 
 function Inteligencia() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getInteligencia);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["inteligencia", p], queryFn: () => fn({ data: p }) });

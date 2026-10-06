@@ -55,7 +55,7 @@ const TOM: Record<string, "success" | "danger" | "warn" | "muted" | "primary"> =
 };
 
 function Central() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getCriativos);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["central-criativos", p], queryFn: () => fn({ data: p }) });

@@ -53,7 +53,7 @@ const NOMES: Record<string, string> = {
 };
 
 function Meta() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getMeta);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["meta", p], queryFn: () => fn({ data: p }) });
