@@ -354,7 +354,7 @@ function Dna({ d }: { d: D["dna"] }) {
         <Kpi
           label="Gasto do Meta com DNA"
           value={fmtPct(cob.metaPct, 0)}
-          hint="gancho, ângulo ou CTA identificado"
+          hint="gancho, ângulo, formato ou CTA identificado"
         />
         <Kpi
           label="GMV TikTok com DNA"

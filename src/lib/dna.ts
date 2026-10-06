@@ -571,7 +571,7 @@ export function alertasDNA(
       tipo: "problema",
       tag: "DNA do conteúdo",
       tom: "primary",
-      texto: `Só ${Math.round(cob.metaPct)}% do gasto do Meta tem gancho, ângulo ou CTA identificado. Etiquetar os maiores criativos melhora a leitura.`,
+      texto: `Só ${Math.round(cob.metaPct)}% do gasto do Meta tem gancho, ângulo, formato ou CTA identificado. Etiquetar os maiores criativos melhora a leitura.`,
     });
   return out;
 }
