@@ -17,20 +17,8 @@ import {
 } from "@/lib/google";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import {
-  resumoAmazon,
-  asin360,
-  termosAds,
-  shareDeBusca,
-  reposicaoFba,
-  recompraAsin,
-  organicoVsAds,
-  vendasPorHora,
-  novosParaMarca,
-  alvosKeywords,
-  alvosSd,
-  classificaLances,
-} from "@/lib/amazon";
+import { novosParaMarca } from "@/lib/amazon";
+import { amazonFixture } from "./amazon-fixture";
 import {
   economiaShopee,
   cancelamentosShopee,
@@ -40,206 +28,6 @@ import {
   livesShopee,
 } from "@/lib/shopee";
 import { economiaML, anuncios360, diagnosticoAds, alertasML } from "@/lib/mercadolivre";
-
-const AMZ_DE = "2026-09-01";
-const AMZ_ATE = "2026-09-30";
-const amazonFixture = {
-  resumo: resumoAmazon(
-    [
-      {
-        data: "2026-09-02",
-        vendas: 20000,
-        unidades: 200,
-        sessoes: 4000,
-        buybox_pct: 0.86,
-        unidades_devolvidas: 4,
-      },
-    ],
-    [{ data: "2026-09-02", ad_type: "SP", cost: 1500, sales_14d: 7500, clicks: 900 }],
-    AMZ_DE,
-    AMZ_ATE,
-  ),
-  asins: asin360(
-    [
-      {
-        data: "2026-09-02",
-        child_asin: "B0CREA",
-        vendas: 12000,
-        unidades: 120,
-        sessoes: 1500,
-        buybox_pct: 1,
-      },
-      {
-        data: "2026-09-02",
-        child_asin: "B0WHEY",
-        vendas: 8000,
-        unidades: 80,
-        sessoes: 2500,
-        buybox_pct: 0.7,
-      },
-    ],
-    [
-      {
-        asin: "B0WHEY",
-        ganho_buybox: false,
-        concorrente_no_bb: true,
-        meu_preco: 199.9,
-        menor_preco_concorrente: 189.9,
-      },
-    ],
-    [{ asin: "B0CREA", seller_sku: "CREA300", fulfillable: 90 }],
-    [
-      {
-        asin: "B0CREA",
-        sku: "CREA300",
-        em_fba: true,
-        cobertura_dias: 8,
-        titulo: "Creatina Amazon 300g",
-        fba_disponivel: 90,
-      },
-    ],
-    [{ asin: "B0WHEY", titulo: "Whey Amazon 900g", tem_aplus: true }],
-    AMZ_DE,
-    AMZ_ATE,
-  ),
-  termos: termosAds(
-    [
-      {
-        data: "2026-09-02",
-        campaign_name: "C",
-        search_term: "pre treino barato",
-        keyword_text: "pre treino",
-        match_type: "BROAD",
-        cost: 80,
-        clicks: 40,
-        purchases_14d: 0,
-        sales_14d: 0,
-      },
-      {
-        data: "2026-09-02",
-        campaign_name: "C",
-        search_term: "creatina monohidratada",
-        keyword_text: "creatina",
-        match_type: "BROAD",
-        cost: 50,
-        clicks: 30,
-        purchases_14d: 6,
-        sales_14d: 900,
-      },
-      {
-        data: "2026-09-02",
-        campaign_name: "C",
-        search_term: "whey",
-        keyword_text: "whey",
-        match_type: "BROAD",
-        cost: 300,
-        clicks: 100,
-        purchases_14d: 3,
-        sales_14d: 400,
-      },
-    ],
-    AMZ_DE,
-    AMZ_ATE,
-  ),
-  share: shareDeBusca([
-    {
-      semana_fim: "2026-09-20",
-      termo: "creatina",
-      nosso: true,
-      click_share: 0.2,
-      conversion_share: 0.25,
-      rank_busca: 4,
-    },
-    {
-      semana_fim: "2026-09-27",
-      termo: "creatina",
-      nosso: true,
-      click_share: 0.12,
-      conversion_share: 0.15,
-      rank_busca: 4,
-    },
-  ]),
-  reposicao: reposicaoFba(
-    [
-      {
-        sku: "CREA300",
-        asin: "B0CREA",
-        titulo: "Creatina Amazon 300g",
-        em_fba: true,
-        fba_disponivel: 90,
-        cobertura_dias: 8,
-        enviar_30d: 300,
-        alerta: "repor",
-      },
-    ],
-    [{ seller_sku: "CREA300", imprestavel_total: 3 }],
-  ),
-  recompra: recompraAsin([
-    {
-      asin: "B0CREA",
-      mes_fim: "2026-09-30",
-      clientes_unicos: 300,
-      pct_clientes_repetem: 0.18,
-      receita_recompra: 4000,
-    },
-  ]),
-  organico: organicoVsAds(
-    [
-      { semana_fim: "2026-09-20", termo: "whey", nosso: true, click_share: 0.2, rank_busca: 1 },
-      { semana_fim: "2026-09-27", termo: "whey", nosso: true, click_share: 0.05, rank_busca: 1 },
-      {
-        semana_fim: "2026-09-27",
-        termo: "creatina pura",
-        nosso: true,
-        click_share: 0.5,
-        rank_busca: 3,
-      },
-    ],
-    [{ data: "2026-09-02", search_term: "creatina pura", cost: 400, sales_14d: 2000 }],
-    AMZ_DE,
-    AMZ_ATE,
-  ),
-  horas: vendasPorHora(
-    [
-      { data: "2026-09-06", hora: 21, venda: 900, pedidos: 9 },
-      { data: "2026-09-07", hora: 9, venda: 100, pedidos: 1 },
-    ],
-    AMZ_DE,
-    AMZ_ATE,
-  ),
-  lances: {
-    keywords: classificaLances(
-      alvosKeywords(
-        [
-          {
-            data: "2026-09-02",
-            campaign_name: "SP Creatina",
-            keyword: "creatina 1kg",
-            match_type: "EXACT",
-            cost: 100,
-            clicks: 100,
-            purchases_14d: 10,
-            sales_14d: 1000,
-          },
-          {
-            data: "2026-09-02",
-            campaign_name: "SP Whey",
-            keyword: "whey protein",
-            match_type: "BROAD",
-            cost: 300,
-            clicks: 150,
-            purchases_14d: 2,
-            sales_14d: 600,
-          },
-        ],
-        AMZ_DE,
-        AMZ_ATE,
-      ),
-    ),
-    sd: classificaLances(alvosSd([], AMZ_DE, AMZ_ATE)),
-  },
-  erros: { brand: "timeout" },
-};
 
 // As telas chamam server functions via useServerFn. Aqui elas devolvem dados fixos,
 // para testar a renderização sem banco.
@@ -1137,6 +925,29 @@ describe("telas novas renderizam com dados", () => {
     fireEvent.click(screen.getByText("Horários"));
     expect(screen.getByText("Melhores horários")).toBeTruthy();
     expect(screen.getByText("Dom 21h–22h")).toBeTruthy();
+
+    // segunda leva: tendência, Buy Box e anúncio, estoque FBA, SB/SD/orçamento e pedidos
+    expect(screen.queryByText("Estoque FBA detalhado")).toBeNull();
+    fireEvent.click(screen.getByText("Tendência e hoje"));
+    expect(screen.getByText("Últimas 12 semanas")).toBeTruthy();
+    expect(
+      screen.getByText("+21,4% vs. 29/09/2026 no mesmo horário", { exact: false }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByText("Buy Box e anúncio"));
+    expect(screen.getByText("Nosso preço está 5,3% acima da Buy Box (R$ 189,90).")).toBeTruthy();
+    expect(screen.getByText(/título curto \(60\)/)).toBeTruthy();
+    fireEvent.click(screen.getByText("Produtos e estoque"));
+    expect(screen.getByText("Estoque FBA detalhado")).toBeTruthy();
+    expect(screen.getByText("2 vencida(s)")).toBeTruthy();
+    fireEvent.click(screen.getByText("Ads"));
+    expect(screen.getByText("Campanhas batendo no orçamento")).toBeTruthy();
+    expect(screen.getByText("Sponsored Display por produto")).toBeTruthy();
+    expect(screen.getByText("Sponsored Display")).toBeTruthy(); // Ads por tipo: SP + SB + SD
+    fireEvent.click(screen.getByRole("button", { name: "Sponsored Brands" }));
+    expect(screen.getByText("suplemento barato")).toBeTruthy();
+    fireEvent.click(screen.getByText("Pedidos"));
+    expect(screen.getByText("FBA × envio próprio")).toBeTruthy();
+    expect(screen.getAllByText("Envio próprio").length).toBeGreaterThan(0);
   });
 
   it("Mercado Livre: economia, anúncios e Product Ads", async () => {

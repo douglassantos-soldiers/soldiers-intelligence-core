@@ -15,9 +15,12 @@ import { campanhasGoogle, ritmoIntraday, produtosGoogle, assetsPmax, paginasSite
 import { economiaShopee, cancelamentosShopee, adsShopee, adsPorHora, produtosShopee, livesShopee, alertasShopee } from "@/lib/shopee";
 import { economiaML, anuncios360, diagnosticoAds, alertasML } from "@/lib/mercadolivre";
 import { filaDeAcao, calibracao, reguaReposicao, emailRD, automacoesRD, utmEmail, funilLeads, acoesGrowth, saudeKlaviyo, alertasCRM } from "@/lib/crm";
+import { tendenciaSemanal, hojeAteAgora, buyBoxCompleto, qualidadeAnuncio, estoqueFba, sbParaTermos, sdPorProduto, campanhasNoLimite, pedidosAmazon } from "@/lib/amazon-operacao";
+import { adsUnificados, adsPorSemana } from "@/lib/amazon";
 import { resumoAmazon, asin360, termosAds, shareDeBusca, reposicaoFba, recompraAsin, organicoVsAds, vendasPorHora, novosParaMarca, alvosKeywords, alvosSd, classificaLances, alertasAmazon, amazonDoSku } from "@/lib/amazon";
 
 import { db, check, fetchAll, fetchIn, type Db } from "@/lib/db-helpers";
+import { dataLocal } from "@/lib/format";
 import { dadosTikTokAds, dadosMeliDsp, dadosAfiliados, dadosMidiaSku, dadosDevolucoes } from "@/lib/canais.functions";
 import { dadosAtribuicao } from "@/lib/clientes.functions";
 import { dadosInteligencia } from "@/lib/inteligencia.functions";
@@ -25,6 +28,7 @@ import { dadosAffiliateOS } from "@/lib/affiliateos.functions";
 import { dadosCriativos } from "@/lib/criativos360.functions";
 import { dadosFechamento, mesAnterior } from "@/lib/fechamento.functions";
 
+const menorData = (a: string, b: string) => (a < b ? a : b);
 const menosDiasIso = (iso: string, d: number) =>
   new Date(Date.parse(iso + "T00:00:00Z") - d * 86400000).toISOString().slice(0, 10);
 
@@ -491,7 +495,7 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
     const [vendasA, bb, est, rep, cad, termosR, brand] = await Promise.all([
       fetchAll(() => c.from("fact_amazon_venda_asin_dia").select("data,child_asin,vendas,unidades,sessoes,buybox_pct").gte("data", de14).lte("data", hoje), "amazon asin", 60000),
       fetchAll(() => c.from("dim_amazon_buybox").select("asin,ganho_buybox,concorrente_no_bb,meu_preco,menor_preco_concorrente"), "amazon buybox"),
-      fetchAll(() => c.from("dim_amazon_estoque_sp").select("asin,seller_sku,fulfillable"), "amazon estoque"),
+      fetchAll(() => c.from("dim_amazon_estoque_sp").select("asin,seller_sku,fulfillable,imprestavel_vencido"), "amazon estoque"),
       fetchAll(() => c.from("dim_amazon_reposicao").select("sku,asin,titulo,em_fba,cobertura_dias"), "amazon reposicao"),
       fetchAll(() => c.from("dim_amazon_cadastro").select("asin,titulo"), "amazon cadastro"),
       fetchAll(() => c.from("fact_amazon_ads_search_term_dia").select("data,campaign_name,search_term,keyword_text,match_type,cost,clicks,purchases_14d,sales_14d").gte("data", de14).lte("data", hoje), "amazon search terms", 90000),
@@ -502,6 +506,7 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
       termos: termosAds(termosR, de14, hoje),
       share: shareDeBusca(brand, { top: Infinity }),
       organico: organicoVsAds(brand, termosR, de14, hoje),
+      vencidoFba: estoqueFba(est, rep).totais.vencido,
     });
   } catch {
     amazon = [];
@@ -658,27 +663,62 @@ export const getAmazon = createServerFn({ method: "GET" })
       }
     };
 
-    const [trafego, ads, vendas, buybox, estoque, reposicao, cadastro, termos, brand, recompra, horas, keywords, sdAlvos] = await Promise.all([
+    const [trafego, adsSp, adsSb, adsSd, vendas, buybox, estoque, reposicao, cadastro, termos, brand, recompra, horas, keywords, sdAlvos, semanas, intraday, sbTermos, sdProduto, campanhas, pedidos] = await Promise.all([
       safe("trafego", fetchAll(() => c.from("fact_amazon_venda_trafego_dia").select("data,vendas,unidades,sessoes,buybox_pct,unidades_devolvidas,em_consolidacao").gte("data", data.de).lte("data", data.ate), "amazon trafego")),
-      safe("ads", fetchAll(() => c.from("fact_amazon_ads_campanha_dia").select("data,ad_type,cost,sales_14d,clicks").gte("data", data.de).lte("data", data.ate), "amazon ads", 90000)),
+      // Ads: SP (campanha_dia) + SB + SD, 84 dias antes do fim para a tendência semanal; o resumo filtra o período.
+      safe("ads", fetchAll(() => c.from("fact_amazon_ads_campanha_dia").select("data,ad_type,campaign_id,campaign_name,cost,sales_14d,sales_7d,clicks").gte("data", menorData(data.de, menosDiasIso(data.ate, 90))).lte("data", data.ate), "amazon ads", 120000)),
+      safe("adsSb", fetchAll(() => c.from("fact_amazon_ads_sb_campanha_dia").select("data,campaign_id,campaign_name,cost,sales,clicks,impressions").gte("data", menorData(data.de, menosDiasIso(data.ate, 90))).lte("data", data.ate), "amazon sb campanhas", 60000)),
+      safe("adsSd", fetchAll(() => c.from("fact_amazon_ads_sd_campanha_dia").select("data,campaign_id,campaign_name,cost,sales,clicks,impressions").gte("data", menorData(data.de, menosDiasIso(data.ate, 90))).lte("data", data.ate), "amazon sd campanhas", 60000)),
       safe("vendas", fetchAll(() => c.from("fact_amazon_venda_asin_dia").select("data,child_asin,vendas,unidades,sessoes,buybox_pct").gte("data", data.de).lte("data", data.ate), "amazon asin", 90000)),
-      safe("buybox", fetchAll(() => c.from("dim_amazon_buybox").select("asin,ganho_buybox,concorrente_no_bb,meu_preco,menor_preco_concorrente"), "amazon buybox")),
-      safe("estoque", fetchAll(() => c.from("dim_amazon_estoque_sp").select("asin,seller_sku,fulfillable,imprestavel_total"), "amazon estoque")),
+      safe("buybox", fetchAll(() => c.from("dim_amazon_buybox").select("asin,ganho_buybox,concorrente_no_bb,meu_preco,menor_preco_concorrente,buybox_preco,buybox_fba,n_ofertas,n_concorrentes"), "amazon buybox")),
+      safe("estoque", fetchAll(() => c.from("dim_amazon_estoque_sp").select("asin,seller_sku,product_name,fulfillable,imprestavel_total,imprestavel_vencido,imprestavel_danificado_armazem,imprestavel_danificado_cliente,imprestavel_defeito,reservado_total,reservado_pedido,reservado_transito,reservado_fc,inbound_working,inbound_shipped,inbound_receiving"), "amazon estoque")),
       safe("reposicao", fetchAll(() => c.from("dim_amazon_reposicao").select("sku,asin,titulo,em_fba,fba_disponivel,fba_a_caminho,media_diaria,cobertura_dias,enviar_30d,alerta"), "amazon reposicao")),
-      safe("cadastro", fetchAll(() => c.from("dim_amazon_cadastro").select("asin,titulo,faltas,tem_aplus,health"), "amazon cadastro")),
+      safe("cadastro", fetchAll(() => c.from("dim_amazon_cadastro").select("asin,titulo,faltas,tem_aplus,health,n_fotos,n_bullets,tem_descricao,tem_ingredientes,comprimento_titulo,bsr,bsr_categoria,categoria"), "amazon cadastro")),
       safe("termos", fetchAll(() => c.from("fact_amazon_ads_search_term_dia").select("data,campaign_name,search_term,keyword_text,match_type,cost,clicks,purchases_14d,sales_14d").gte("data", data.de).lte("data", data.ate), "amazon search terms", 120000)),
       safe("brand", fetchAll(() => c.from("fact_amazon_brand_search_term").select("semana_fim,termo,nosso,click_share,conversion_share,rank_busca").gte("semana_fim", menosDiasIso(data.ate, 35)), "amazon brand analytics", 60000)),
       safe("recompra", fetchAll(() => c.from("fact_amazon_recompra_asin").select("asin,mes_fim,clientes_unicos,pct_clientes_repetem,receita_recompra").gte("mes_fim", menosDiasIso(data.ate, 100)), "amazon recompra")),
       safe("horas", fetchAll(() => c.from("fact_amazon_venda_hora").select("data,hora,venda,pedidos").gte("data", data.de).lte("data", data.ate), "amazon venda hora", 60000)),
       safe("keywords", fetchAll(() => c.from("fact_amazon_ads_keyword_dia").select("data,campaign_name,keyword,match_type,cost,clicks,purchases_14d,sales_14d,top_search_is").gte("data", data.de).lte("data", data.ate), "amazon keywords", 120000)),
       safe("sd", fetchAll(() => c.from("fact_amazon_ads_sd_target_dia").select("data,campaign_id,campaign_name,targeting,targeting_text,cost,clicks,purchases,sales").gte("data", data.de).lte("data", data.ate), "amazon sd alvos", 60000)),
+      // Segunda leva (benchmarks/amazon/REVISAO_IMPLEMENTACAO.md §3): objetos que já existiam e nenhuma tela lia.
+      // Tendência: sempre as últimas 12 semanas, independentemente do período escolhido.
+      safe("semanas", fetchAll(() => c.from("vw_amazon_tendencia_semana").select("semana,semana_ini,faturamento,pedidos,unidades,invest_ads,tacos_pct,roas_ads,roas_total,conversao_pct,devolucao_pct,parcial,ads_maturando").gte("semana_ini", menosDiasIso(data.ate, 90)), "amazon tendencia")),
+      safe("intraday", fetchAll(() => c.from("vw_amazon_venda_intraday").select("data,faixa,venda_total,pedidos,unidades").gte("data", menosDiasIso(data.ate, 8)), "amazon intraday")),
+      safe("sbTermos", fetchAll(() => c.from("fact_amazon_ads_sb_search_term_dia").select("data,campaign_name,search_term,keyword,match_type,cost,clicks,purchases,sales").gte("data", data.de).lte("data", data.ate), "amazon sb termos", 60000)),
+      safe("sdProduto", fetchAll(() => c.from("fact_amazon_ads_sd_produto_dia").select("data,asin,sku,cost,clicks,purchases,sales").gte("data", data.de).lte("data", data.ate), "amazon sd produto", 60000)),
+      safe("campanhas", fetchAll(() => c.from("dim_amazon_ads_campanha").select("campaign_id,campaign_name,ad_type,budget,status"), "amazon campanhas")),
+      // LGPD: sem ship_city, ship_state e ship_postal_code.
+      safe("pedidos", fetchAll(() => c.from("fact_amazon_pedido").select("amazon_order_id,purchase_dia,order_status,fulfillment_channel,sku,asin,quantity,item_price").gte("purchase_dia", data.de).lte("purchase_dia", data.ate), "amazon pedidos", 120000)),
     ]);
+    const ads = adsUnificados(adsSp, adsSb, adsSd);
+    const vendasPorAsin = new Map<string, number>();
+    for (const r of vendas) {
+      const a = String(r["child_asin"] ?? "");
+      if (a) vendasPorAsin.set(a, (vendasPorAsin.get(a) ?? 0) + (Number(r["vendas"]) || 0));
+    }
+    const titulos = new Map<string, string>();
+    for (const r of [...reposicao, ...cadastro]) {
+      const t = String(r["titulo"] ?? "");
+      if (!t) continue;
+      if (r["asin"]) titulos.set(String(r["asin"]), t);
+      if (r["sku"]) titulos.set(String(r["sku"]), t);
+    }
+    const hojeIntraday = intraday.reduce((m, r) => (String(r["data"] ?? "") > m ? String(r["data"]).slice(0, 10) : m), "");
     return {
-      resumo: resumoAmazon(trafego, ads, data.de, data.ate),
+      resumo: resumoAmazon(trafego, ads, data.de, data.ate, dataLocal(new Date())),
       asins: asin360(vendas, buybox, estoque, reposicao, cadastro, data.de, data.ate).slice(0, 60),
       termos: termosAds(termos, data.de, data.ate),
+      termosSb: termosAds(sbParaTermos(sbTermos), data.de, data.ate),
+      sdProduto: sdPorProduto(sdProduto, data.de, data.ate, titulos),
+      orcamento: campanhasNoLimite(ads, campanhas, data.de, data.ate),
       share: shareDeBusca(brand),
       reposicao: reposicaoFba(reposicao, estoque),
+      estoqueFba: estoqueFba(estoque, reposicao),
+      buybox: buyBoxCompleto(buybox, vendasPorAsin, titulos),
+      qualidade: qualidadeAnuncio(cadastro, vendasPorAsin),
+      tendencia: tendenciaSemanal(semanas, 12, adsSb.length || adsSd.length ? adsPorSemana(ads) : undefined),
+      hoje: hojeAteAgora(intraday, hojeIntraday),
+      pedidos: pedidosAmazon(pedidos, data.de, data.ate, titulos),
       recompra: recompraAsin(recompra),
       organico: organicoVsAds(brand, termos, data.de, data.ate),
       horas: vendasPorHora(horas, data.de, data.ate),

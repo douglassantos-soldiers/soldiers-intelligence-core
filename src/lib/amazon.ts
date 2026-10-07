@@ -27,13 +27,103 @@ const mediana = (xs: number[]) => {
 };
 
 // ---------------------------------------------------------------------------------------------
+// Ads: Sponsored Products + Brands + Display numa base só
+
+export type TipoAds = "SP" | "SB" | "SD";
+/** Normaliza o ad_type do banco ("SP", "sponsoredBrands", "SPONSORED_DISPLAY"…). */
+export function tipoAds(v: unknown): TipoAds | "" {
+  const s = txt(v)
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+  if (s === "sb" || s.includes("brand")) return "SB";
+  if (s === "sd" || s.includes("display")) return "SD";
+  if (s === "sp" || s.includes("product")) return "SP";
+  return "";
+}
+/**
+ * Janela de atribuição que o Console da Amazon mostra para vendedor (seller): Sponsored Products 7 dias;
+ * Sponsored Brands e Sponsored Display 14 dias (por clique). [FATO, fonte secundária: Openbridge, "Understanding
+ * Amazon Advertising attribution metrics"; confirmar no Console]. Vendor usaria 14 dias também em SP.
+ */
+export const JANELA_ADS: Record<TipoAds, "7d" | "14d"> = { SP: "7d", SB: "14d", SD: "14d" };
+
+/**
+ * Junta as três fontes num formato só: fact_amazon_ads_campanha_dia (SP; às vezes outros tipos),
+ * fact_amazon_ads_sb_campanha_dia e fact_amazon_ads_sd_campanha_dia. Para não contar duas vezes, quando a tabela
+ * própria de SB (ou SD) tem linhas no período, as linhas desse tipo em campanha_dia são ignoradas.
+ * `sales_padrao` = venda atribuída na janela do Console (SP 7d se houver, senão 14d; SB e SD 14d).
+ */
+export function adsUnificados(sp: Row[], sb: Row[], sd: Row[]): Row[] {
+  const temSB = sb.length > 0;
+  const temSD = sd.length > 0;
+  const out: Row[] = [];
+  for (const r of sp) {
+    const tipo = tipoAds(r["ad_type"]) || "SP";
+    if ((tipo === "SB" && temSB) || (tipo === "SD" && temSD)) continue;
+    const s7 = r["sales_7d"];
+    out.push({
+      ...r,
+      ad_type: tipo,
+      sales_padrao: tipo === "SP" && s7 != null ? n(s7) : n(r["sales_14d"]),
+      janela: tipo === "SP" && s7 != null ? "7d" : "14d",
+      fonte_tabela: "fact_amazon_ads_campanha_dia",
+    });
+  }
+  const dedicada = (rows: Row[], tipo: TipoAds, tabela: string) => {
+    for (const r of rows)
+      out.push({
+        data: r["data"],
+        ad_type: tipo,
+        campaign_id: r["campaign_id"],
+        campaign_name: r["campaign_name"],
+        cost: r["cost"],
+        clicks: r["clicks"],
+        impressions: r["impressions"],
+        sales_14d: r["sales"],
+        sales_7d: null,
+        sales_padrao: n(r["sales"]),
+        janela: "14d",
+        fonte_tabela: tabela,
+      });
+  };
+  dedicada(sb, "SB", "fact_amazon_ads_sb_campanha_dia");
+  dedicada(sd, "SD", "fact_amazon_ads_sd_campanha_dia");
+  return out;
+}
+
+/** Investimento e venda atribuída por semana (segunda-feira), para a tendência com os três tipos. */
+export function adsPorSemana(ads: Row[]) {
+  const m = new Map<string, { custo: number; vendas: number }>();
+  for (const r of ads) {
+    const d = dia(r["data"]);
+    if (!d) continue;
+    const t = new Date(d + "T00:00:00Z");
+    const seg = new Date(t.getTime() - ((t.getUTCDay() + 6) % 7) * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const cur = m.get(seg) ?? { custo: 0, vendas: 0 };
+    cur.custo += n(r["cost"]);
+    cur.vendas += r["sales_padrao"] != null ? n(r["sales_padrao"]) : n(r["sales_14d"]);
+    m.set(seg, cur);
+  }
+  return m;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Resumo da conta (Sales & Traffic) + Ads
 
 /**
  * @param trafego  fact_amazon_venda_trafego_dia (nível conta, por dia)
- * @param ads      fact_amazon_ads_campanha_dia (SP/SB/SD, por campanha e dia)
+ * @param ads      saída de `adsUnificados` (SP + SB + SD, por campanha e dia). Linhas sem `sales_padrao`
+ *                 (formato antigo) usam sales_14d.
  */
-export function resumoAmazon(trafego: Row[], ads: Row[], de: string, ate: string) {
+export function resumoAmazon(
+  trafego: Row[],
+  ads: Row[],
+  de: string,
+  ate: string,
+  hoje: string = ate,
+) {
   const t = trafego.filter((r) => dia(r["data"]) >= de && dia(r["data"]) <= ate);
   const a = ads.filter((r) => dia(r["data"]) >= de && dia(r["data"]) <= ate);
   const fBB = escalaPct(t.map((r) => r["buybox_pct"]));
@@ -43,17 +133,34 @@ export function resumoAmazon(trafego: Row[], ads: Row[], de: string, ate: string
   const devolvidas = t.reduce((s, r) => s + n(r["unidades_devolvidas"]), 0);
   const bbPeso = t.reduce((s, r) => s + n(r["buybox_pct"]) * fBB * n(r["sessoes"]), 0);
   const custoAds = a.reduce((s, r) => s + n(r["cost"]), 0);
-  const vendasAds = a.reduce((s, r) => s + n(r["sales_14d"]), 0);
+  const padrao = (r: Row) => (r["sales_padrao"] != null ? n(r["sales_padrao"]) : n(r["sales_14d"]));
+  const vendasAds = a.reduce((s, r) => s + padrao(r), 0);
+  const vendasAds14d = a.reduce((s, r) => s + n(r["sales_14d"]), 0);
+  const janelas = [
+    ...new Set(a.map((r) => `${txt(r["ad_type"]) || "—"} ${txt(r["janela"]) || "14d"}`)),
+  ].sort();
+  // Venda atribuída de anúncio ainda chega por até 14 dias depois do clique: dias recentes estão "maturando".
+  const corte = new Date(Date.parse(hoje + "T00:00:00Z") - 13 * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  const diasAds = new Set(a.map((r) => dia(r["data"])));
+  const diasMaturando = [...diasAds].filter((d) => d >= corte).length;
 
   const porTipo = new Map<
     string,
-    { tipo: string; custo: number; vendasAtribuidas: number; cliques: number }
+    { tipo: string; janela: string; custo: number; vendasAtribuidas: number; cliques: number }
   >();
   for (const r of a) {
     const tipo = txt(r["ad_type"]) || "—";
-    const cur = porTipo.get(tipo) ?? { tipo, custo: 0, vendasAtribuidas: 0, cliques: 0 };
+    const cur = porTipo.get(tipo) ?? {
+      tipo,
+      janela: txt(r["janela"]) || "14d",
+      custo: 0,
+      vendasAtribuidas: 0,
+      cliques: 0,
+    };
     cur.custo += n(r["cost"]);
-    cur.vendasAtribuidas += n(r["sales_14d"]);
+    cur.vendasAtribuidas += padrao(r);
     cur.cliques += n(r["clicks"]);
     porTipo.set(tipo, cur);
   }
@@ -70,6 +177,11 @@ export function resumoAmazon(trafego: Row[], ads: Row[], de: string, ate: string
       custo: custoAds,
       vendasAtribuidas: vendasAds,
       acosPct: div(custoAds * 100, vendasAds),
+      janelas,
+      vendasAtribuidas14d: vendasAds14d,
+      acos14dPct: div(custoAds * 100, vendasAds14d),
+      diasMaturando,
+      diasComAds: diasAds.size,
       tacosPct: div(custoAds * 100, vendas),
       porTipo: [...porTipo.values()]
         .map((p) => ({ ...p, acosPct: div(p.custo * 100, p.vendasAtribuidas) }))
@@ -757,6 +869,8 @@ export function alertasAmazon(i: {
   share: ReturnType<typeof shareDeBusca>;
   organico: ReturnType<typeof organicoVsAds>;
   coberturaCritica?: number;
+  /** Unidades vencidas paradas no FBA (dim_amazon_estoque_sp.imprestavel_vencido). */
+  vencidoFba?: number;
 }): AlertaAmazon[] {
   const out: AlertaAmazon[] = [];
   const brl = (v: number) => "R$ " + Math.round(v).toLocaleString("pt-BR");
@@ -769,6 +883,13 @@ export function alertasAmazon(i: {
       tag: "Amazon Buy Box",
       tom: "danger",
       texto: `${semBB.length} ASIN(s) que venderam ${brl(semBB.reduce((s, a) => s + a.vendas, 0))} em 14 dias estão sem a Buy Box. Maior: ${semBB[0]!.titulo}.`,
+    });
+  if (i.vencidoFba)
+    out.push({
+      tipo: "problema",
+      tag: "Amazon FBA",
+      tom: "danger",
+      texto: `${i.vencidoFba.toLocaleString("pt-BR")} unidade(s) vencida(s) no FBA. Pedir remoção ou descarte.`,
     });
   const ruptura = i.asins.filter(
     (a) =>

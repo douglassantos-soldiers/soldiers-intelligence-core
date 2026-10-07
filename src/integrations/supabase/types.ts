@@ -13029,6 +13029,21 @@ export type Database = {
         }
         Relationships: []
       }
+      mv_criativo_cliente: {
+        Row: {
+          ad_id: string
+          pedidos: number
+          receita: number | null
+          clientes: number
+          clientes_novos: number
+          novos_que_recompraram: number
+          ltv_medio_novos: number | null
+          primeiro_pedido: string | null
+          ultimo_pedido: string | null
+          gerado_em: string | null
+        }
+        Relationships: []
+      }
       mv_growth_cliente_primeira: {
         Row: {
           cliente_id: number | null

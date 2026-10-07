@@ -17,6 +17,12 @@ export const fmtDate = (v: unknown) => {
   return `${d}/${m}/${y}`;
 };
 
+/** Data local (fuso do navegador) em AAAA-MM-DD. Evita virar o dia às 21h no Brasil, como faria o UTC. */
+export function dataLocal(d: Date) {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 export function isoDaysAgo(days: number) {
   const d = new Date();
   d.setDate(d.getDate() - days);
