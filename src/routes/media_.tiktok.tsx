@@ -19,6 +19,8 @@ import {
 import { Bars } from "@/components/charts";
 import { ErrosLeitura } from "@/components/erros-leitura";
 import { getTikTokAds } from "@/lib/canais.functions";
+import { PainelAds } from "@/components/painel-ads";
+import { abasDe } from "@/lib/painel-ads";
 import { TOM_LEITURA } from "@/lib/ritmo";
 import { fmtBRL, fmtNum, fmtPct, fmtX, fmtDate, periodo } from "@/lib/format";
 
@@ -39,7 +41,7 @@ export const Route = createFileRoute("/media_/tiktok")({
 });
 
 type D = Awaited<ReturnType<typeof getTikTokAds>>;
-type Aba = "campanhas" | "produtos" | "criativos";
+type Aba = "painel" | "campanhas" | "produtos" | "criativos";
 const NOMES: Record<string, string> = {
   tipos: "resumo por tipo",
   campanhas: "campanhas",
@@ -77,7 +79,7 @@ function TikTokAds() {
 }
 
 function Body({ d }: { d: D }) {
-  const [aba, setAba] = useState<Aba>("campanhas");
+  const [aba, setAba] = useState<Aba>("painel");
   const r = d.resumo;
   const a = r.anomalia;
   return (
@@ -137,11 +139,24 @@ function Body({ d }: { d: D }) {
         value={aba}
         onChange={setAba}
         options={[
+          { id: "painel", label: "Painel" },
           { id: "campanhas", label: "Campanhas" },
           { id: "produtos", label: "Produtos e estoque" },
           { id: "criativos", label: "Vídeos" },
         ]}
       />
+      {aba === "painel" && (
+        <PainelAds
+          linhas={d.painel.linhas}
+          itens={d.painel.itens}
+          abas={abasDe(d.painel.linhas, [], [], undefined, "Todas")}
+          nomeCsv="tiktok-ads-painel"
+          rotuloUnidades="Pedidos"
+          rotuloReceita="GMV"
+          ocultar={["impressoes", "cliques", "ctr", "cpc", "cvr"]}
+          nota="GMV e pedidos atribuídos pelo TikTok. Impressões e cliques não vêm na leitura diária de GMV Max."
+        />
+      )}
       {aba === "campanhas" && <Campanhas c={d.campanhas} />}
       {aba === "produtos" && <Produtos p={d.produtos} />}
       {aba === "criativos" && <Criativos c={d.criativos} />}

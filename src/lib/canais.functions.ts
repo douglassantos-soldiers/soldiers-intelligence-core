@@ -1,6 +1,7 @@
 // Leituras das telas de TikTok Ads, Meli DSP, Afiliados (Creator 360), Mídia × estoque × margem
 // e Devoluções/ranking. Só leitura de objetos que JÁ existem; cálculos nos módulos de src/lib.
 // Cada leitura passa por safe(): uma view com erro só esvazia o bloco dela e aparece em `erros`.
+import { linhasTikTokAds, itensTikTokAds, linhasMeliDsp, itensMeliDsp } from "@/lib/painel-ads";
 import { createServerFn } from "@tanstack/react-start";
 import { db, fetchAll, Periodo } from "@/lib/db-helpers";
 import {
@@ -109,7 +110,9 @@ export async function dadosTikTokAds(p: P) {
         () =>
           c
             .from("vw_tiktok_ads_criativo_dia")
-            .select("data,item_id,produto,campanha,agregado,invest,receita,pedidos")
+            .select(
+              "data,item_id,product_id,produto,campaign_id,campanha,agregado,invest,receita,pedidos",
+            )
             .gte("data", p.de)
             .lte("data", p.ate),
         "tiktok ads criativos",
@@ -130,8 +133,11 @@ export async function dadosTikTokAds(p: P) {
   resumo.anomalia = comBase.anomalia;
   const criativos = criativosTikTok(cri, p.de, p.ate);
   const produtos = produtosTikTokAds(prod, est, p.de, p.ate);
+  const noPeriodo = (r: Record<string, unknown>) => String(r["data"] ?? "").slice(0, 10) >= p.de;
+  const linhasPainel = linhasTikTokAds(camp.filter(noPeriodo), gmv.filter(noPeriodo));
   return {
     resumo,
+    painel: { linhas: linhasPainel, itens: itensTikTokAds(cri, linhasPainel) },
     campanhas: campanhasTikTok(camp, gmv, p.de, p.ate),
     produtos,
     criativos,
@@ -150,7 +156,7 @@ export async function dadosMeliDsp(p: P) {
   const de = menos(p.de, 14);
   const cols =
     "investimento,impressoes,alcance,cliques,ppv,add_to_cart,checkout,unidades,receita,receita_tp,views_ativas,views_completas";
-  const [kpi, camp, cri] = await Promise.all([
+  const [kpi, camp, cri, lineItems] = await Promise.all([
     safe(
       "kpi",
       fetchAll(
@@ -187,12 +193,29 @@ export async function dadosMeliDsp(p: P) {
         90000,
       ),
     ),
+    safe(
+      "lineItems",
+      fetchAll(
+        () =>
+          c
+            .from("vw_ml_display_line_item_dia")
+            .select(
+              "data,campaign_id,campaign_name,tipo,status,line_item_id,line_item_name,investimento,receita,unidades,impressoes,cliques",
+            )
+            .gte("data", p.de)
+            .lte("data", p.ate),
+        "meli dsp line items",
+        60000,
+      ),
+    ),
   ]);
   const resumo = resumoMeliDsp(kpi, p.de, p.ate);
   resumo.anomalia = resumoMeliDsp(kpi, de, p.ate).anomalia;
   const cp = campanhasMeliDsp(camp, p.de, p.ate);
+  const painelDsp = linhasMeliDsp(camp);
   return {
     resumo,
+    painel: { linhas: painelDsp, itens: itensMeliDsp(lineItems, painelDsp) },
     campanhas: cp.campanhas,
     mix: cp.mix,
     criativos: criativosMeliDsp(cri, p.de, p.ate),

@@ -20,6 +20,13 @@ import type { ReactNode } from "react";
 import { novosParaMarca } from "@/lib/amazon";
 import { amazonFixture } from "./amazon-fixture";
 import {
+  mlPainelFixture,
+  shopeePainelFixture,
+  metaPainelFixture,
+  googlePainelFixture,
+  midiaPainelFixture,
+} from "./painel-ads-fixture";
+import {
   economiaShopee,
   cancelamentosShopee,
   adsShopee,
@@ -132,6 +139,7 @@ const mlAds = diagnosticoAds(
   "2026-09-30",
 );
 const mercadoLivreFixture = {
+  painel: mlPainelFixture,
   economia: mlEcon,
   anuncios: mlAnuncios,
   ads: mlAds,
@@ -167,6 +175,7 @@ const shpEcon = economiaShopee(
   "2026-09-30",
 );
 const shopeeFixture = {
+  painel: shopeePainelFixture,
   economia: shpEcon,
   ads: adsShopee(
     [
@@ -499,13 +508,14 @@ const metasFixture = {
 };
 
 const fixtures: Record<string, unknown> = {
-  meta: metaFixture,
+  meta: { ...metaFixture, painel: metaPainelFixture },
   metas: metasFixture,
-  google: googleFixture,
+  google: { ...googleFixture, painel: googlePainelFixture },
   shopee: shopeeFixture,
   ml: mercadoLivreFixture,
   amazon: amazonFixture,
   media: {
+    painel: midiaPainelFixture,
     amazonNtb: novosParaMarca(
       [
         {
@@ -825,9 +835,10 @@ describe("telas novas renderizam com dados", () => {
     const { Route } = await import("@/routes/media");
     const C = Route.options.component!;
     wrap(<C />);
-    expect(await screen.findByText("Por tipo de campanha", {}, { timeout: 10000 })).toBeTruthy();
+    // painel visual: uma linha por canal/tipo, que abre ao ordenar e filtrar
+    expect(await screen.findByText("Desempenho por tipo de campanha", {}, { timeout: 10000 })).toBeTruthy();
+    expect(screen.getByText("Mercado Ads")).toBeTruthy();
     expect(screen.getByText("Funil por canal de venda")).toBeTruthy();
-    expect(screen.getAllByText("3,67x").length).toBeGreaterThan(0); // ROAS mídia = 550 / 150
     expect(screen.getByText("Amazon Ads: clientes novos para a marca")).toBeTruthy();
     expect(screen.getAllByText("60%").length).toBeGreaterThan(0); // 600 de 1000 de clientes novos
   }, 15000);
@@ -942,8 +953,18 @@ describe("telas novas renderizam com dados", () => {
     fireEvent.click(screen.getByText("Ads"));
     expect(screen.getByText("Campanhas batendo no orçamento")).toBeTruthy();
     expect(screen.getByText("Sponsored Display por produto")).toBeTruthy();
-    expect(screen.getByText("Sponsored Display")).toBeTruthy(); // Ads por tipo: SP + SB + SD
-    fireEvent.click(screen.getByRole("button", { name: "Sponsored Brands" }));
+    // painel visual: abas SP/SB/SD/DSP, cards e tabela por campanha que abre nos produtos
+    expect(screen.getByText("Desempenho por campanha")).toBeTruthy();
+    expect(screen.getByText("SP Creatina - Exata")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Abrir itens" }));
+    expect(screen.getByText("Creatina Amazon 1kg")).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: "Sponsored Display" })[0]!);
+    expect(screen.getByText("SD Remarketing")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "DSP" }));
+    expect(screen.getByText(/DSP ainda não é coletado: não há tabela/)).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: "Sponsored Products" })[0]!);
+    expect(screen.getAllByText("Sponsored Display").length).toBeGreaterThan(0); // Ads por tipo: SP + SB + SD
+    fireEvent.click(screen.getAllByRole("button", { name: "Sponsored Brands" }).at(-1)!);
     expect(screen.getByText("suplemento barato")).toBeTruthy();
     fireEvent.click(screen.getByText("Pedidos"));
     expect(screen.getByText("FBA × envio próprio")).toBeTruthy();
@@ -964,7 +985,15 @@ describe("telas novas renderizam com dados", () => {
     expect(screen.getByText("catálogo: ganhar dá prejuízo")).toBeTruthy();
     expect(screen.getByText("Full cobre 5 dias")).toBeTruthy();
 
-    fireEvent.click(screen.getByText("Product Ads"));
+    fireEvent.click(screen.getByText("Mercado Ads"));
+    expect(screen.getByText("1 - CREATINA")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Pausadas" }));
+    expect(screen.getByText("KITS")).toBeTruthy();
+    expect(screen.queryByText("1 - CREATINA")).toBeNull();
+    fireEvent.click(screen.getAllByRole("button", { name: "Todas" })[0]!);
+    fireEvent.click(screen.getByRole("button", { name: "Display" }));
+    expect(screen.getByText("Display Creatina")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Product Ads" }));
     expect(screen.getByText("Onde está o gargalo")).toBeTruthy();
     expect(screen.getByText("orçamento")).toBeTruthy();
   });
@@ -998,6 +1027,14 @@ describe("telas novas renderizam com dados", () => {
     const { Route } = await import("@/routes/media_.google");
     const C = Route.options.component!;
     wrap(<C />);
+    // painel visual (aba padrão): abas por tipo de campanha e grupos de anúncios ao abrir a campanha
+    expect(await screen.findByText("Desempenho por campanha")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Performance Max" }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole("button", { name: "Pesquisa" })[0]!);
+    expect(screen.queryByText("PMax | Creatina")).toBeNull();
+    expect(screen.getByText("Search | Marca")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Campanhas" }));
     expect(await screen.findByText("Ritmo do orçamento hoje")).toBeTruthy();
     expect(screen.getByText("abaixo da meta")).toBeTruthy();
 
@@ -1020,7 +1057,14 @@ describe("telas novas renderizam com dados", () => {
     const { Route } = await import("@/routes/media_.meta");
     const C = Route.options.component!;
     wrap(<C />);
-    expect(await screen.findByText("Por dia")).toBeTruthy();
+    // painel visual (aba padrão): abas por objetivo, compras como unidade
+    expect(await screen.findByText("Desempenho por campanha")).toBeTruthy();
+    expect(screen.getByText("VENDAS | CREATINA | ASC")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Tráfego" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Compras").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByText("Meta × Shopify"));
+    expect(screen.getByText("Por dia")).toBeTruthy();
     expect(screen.getAllByText("Pedidos enviados ao Meta").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByText("Criativos"));

@@ -19,6 +19,8 @@ import {
 import { Bars } from "@/components/charts";
 import { ErrosLeitura } from "@/components/erros-leitura";
 import { getMeliDsp } from "@/lib/canais.functions";
+import { PainelAds } from "@/components/painel-ads";
+import { abasDe } from "@/lib/painel-ads";
 import { ETAPA_LABEL } from "@/lib/melidsp";
 import { fmtBRL, fmtBRL2, fmtNum, fmtPct, fmtX, fmtDate, periodo } from "@/lib/format";
 
@@ -39,7 +41,7 @@ export const Route = createFileRoute("/media_/meli-dsp")({
 });
 
 type D = Awaited<ReturnType<typeof getMeliDsp>>;
-type Aba = "mix" | "campanhas" | "criativos";
+type Aba = "painel" | "mix" | "campanhas" | "criativos";
 const T = (r: unknown) => r as Record<string, unknown>[];
 
 function MeliDsp() {
@@ -69,7 +71,7 @@ function MeliDsp() {
 }
 
 function Body({ d }: { d: D }) {
-  const [aba, setAba] = useState<Aba>("mix");
+  const [aba, setAba] = useState<Aba>("painel");
   const r = d.resumo;
   const a = r.anomalia;
   return (
@@ -131,11 +133,27 @@ function Body({ d }: { d: D }) {
         value={aba}
         onChange={setAba}
         options={[
+          { id: "painel", label: "Painel" },
           { id: "mix", label: "Verba por etapa" },
           { id: "campanhas", label: "Campanhas" },
           { id: "criativos", label: "Criativos e vídeo" },
         ]}
       />
+      {aba === "painel" && (
+        <PainelAds
+          linhas={d.painel.linhas}
+          itens={d.painel.itens}
+          abas={abasDe(
+            d.painel.linhas,
+            [],
+            [],
+            (t) => ETAPA_LABEL[t as keyof typeof ETAPA_LABEL] ?? t,
+            "Todas as etapas",
+          )}
+          nomeCsv="meli-dsp-painel"
+          nota="Receita atribuída pelo Mercado Ads (Display/DSP). Abas por etapa do funil, pela mesma regra da divisão 70/22/8; a expansão da campanha mostra os line items."
+        />
+      )}
       {aba === "mix" && <Mix m={d.mix} />}
       {aba === "campanhas" && <Campanhas c={d.campanhas} />}
       {aba === "criativos" && <Criativos c={d.criativos} />}

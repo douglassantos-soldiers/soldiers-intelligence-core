@@ -21,6 +21,8 @@ import { fmtBRL, fmtBRL2, fmtNum, fmtPct, fmtDate, periodo } from "@/lib/format"
 import { DIAS_SEMANA, type ShareTermo } from "@/lib/amazon";
 import { CRITERIOS_ANUNCIO } from "@/lib/amazon-operacao";
 import { Bars } from "@/components/charts";
+import { PainelAds } from "@/components/painel-ads";
+import { abasDe } from "@/lib/painel-ads";
 
 // Amazon: o que já é coletado e não aparecia em nenhuma tela (benchmarks/amazon/ANALISE.md §4).
 // ASIN 360°, search terms de Ads, share de busca (Brand Analytics), reposição FBA e recompra.
@@ -345,6 +347,26 @@ function Body({ d }: { d: D }) {
 
       {aba === "ads" && (
         <div className="space-y-6">
+          <PainelAds
+            linhas={d.painel.linhas}
+            itens={d.painel.itens}
+            abas={abasDe(
+              d.painel.linhas,
+              [
+                { id: "SP", label: "Sponsored Products" },
+                { id: "SB", label: "Sponsored Brands" },
+                { id: "SD", label: "Sponsored Display" },
+                {
+                  id: "DSP",
+                  label: "DSP",
+                  aviso: "Amazon DSP ainda não é coletado: não há tabela de DSP no banco.",
+                },
+              ],
+              ["SP", "SB", "SD", "DSP"],
+            )}
+            nomeCsv="amazon-ads-campanhas"
+            nota="Receita = venda atribuída pela Amazon na janela do Console (Sponsored Products 7 dias; Brands e Display 14). Ao abrir uma campanha de Sponsored Products, os produtos mostram a venda em 14 dias (é o que o relatório por produto traz). Competitividade = top of search impression share."
+          />
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm text-muted-foreground">Termos de busca de</span>
             <Pills

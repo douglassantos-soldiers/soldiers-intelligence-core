@@ -14,10 +14,11 @@ import {
   CsvButton,
   Empty,
 } from "@/components/kit";
-import { StackedArea, pivot } from "@/components/charts";
+import { PainelAds } from "@/components/painel-ads";
+import type { LinhaAds } from "@/lib/painel-ads";
 import { getMedia } from "@/lib/data.functions";
 import type { novosParaMarca } from "@/lib/amazon";
-import { sumBy, total, ratio, pct } from "@/lib/aggregate";
+import { sumBy, ratio, pct } from "@/lib/aggregate";
 import { fmtBRL, fmtBRL2, fmtNum, fmtPct, fmtX } from "@/lib/format";
 import { periodo } from "@/lib/format";
 
@@ -37,7 +38,6 @@ export const Route = createFileRoute("/media")({
   component: Media,
 });
 
-const TIPO_FIELDS = ["investimento", "receita", "impressoes", "cliques", "unidades"];
 const FUNIL_FIELDS = ["invest", "receita_ads", "impressoes", "cliques", "conversoes"];
 
 function Media() {
@@ -67,7 +67,7 @@ function Media() {
       {q.error && <ErrorBox error={q.error} />}
       {q.data && (
         <Body
-          tipos={q.data.tipos}
+          painel={(q.data as { painel?: LinhaAds[] }).painel ?? []}
           funil={q.data.funil}
           amazonNtb={(q.data as { amazonNtb?: Ntb }).amazonNtb ?? null}
         />
@@ -79,70 +79,30 @@ function Media() {
 type Ntb = ReturnType<typeof novosParaMarca> | null;
 
 function Body({
-  tipos,
+  painel,
   funil,
   amazonNtb,
 }: {
-  tipos: Record<string, unknown>[];
+  painel: LinhaAds[];
   funil: Record<string, unknown>[];
   amazonNtb: Ntb;
 }) {
-  const t = total(tipos, TIPO_FIELDS);
-  const porTipo = sumBy(tipos, "tipo", TIPO_FIELDS).sort(
-    (a, b) => Number(b["investimento"]) - Number(a["investimento"]),
-  );
   const porCanal = sumBy(funil, "canal", FUNIL_FIELDS).sort(
     (a, b) => Number(b["invest"]) - Number(a["invest"]),
   );
-  const serie = pivot(tipos, "investimento", "tipo");
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <Kpi label="Investimento" value={fmtBRL(t["investimento"])} />
-        <Kpi
-          label="Receita atribuída"
-          value={fmtBRL(t["receita"])}
-          hint="reportada pelas plataformas; não somar com a receita"
-        />
-        <Kpi label="ROAS mídia" value={fmtX(ratio(t["receita"], t["investimento"]))} tone="warn" />
-        <Kpi
-          label="CTR"
-          value={fmtPct(pct(t["cliques"], t["impressoes"]), 2)}
-          hint={`${fmtNum(t["cliques"])} cliques`}
-        />
-        <Kpi label="CPC" value={fmtBRL2(ratio(t["investimento"], t["cliques"]))} />
-      </div>
+      <PainelAds
+        linhas={painel}
+        abas={[{ id: "canal", label: "Todos os canais" }]}
+        nomeCsv="media-por-tipo"
+        rotuloCampanha="Tipo de campanha"
+        rotuloReceita="Receita atribuída"
+        nota="Receita atribuída pelas plataformas de anúncio: não somar com a receita dos canais."
+      />
 
-      <Panel title="Investimento diário por tipo de campanha">
-        {serie.data.length ? <StackedArea data={serie.data} keys={serie.series} /> : <Empty />}
-      </Panel>
-
-      <div className="grid gap-6 2xl:grid-cols-2">
-        <Panel
-          title="Por tipo de campanha"
-          right={<CsvButton name="media-por-tipo" rows={porTipo} />}
-        >
-          <Table
-            head={["Tipo", "Invest.", "Receita atrib.", "ROAS", "Cliques", "CTR", "CPC", "Unid."]}
-          >
-            {porTipo.map((r) => (
-              <tr key={String(r["tipo"])}>
-                <Td>
-                  <span className="font-medium">{String(r["tipo"])}</span>
-                </Td>
-                <Td mono>{fmtBRL(r["investimento"])}</Td>
-                <Td mono>{fmtBRL(r["receita"])}</Td>
-                <Td mono>{fmtX(ratio(r["receita"], r["investimento"]))}</Td>
-                <Td mono>{fmtNum(r["cliques"])}</Td>
-                <Td mono>{fmtPct(pct(r["cliques"], r["impressoes"]), 2)}</Td>
-                <Td mono>{fmtBRL2(ratio(r["investimento"], r["cliques"]))}</Td>
-                <Td mono>{fmtNum(r["unidades"])}</Td>
-              </tr>
-            ))}
-          </Table>
-        </Panel>
-
+      <div className="grid gap-6">
         <Panel
           title="Funil por canal de venda"
           right={<CsvButton name="media-funil-canal" rows={porCanal} />}

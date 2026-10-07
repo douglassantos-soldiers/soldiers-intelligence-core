@@ -17,6 +17,8 @@ import {
   CsvButton,
 } from "@/components/kit";
 import { getGoogle } from "@/lib/data.functions";
+import { PainelAds } from "@/components/painel-ads";
+import { abasDe, rotuloTipoGoogle } from "@/lib/painel-ads";
 import { fmtBRL, fmtNum, fmtPct, fmtX, fmtDate, periodo } from "@/lib/format";
 
 // Google Ads e site (benchmarks/google/ANALISE.md §4). Receita do Google é atribuída; a coluna Shopify é a
@@ -36,7 +38,7 @@ export const Route = createFileRoute("/media_/google")({
 });
 
 type D = Awaited<ReturnType<typeof getGoogle>>;
-type Aba = "campanhas" | "termos" | "produtos" | "assets" | "paginas";
+type Aba = "painel" | "campanhas" | "termos" | "produtos" | "assets" | "paginas";
 
 const NOMES: Record<string, string> = {
   campanhas: "campanhas por dia",
@@ -100,7 +102,7 @@ function Google() {
 }
 
 function Body({ d }: { d: D }) {
-  const [aba, setAba] = useState<Aba>("campanhas");
+  const [aba, setAba] = useState<Aba>("painel");
   const c = d.campanhas;
   const erros = Object.keys(d.erros);
   return (
@@ -139,6 +141,7 @@ function Body({ d }: { d: D }) {
         value={aba}
         onChange={setAba}
         options={[
+          { id: "painel", label: "Painel" },
           { id: "campanhas", label: "Campanhas" },
           { id: "termos", label: "Termos" },
           { id: "produtos", label: "Produtos (POAS)" },
@@ -147,6 +150,17 @@ function Body({ d }: { d: D }) {
         ]}
       />
 
+      {aba === "painel" && (
+        <PainelAds
+          linhas={d.painel.linhas}
+          itens={d.painel.itens}
+          abas={abasDe(d.painel.linhas, [], [], rotuloTipoGoogle, "Todas")}
+          nomeCsv="google-painel"
+          rotuloUnidades="Conversões"
+          rotuloReceita="Valor de conversão"
+          nota="Conversões e valor informados pelo Google Ads. A expansão da campanha mostra os grupos de anúncios."
+        />
+      )}
       {aba === "campanhas" && <Campanhas d={d} />}
       {aba === "termos" && <Termos t={d.termos} />}
       {aba === "produtos" && <Produtos p={d.produtos} />}

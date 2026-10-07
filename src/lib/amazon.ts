@@ -81,6 +81,8 @@ export function adsUnificados(sp: Row[], sb: Row[], sd: Row[]): Row[] {
         impressions: r["impressions"],
         sales_14d: r["sales"],
         sales_7d: null,
+        units_sold: r["units_sold"],
+        campaign_status: r["campaign_status"],
         sales_padrao: n(r["sales"]),
         janela: "14d",
         fonte_tabela: tabela,

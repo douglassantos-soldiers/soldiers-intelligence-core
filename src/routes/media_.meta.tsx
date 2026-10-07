@@ -17,6 +17,8 @@ import {
   CsvButton,
 } from "@/components/kit";
 import { getMeta } from "@/lib/data.functions";
+import { PainelAds } from "@/components/painel-ads";
+import { abasDe, rotuloObjetivoMeta } from "@/lib/painel-ads";
 import { fmtBRL, fmtNum, fmtPct, fmtX, fmtDate, periodo } from "@/lib/format";
 
 // Meta Ads (benchmarks/meta-ads/ANALISE.md §4). Receita informada pelo Meta é reportada pela plataforma;
@@ -36,7 +38,7 @@ export const Route = createFileRoute("/media_/meta")({
 });
 
 type D = Awaited<ReturnType<typeof getMeta>>;
-type Aba = "atribuicao" | "criativos" | "segmentos" | "funil";
+type Aba = "painel" | "atribuicao" | "criativos" | "segmentos" | "funil";
 
 const NOMES: Record<string, string> = {
   reconciliacao: "reconciliação Shopify × Meta",
@@ -67,7 +69,10 @@ function Meta() {
             <Link to="/media" className="text-sm font-medium text-primary hover:underline">
               ← Media
             </Link>
-            <Link to="/media/meta/criativos" className="text-sm font-medium text-primary hover:underline">
+            <Link
+              to="/media/meta/criativos"
+              className="text-sm font-medium text-primary hover:underline"
+            >
               Subir criativos →
             </Link>
             <PeriodPills value={dias} onChange={setDias} />
@@ -82,7 +87,7 @@ function Meta() {
 }
 
 function Body({ d }: { d: D }) {
-  const [aba, setAba] = useState<Aba>("atribuicao");
+  const [aba, setAba] = useState<Aba>("painel");
   const r = d.reconciliacao;
   const erros = Object.keys(d.erros);
   return (
@@ -126,6 +131,7 @@ function Body({ d }: { d: D }) {
         value={aba}
         onChange={setAba}
         options={[
+          { id: "painel", label: "Painel" },
           { id: "atribuicao", label: "Meta × Shopify" },
           { id: "criativos", label: "Criativos" },
           { id: "segmentos", label: "Públicos e posicionamento" },
@@ -133,6 +139,17 @@ function Body({ d }: { d: D }) {
         ]}
       />
 
+      {aba === "painel" && (
+        <PainelAds
+          linhas={d.painel.linhas}
+          itens={d.painel.itens}
+          abas={abasDe(d.painel.linhas, [], [], rotuloObjetivoMeta, "Todas")}
+          nomeCsv="meta-painel"
+          rotuloUnidades="Compras"
+          rotuloReceita="Receita (Meta)"
+          nota="Receita e compras informadas pelo Meta (atribuição da plataforma). A venda confirmada no Shopify está na aba Meta × Shopify."
+        />
+      )}
       {aba === "atribuicao" && <Atribuicao r={r} />}
       {aba === "criativos" && <Criativos c={d.criativos} />}
       {aba === "segmentos" && <Segmentos s={d.segmentos} />}

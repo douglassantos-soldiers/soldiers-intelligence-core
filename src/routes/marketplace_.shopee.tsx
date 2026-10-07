@@ -17,6 +17,8 @@ import {
   CsvButton,
 } from "@/components/kit";
 import { getShopee } from "@/lib/data.functions";
+import { PainelAds } from "@/components/painel-ads";
+import { abasDe } from "@/lib/painel-ads";
 import { DIAS_SEMANA } from "@/lib/shopee";
 import { fmtBRL, fmtBRL2, fmtNum, fmtPct, fmtX, fmtDate, periodo } from "@/lib/format";
 
@@ -249,6 +251,19 @@ function Ads({ d }: { d: D }) {
   const maxRoas = Math.max(0, ...h.celulas.map((c) => c.roas ?? 0));
   return (
     <div className="space-y-6">
+      <PainelAds
+        linhas={d.painel}
+        abas={abasDe(d.painel, [
+          { id: "product", label: "Anúncios de produto" },
+          { id: "shop", label: "Anúncios da loja" },
+        ])}
+        nomeCsv="shopee-ads-campanhas"
+        rotuloUnidades="Pedidos"
+        rotuloReceita="Receita (ampla)"
+        composicaoTitulo="Direta × indireta"
+        nota="Receita = GMV amplo atribuído pela Shopee (inclui o direto); direta = GMV direto; indireta = amplo − direto. A Shopee reporta pedidos, não unidades. Abas = tipos de anúncio da Shopee."
+      />
+      <h3 className="pt-2 font-display text-lg font-semibold">Meta de ROAS e horários</h3>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi label="Investido" value={fmtBRL(a.gasto)} />
         <Kpi

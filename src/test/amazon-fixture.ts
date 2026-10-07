@@ -24,6 +24,7 @@ import {
   campanhasNoLimite,
   pedidosAmazon,
 } from "@/lib/amazon-operacao";
+import { amazonPainelFixture } from "./painel-ads-fixture";
 
 // Segunda leva: tendência, hoje, Buy Box completo, anúncio, estoque FBA, SB/SD, orçamento e pedidos.
 export const AMZ_HOJE = "2026-10-06";
@@ -490,5 +491,6 @@ export const amazonFixture = {
   tendencia: tendenciaSemanal(amz2.semanas),
   hoje: hojeAteAgora(amz2.intraday, AMZ_HOJE),
   pedidos: pedidosAmazon(amz2.pedidos, AMZ_DE, AMZ_ATE, amzTitulos),
+  painel: amazonPainelFixture,
   erros: { brand: "timeout" },
 };

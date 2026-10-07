@@ -17,6 +17,7 @@ import { economiaML, anuncios360, diagnosticoAds, alertasML } from "@/lib/mercad
 import { filaDeAcao, calibracao, reguaReposicao, emailRD, automacoesRD, utmEmail, funilLeads, acoesGrowth, saudeKlaviyo, alertasCRM } from "@/lib/crm";
 import { tendenciaSemanal, hojeAteAgora, buyBoxCompleto, qualidadeAnuncio, estoqueFba, sbParaTermos, sdPorProduto, campanhasNoLimite, pedidosAmazon } from "@/lib/amazon-operacao";
 import { adsUnificados, adsPorSemana } from "@/lib/amazon";
+import { linhasMlProductAds, linhasMlDisplay, linhasMlBrand, linhasAmazon, itensAmazon, linhasShopee, linhasMeta, itensMeta, linhasGoogle, itensGoogle, linhasMidiaGeral } from "@/lib/painel-ads";
 import { resumoAmazon, asin360, termosAds, shareDeBusca, reposicaoFba, recompraAsin, organicoVsAds, vendasPorHora, novosParaMarca, alvosKeywords, alvosSd, classificaLances, alertasAmazon, amazonDoSku } from "@/lib/amazon";
 
 import { db, check, fetchAll, fetchIn, type Db } from "@/lib/db-helpers";
@@ -259,7 +260,7 @@ export const getMedia = createServerFn({ method: "GET" })
       fetchAll(() => c.from("fact_amazon_ads_sd_campanha_dia").select("data,campaign_id,campaign_name,cost,sales,ntb_sales_clicks,ntb_purchases_clicks").gte("data", data.de).lte("data", data.ate), "amazon sd").catch(() => null),
     ]);
     const amazonNtb = sbNtb || sdNtb ? novosParaMarca(sbNtb ?? [], sdNtb ?? [], data.de, data.ate) : null;
-    return { tipos, funil, amazonNtb };
+    return { tipos, funil, amazonNtb, painel: linhasMidiaGeral(tipos) };
   });
 
 export const getAffiliate = createServerFn({ method: "GET" })
@@ -663,12 +664,12 @@ export const getAmazon = createServerFn({ method: "GET" })
       }
     };
 
-    const [trafego, adsSp, adsSb, adsSd, vendas, buybox, estoque, reposicao, cadastro, termos, brand, recompra, horas, keywords, sdAlvos, semanas, intraday, sbTermos, sdProduto, campanhas, pedidos] = await Promise.all([
+    const [trafego, adsSp, adsSb, adsSd, vendas, buybox, estoque, reposicao, cadastro, termos, brand, recompra, horas, keywords, sdAlvos, semanas, intraday, sbTermos, sdProduto, campanhas, adsProduto, pedidos] = await Promise.all([
       safe("trafego", fetchAll(() => c.from("fact_amazon_venda_trafego_dia").select("data,vendas,unidades,sessoes,buybox_pct,unidades_devolvidas,em_consolidacao").gte("data", data.de).lte("data", data.ate), "amazon trafego")),
       // Ads: SP (campanha_dia) + SB + SD, 84 dias antes do fim para a tendência semanal; o resumo filtra o período.
-      safe("ads", fetchAll(() => c.from("fact_amazon_ads_campanha_dia").select("data,ad_type,campaign_id,campaign_name,cost,sales_14d,sales_7d,clicks").gte("data", menorData(data.de, menosDiasIso(data.ate, 90))).lte("data", data.ate), "amazon ads", 120000)),
-      safe("adsSb", fetchAll(() => c.from("fact_amazon_ads_sb_campanha_dia").select("data,campaign_id,campaign_name,cost,sales,clicks,impressions").gte("data", menorData(data.de, menosDiasIso(data.ate, 90))).lte("data", data.ate), "amazon sb campanhas", 60000)),
-      safe("adsSd", fetchAll(() => c.from("fact_amazon_ads_sd_campanha_dia").select("data,campaign_id,campaign_name,cost,sales,clicks,impressions").gte("data", menorData(data.de, menosDiasIso(data.ate, 90))).lte("data", data.ate), "amazon sd campanhas", 60000)),
+      safe("ads", fetchAll(() => c.from("fact_amazon_ads_campanha_dia").select("data,ad_type,campaign_id,campaign_name,cost,sales_14d,sales_7d,units_14d,units_7d,clicks,impressions,top_search_is").gte("data", menorData(data.de, menosDiasIso(data.ate, 90))).lte("data", data.ate), "amazon ads", 120000)),
+      safe("adsSb", fetchAll(() => c.from("fact_amazon_ads_sb_campanha_dia").select("data,campaign_id,campaign_name,campaign_status,cost,sales,units_sold,clicks,impressions").gte("data", menorData(data.de, menosDiasIso(data.ate, 90))).lte("data", data.ate), "amazon sb campanhas", 60000)),
+      safe("adsSd", fetchAll(() => c.from("fact_amazon_ads_sd_campanha_dia").select("data,campaign_id,campaign_name,cost,sales,units_sold,clicks,impressions").gte("data", menorData(data.de, menosDiasIso(data.ate, 90))).lte("data", data.ate), "amazon sd campanhas", 60000)),
       safe("vendas", fetchAll(() => c.from("fact_amazon_venda_asin_dia").select("data,child_asin,vendas,unidades,sessoes,buybox_pct").gte("data", data.de).lte("data", data.ate), "amazon asin", 90000)),
       safe("buybox", fetchAll(() => c.from("dim_amazon_buybox").select("asin,ganho_buybox,concorrente_no_bb,meu_preco,menor_preco_concorrente,buybox_preco,buybox_fba,n_ofertas,n_concorrentes"), "amazon buybox")),
       safe("estoque", fetchAll(() => c.from("dim_amazon_estoque_sp").select("asin,seller_sku,product_name,fulfillable,imprestavel_total,imprestavel_vencido,imprestavel_danificado_armazem,imprestavel_danificado_cliente,imprestavel_defeito,reservado_total,reservado_pedido,reservado_transito,reservado_fc,inbound_working,inbound_shipped,inbound_receiving"), "amazon estoque")),
@@ -688,6 +689,7 @@ export const getAmazon = createServerFn({ method: "GET" })
       safe("sdProduto", fetchAll(() => c.from("fact_amazon_ads_sd_produto_dia").select("data,asin,sku,cost,clicks,purchases,sales").gte("data", data.de).lte("data", data.ate), "amazon sd produto", 60000)),
       safe("campanhas", fetchAll(() => c.from("dim_amazon_ads_campanha").select("campaign_id,campaign_name,ad_type,budget,status"), "amazon campanhas")),
       // LGPD: sem ship_city, ship_state e ship_postal_code.
+      safe("adsProduto", fetchAll(() => c.from("fact_amazon_ads_produto_dia").select("data,campaign_id,campaign_name,ad_type,asin,sku,cost,clicks,impressions,sales_14d,units_14d").gte("data", data.de).lte("data", data.ate), "amazon ads produto", 90000)),
       safe("pedidos", fetchAll(() => c.from("fact_amazon_pedido").select("amazon_order_id,purchase_dia,order_status,fulfillment_channel,sku,asin,quantity,item_price").gte("purchase_dia", data.de).lte("purchase_dia", data.ate), "amazon pedidos", 120000)),
     ]);
     const ads = adsUnificados(adsSp, adsSb, adsSd);
@@ -706,6 +708,10 @@ export const getAmazon = createServerFn({ method: "GET" })
     const hojeIntraday = intraday.reduce((m, r) => (String(r["data"] ?? "") > m ? String(r["data"]).slice(0, 10) : m), "");
     return {
       resumo: resumoAmazon(trafego, ads, data.de, data.ate, dataLocal(new Date())),
+      painel: {
+        linhas: linhasAmazon(ads.filter((r) => String(r["data"] ?? "").slice(0, 10) >= data.de), campanhas),
+        itens: itensAmazon(adsProduto, campanhas, titulos),
+      },
       asins: asin360(vendas, buybox, estoque, reposicao, cadastro, data.de, data.ate).slice(0, 60),
       termos: termosAds(termos, data.de, data.ate),
       termosSb: termosAds(sbParaTermos(sbTermos), data.de, data.ate),
@@ -744,13 +750,15 @@ async function dadosMercadoLivre(data: { de: string; ate: string }) {
         return [] as Record<string, unknown>[];
       }
     };
-    const [pedidos, itens, cupons, afiliados, custosR, adsItem, adsConta, anuncioDia, competicao, full] = await Promise.all([
+    const [pedidos, itens, cupons, afiliados, custosR, adsItem, padsCampanhas, display, adsConta, anuncioDia, competicao, full] = await Promise.all([
       safe("pedidos", fetchAll(() => c.from("ml_pedido").select("pedido_id,data_venda,status,total_amount,total_sale_fee").gte("data_venda", data.de).lte("data_venda", data.ate + "T23:59:59"), "ml pedidos", 120000)),
       safe("itens", fetchAll(() => c.from("ml_pedido_item").select("pedido_id,item_id,seller_sku,title,quantity,unit_price").gte("data_venda", data.de).lte("data_venda", data.ate + "T23:59:59"), "ml itens", 150000)),
       safe("cupons", fetchAll(() => c.from("ml_pedido_cupom").select("pedido_id,cupom_vendedor,cupom_meli").gte("data_venda", data.de).lte("data_venda", data.ate + "T23:59:59"), "ml cupons", 120000)),
       safe("afiliados", fetchAll(() => c.from("ml_afiliado_venda").select("pedido_id,item_id,item_id_ml,comissao_pedido,casou_pedido").gte("data_venda", data.de).lte("data_venda", data.ate + "T23:59:59"), "ml afiliados", 60000)),
       safe("custos", fetchAll(() => c.from("dim_custo_sku").select("sku,custo_unitario,vigencia_inicio"), "custos")),
-      safe("ads", fetchAll(() => c.from("vw_ml_pads_item_dia").select("date,item_id,title,cost,direct_amount,indirect_amount,organic_units_amount,lost_impression_share_by_budget,lost_impression_share_by_ad_rank,acos_benchmark").gte("date", data.de).lte("date", data.ate), "ml product ads", 120000)),
+      safe("ads", fetchAll(() => c.from("vw_ml_pads_item_dia").select("date,item_id,title,campaign_id,campaign_name,status,cost,clicks,prints,units_quantity,direct_units_quantity,indirect_units_quantity,organic_units_quantity,direct_amount,indirect_amount,organic_units_amount,impression_share,top_impression_share,lost_impression_share_by_budget,lost_impression_share_by_ad_rank,acos_benchmark,buy_box_winner,catalog_listing,logistic_type").gte("date", data.de).lte("date", data.ate), "ml product ads", 120000)),
+      safe("padsCampanhas", fetchAll(() => c.from("vw_ml_pads_campanha_lista").select("campaign_id,name,status"), "ml campanhas product ads")),
+      safe("display", fetchAll(() => c.from("vw_ml_display_campanha_dia").select("data,campaign_id,campaign_name,status,investimento,receita,unidades,impressoes,cliques").gte("data", data.de).lte("data", data.ate), "ml display", 60000)),
       safe("adsConta", fetchAll(() => c.from("tab_ml_kpi_dia").select("data,invest_pads,invest_brand,invest_display").gte("data", data.de).lte("data", data.ate), "ml kpi dia")),
       safe("anuncioDia", fetchAll(() => c.from("vw_ml_anuncio_dia").select("data,item_id,visitas,pedidos,unidades,faturamento").gte("data", data.de).lte("data", data.ate), "ml anuncio dia", 120000)),
       safe("competicao", fetchAll(() => c.from("vw_ml_competicao").select("item_id,sku,nome,anuncio_status,preco_venda,price_to_win,buybox_status,situacao,health,estoque_disponivel"), "ml competicao")),
@@ -761,7 +769,9 @@ async function dadosMercadoLivre(data: { de: string; ate: string }) {
     const economia = economiaML(pedidos, itens, fretes, cupons, afiliados, custosR, adsItem, adsConta, data.de, data.ate);
     const ads = diagnosticoAds(adsItem, data.de, data.ate);
     const anuncios = anuncios360(anuncioDia, competicao, full, economia.skus, data.de, data.ate);
-    return { economia: { ...economia, skus: economia.skus.slice(0, 80) }, anuncios, ads, alertas: alertasML({ anuncios, ads }), erros };
+    // Painel visual de Mercado Ads (Product Ads por item, Display por campanha, Brand só o total diário da conta).
+    const painel = [...linhasMlProductAds(adsItem, padsCampanhas), ...linhasMlDisplay(display), ...linhasMlBrand(adsConta)];
+    return { economia: { ...economia, skus: economia.skus.slice(0, 80) }, anuncios, ads, painel, alertas: alertasML({ anuncios, ads }), erros };
 }
 
 export const getMercadoLivre = createServerFn({ method: "GET" })
@@ -787,7 +797,7 @@ async function dadosShopee(data: { de: string; ate: string }) {
     safe("itens", fetchAll(() => c.from("shopee_pedido_item").select("order_sn,create_dia,order_status,item_id,item_name,item_sku,model_sku,model_quantity_purchased,cancelled_qty,returned_qty,model_discounted_price").gte("create_dia", data.de).lte("create_dia", data.ate), "shopee itens", 150000)),
     safe("financeiro", fetchAll(() => c.from("fact_shopee_financeiro").select("order_sn,escrow_amount,commission_fee,service_fee,seller_transaction_fee,campaign_fee,comissao_afiliado,fbs_fee,seller_return_refund,reverse_shipping_fee,escrow_tax,withholding_tax,shopee_discount,voucher_from_shopee,seller_discount,voucher_from_seller,coins,actual_shipping_fee,shopee_shipping_rebate,buyer_paid_shipping_fee").gte("create_dia", data.de).lte("create_dia", data.ate), "shopee escrow", 120000)),
     safe("custos", fetchAll(() => c.from("dim_custo_sku").select("sku,custo_unitario,vigencia_inicio"), "custos")),
-    safe("adsDia", fetchAll(() => c.from("fact_shopee_ads_campanha_dia").select("data,campaign_id,ad_type,expense,direct_gmv,broad_gmv,direct_order,clicks").gte("data", data.de).lte("data", data.ate), "shopee ads", 60000)),
+    safe("adsDia", fetchAll(() => c.from("fact_shopee_ads_campanha_dia").select("data,campaign_id,ad_type,expense,direct_gmv,broad_gmv,direct_order,broad_order,clicks,impression").gte("data", data.de).lte("data", data.ate), "shopee ads", 60000)),
     safe("adsCamp", fetchAll(() => c.from("dim_shopee_ads_campanha").select("campaign_id,ad_name,ad_type,roas_target,campaign_status"), "shopee campanhas")),
     safe("adsHora", fetchAll(() => c.from("fact_shopee_ads_hora").select("data,hora,expense,direct_gmv").gte("data", data.de).lte("data", data.ate), "shopee ads hora", 60000)),
     safe("itemDia", fetchAll(() => c.from("vw_shopee_item_dia").select("data,item_id,title,seller_sku,visitas,pedidos,unidades_vendidas,receita").gte("data", data.de).lte("data", data.ate), "shopee item dia", 120000)),
@@ -805,6 +815,7 @@ async function dadosShopee(data: { de: string; ate: string }) {
   return {
     economia: { ...economia, skus: economia.skus.slice(0, 80) },
     ads,
+    painel: linhasShopee(adsDia, adsCamp),
     horas,
     produtos: prods,
     lives: livesShopee(sessoes, produtosLive, produtos, data.de, data.ate),
@@ -833,8 +844,8 @@ async function dadosGoogle(data: { de: string; ate: string }) {
   };
   const hoje = new Date().toISOString().slice(0, 10);
   const ontem = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  const [dias, lista, intraday, produtos, variantes, custosR, negativar, graduar, keywords, assets, sessoes, pedidosPag, paginas] = await Promise.all([
-    safe("campanhas", fetchAll(() => c.from("vw_google_campanha_dia").select("data,campaign_id,campaign_name,tipo,gasto,receita,receita_shopify,impressoes,fatia_impressao,fatia_perdida_orcamento,fatia_perdida_rank").gte("data", data.de).lte("data", data.ate), "google campanhas", 60000)),
+  const [dias, lista, intraday, produtos, variantes, custosR, negativar, graduar, keywords, assets, sessoes, pedidosPag, paginas, grupos] = await Promise.all([
+    safe("campanhas", fetchAll(() => c.from("vw_google_campanha_dia").select("data,campaign_id,campaign_name,tipo,gasto,receita,receita_shopify,impressoes,cliques,conversoes,fatia_impressao,fatia_topo,fatia_perdida_orcamento,fatia_perdida_rank").gte("data", data.de).lte("data", data.ate), "google campanhas", 60000)),
     safe("lista", fetchAll(() => c.from("vw_google_campanha_lista").select("campaign_id,campaign_name,tipo,status,target_roas,target_cpa,optimization_score,orcamento_diario"), "google lista")),
     safe("intraday", fetchAll(() => c.from("vw_google_intraday_campanha").select("data,campaign_id,campaign_name,gasto,captured_at").gte("data", ontem).lte("data", hoje), "google intraday", 30000)),
     safe("produtos", fetchAll(() => c.from("vw_google_produto_dia").select("data,product_item_id,product_title,gasto,receita,conversoes,cliques").gte("data", data.de).lte("data", data.ate), "google produtos", 120000)),
@@ -847,6 +858,7 @@ async function dadosGoogle(data: { de: string; ate: string }) {
     safe("sessoes", fetchAll(() => c.from("fact_site_pagina_dia").select("data,pagina_path,sessoes,sessoes_checkout").gte("data", data.de).lte("data", data.ate), "site sessoes", 120000)),
     safe("pedidosPag", fetchAll(() => c.from("mv_site_pedido_pagina_dia").select("data,pagina_path,pedidos,receita").gte("data", data.de).lte("data", data.ate), "site pedidos por pagina", 120000)),
     safe("paginas", fetchAll(() => c.from("vw_site_pagina").select("pagina_path,tipo,rotulo,produto"), "site paginas")),
+    safe("grupos", fetchAll(() => c.from("vw_google_grupo_dia").select("data,campaign_id,campaign_name,tipo,ad_group_id,ad_group_name,gasto,receita,conversoes,impressoes,cliques").gte("data", data.de).lte("data", data.ate), "google grupos", 90000)),
   ]);
   // Variantes: o mais recente de cada ID (a tabela pode ter fotos por data).
   const vistas = new Set<string>();
@@ -869,6 +881,7 @@ async function dadosGoogle(data: { de: string; ate: string }) {
       keywords: keywords.slice(0, 30).map((x) => ({ keyword: String(x["keyword"] ?? ""), correspondencia: String(x["match_type"] ?? "").toLowerCase(), qualidade: x["quality_score"] == null ? null : Number(x["quality_score"]), invest: Number(x["invest"]) || 0, roas: x["roas"] == null ? null : Number(x["roas"]), sugestao: String(x["sugestao"] ?? "") })),
     },
     assets: assetsPmax(assets),
+    painel: { linhas: linhasGoogle(dias, lista), itens: itensGoogle(grupos) },
     paginas: pags,
     alertas: alertasGoogle({ campanhas, produtos: prods, termosNegativar: negativar, paginas: pags }),
     erros,
@@ -895,7 +908,7 @@ async function dadosMeta(data: { de: string; ate: string }) {
   };
   const hoje = new Date().toISOString().slice(0, 10);
   const de8 = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10);
-  const [recon, criativos, fadiga, formatos, publicos, posic, demog, horario, funil, intraday, kpi] = await Promise.all([
+  const [recon, criativos, fadiga, formatos, publicos, posic, demog, horario, funil, intraday, kpi, campDia, campConfig, adsDia] = await Promise.all([
     safe("reconciliacao", fetchAll(() => c.from("vw_reconciliacao_shopify_meta_dia").select("data,gasto_meta,receita_informada_meta,receita_meta_utm,compras_informadas_meta,pedidos_meta_utm,enviados_meta,pedidos_totais").gte("data", data.de).lte("data", data.ate), "meta reconciliacao")),
     safe("criativos", fetchAll(() => c.from("vw_meta_criativos").select("criativo,titulo,campanha,grupo,publico,invest,receita,roas,ctr_pct,hook_pct,frequencia,compras,sugestao"), "meta criativos")),
     safe("fadiga", fetchAll(() => c.from("vw_meta_fadiga").select("criativo,publico,diagnostico,freq_7d,freq_ant,roas_7d,roas_ant,invest_7d"), "meta fadiga")),
@@ -907,6 +920,10 @@ async function dadosMeta(data: { de: string; ate: string }) {
     safe("funil", fetchAll(() => c.from("vw_meta_funil").select("ord,etapa,valor,taxa_passagem,cpa"), "meta funil")),
     safe("intraday", fetchAll(() => c.from("vw_meta_intraday").select("data,gasto,receita,captured_at").gte("data", hoje), "meta intraday")),
     safe("kpi", fetchAll(() => c.from("vw_meta_kpi_dia").select("data,gasto,receita").gte("data", de8).lte("data", hoje), "meta kpi dia")),
+    // Painel por campanha (abre por anúncio).
+    safe("campanhas", fetchAll(() => c.from("vw_meta_campanha_diario").select("data,campaign_id,campaign_name,objetivo,gasto,receita,compras,impressoes,cliques").gte("data", data.de).lte("data", data.ate), "meta campanhas dia", 60000)),
+    safe("campanhasConfig", fetchAll(() => c.from("vw_meta_campanha_config").select("campaign_id,campaign_name,objetivo,effective_status,configured_status"), "meta campanhas config")),
+    safe("anuncios", fetchAll(() => c.from("vw_meta_ad_diario").select("data,campaign_id,campaign_name,objetivo,ad_id,ad_name,adset_name,gasto,receita,compras,impressoes,cliques").gte("data", data.de).lte("data", data.ate), "meta anuncios dia", 90000)),
   ]);
   const reconciliacao = reconciliacaoMeta(recon, data.de, data.ate);
   const cr = criativosMeta(criativos, fadiga, formatos);
@@ -915,6 +932,7 @@ async function dadosMeta(data: { de: string; ate: string }) {
     reconciliacao,
     criativos: cr,
     segmentos: segmentosMeta(publicos, posic, demog, horario),
+    painel: { linhas: linhasMeta(campDia, campConfig), itens: itensMeta(adsDia) },
     funil: funilMeta(funil),
     ritmo,
     alertas: alertasMeta({ recon: reconciliacao, criativos: cr, ritmo }),

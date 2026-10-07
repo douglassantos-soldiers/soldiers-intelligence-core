@@ -1,3 +1,5 @@
+import { PainelAds } from "@/components/painel-ads";
+import { abasDe } from "@/lib/painel-ads";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -154,7 +156,7 @@ function Body({ d }: { d: D }) {
         options={[
           { id: "economia", label: "Economia" },
           { id: "anuncios", label: "Anúncios" },
-          { id: "ads", label: "Product Ads" },
+          { id: "ads", label: "Mercado Ads" },
         ]}
       />
 
@@ -258,6 +260,27 @@ function Body({ d }: { d: D }) {
 
       {aba === "ads" && (
         <div className="space-y-6">
+          <PainelAds
+            linhas={d.painel}
+            abas={abasDe(
+              d.painel,
+              [
+                { id: "product", label: "Product Ads" },
+                {
+                  id: "brand",
+                  label: "Brand Ads",
+                  aviso:
+                    "Brand Ads: o banco só tem o investimento diário da conta (tab_ml_kpi_dia). Receita, cliques e campanhas de Brand Ads entram quando a coleta trouxer o relatório por campanha.",
+                },
+                { id: "display", label: "Display" },
+              ],
+              ["product", "brand", "display"],
+            )}
+            nomeCsv="ml-ads-campanhas"
+            filtrosMl
+            nota="Receita = venda atribuída pelo Mercado Ads (direta + indireta), não a venda realizada do canal. Product Ads abre por anúncio; Display por campanha. Os filtros de Buy Box, catálogo e logística valem para Product Ads."
+          />
+          <h3 className="pt-2 font-display text-lg font-semibold">Diagnóstico de Product Ads</h3>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             <Kpi label="Product Ads: investimento" value={fmtBRL(d.ads.custo)} />
             <Kpi label="ACoS" value={fmtPct(d.ads.acosPct)} hint="sobre venda direta + indireta" />

@@ -7,6 +7,7 @@ import {
   criativosTikTok,
   alertasTikTokAds,
 } from "@/lib/tiktokads";
+import { linhasTikTokAds, itensTikTokAds, linhasMeliDsp, itensMeliDsp } from "@/lib/painel-ads";
 import { resumoMeliDsp, campanhasMeliDsp, criativosMeliDsp, alertasMeliDsp } from "@/lib/melidsp";
 import {
   afiliadosPorCanal,
@@ -201,6 +202,32 @@ export const ml = {
       goal: "",
       status: "paused",
       ...dsp(500, 300),
+    },
+  ],
+  li: [
+    {
+      data: "2026-09-05",
+      campaign_id: "m1",
+      campaign_name: "CONVERSAO | CREATINA",
+      line_item_id: "li1",
+      line_item_name: "LI compradores creatina",
+      investimento: 8000,
+      receita: 45000,
+      unidades: 300,
+      impressoes: 1600000,
+      cliques: 16000,
+    },
+    {
+      data: "2026-09-05",
+      campaign_id: "m1",
+      campaign_name: "CONVERSAO | CREATINA",
+      line_item_id: "li2",
+      line_item_name: "LI categoria suplementos",
+      investimento: 4000,
+      receita: 15000,
+      unidades: 100,
+      impressoes: 800000,
+      cliques: 8000,
     },
   ],
   cri: [
@@ -577,10 +604,15 @@ export function tiktokFixture() {
   const resumo = resumoTikTokAds(tt.tipo, DE, ATE);
   resumo.anomalia = resumoTikTokAds(tt.tipo, "2026-08-18", ATE).anomalia;
   const criativos = criativosTikTok(tt.cri, DE, ATE);
+  const ttLinhas = linhasTikTokAds(
+    tt.camp.filter((r) => r.data >= DE),
+    tt.gmv.filter((r) => r.data >= DE),
+  );
   const produtos = produtosTikTokAds(tt.prod, tt.est, DE, ATE);
   return {
     resumo,
     campanhas: campanhasTikTok(tt.camp, tt.gmv, DE, ATE),
+    painel: { linhas: ttLinhas, itens: itensTikTokAds(tt.cri, ttLinhas) },
     produtos,
     criativos,
     alertas: alertasTikTokAds({ resumo, criativos, produtos }),
@@ -592,8 +624,10 @@ export function meliFixture() {
   const resumo = resumoMeliDsp(ml.kpi, DE, ATE);
   resumo.anomalia = resumoMeliDsp(ml.kpi, "2026-08-18", ATE).anomalia;
   const cp = campanhasMeliDsp(ml.camp, DE, ATE);
+  const dspLinhas = linhasMeliDsp(ml.camp);
   return {
     resumo,
+    painel: { linhas: dspLinhas, itens: itensMeliDsp(ml.li, dspLinhas) },
     campanhas: cp.campanhas,
     mix: cp.mix,
     criativos: criativosMeliDsp(ml.cri, DE, ATE),

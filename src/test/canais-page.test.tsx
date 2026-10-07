@@ -43,7 +43,13 @@ describe("telas novas de canais", () => {
   it("TikTok Ads", async () => {
     atual = tiktokFixture;
     await tela("media_.tiktok");
-    expect(await screen.findByText("GMV MAX | LOJA")).toBeTruthy();
+    // painel visual (aba padrão): sem impressões/cliques, pedidos como unidade
+    expect(await screen.findByText("Desempenho por campanha")).toBeTruthy();
+    expect(screen.getAllByText("Pedidos").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Impressões")).toBeNull();
+    expect(screen.queryByText("Pausadas")).toBeNull(); // TikTok não traz status por campanha
+    fireEvent.click(screen.getByRole("button", { name: "Campanhas" }));
+    expect(screen.getByText("GMV MAX | LOJA")).toBeTruthy();
     expect(screen.getByText("gasto alto · ROAS caiu")).toBeTruthy();
     fireEvent.click(screen.getByText("Produtos e estoque"));
     expect(screen.getByText("4 dias")).toBeTruthy();
@@ -55,7 +61,12 @@ describe("telas novas de canais", () => {
   it("Meli DSP", async () => {
     atual = meliFixture;
     await tela("media_.meli-dsp");
-    expect(await screen.findByText("Verba por etapa do funil × divisão 70/22/8")).toBeTruthy();
+    // painel visual (aba padrão): abas por etapa do funil, line items ao abrir a campanha
+    expect(await screen.findByText("Desempenho por campanha")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Todas as etapas" }).length).toBeGreaterThan(0);
+    expect(screen.getByText("CONVERSAO | CREATINA")).toBeTruthy();
+    fireEvent.click(screen.getByText("Verba por etapa"));
+    expect(screen.getByText("Verba por etapa do funil × divisão 70/22/8")).toBeTruthy();
     expect(screen.getByText("-17 p.p.")).toBeTruthy();
     fireEvent.click(screen.getByText("Criativos e vídeo"));
     expect(screen.getByText("Vídeo Creatina 15s")).toBeTruthy();
