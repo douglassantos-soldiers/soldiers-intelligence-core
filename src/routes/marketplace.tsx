@@ -23,7 +23,7 @@ export const Route = createFileRoute("/marketplace")({
     ],
   }),
   component: () => {
-    const [dias, setDias] = useState("30");
+    const [dias, setDias] = useState("28");
     return (
       <>
         <PageHeader

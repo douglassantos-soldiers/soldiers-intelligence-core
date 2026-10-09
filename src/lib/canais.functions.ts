@@ -18,6 +18,8 @@ import {
   concentracao,
   produtosAfiliado,
   alertasAfiliados,
+  tagsDinamicas,
+  contagemTags,
 } from "@/lib/afiliados";
 import { midiaPorSku, ritmoCanais, alertasMidiaSku } from "@/lib/midiasku";
 import {
@@ -319,9 +321,11 @@ export async function dadosAfiliados(p: P) {
     p.ate,
   );
   const conc = concentracao(creators);
+  const comTags = tagsDinamicas(creators);
   return {
     canais,
-    creators: creators.slice(0, 500),
+    creators: comTags.slice(0, 500),
+    tags: contagemTags(comTags),
     totalCreators: creators.length,
     concentracao: conc,
     produtos: produtosAfiliado({ ml: mlProd, shopee: shProd, tiktok: ttProd }, p.de, p.ate).slice(

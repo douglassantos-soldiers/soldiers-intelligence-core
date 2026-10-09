@@ -32,7 +32,6 @@ import {
   type ItemCriativo,
 } from "@/domain/criativos";
 import { fmtNum, fmtDate } from "@/lib/format";
-import { supabase } from "@/integrations/supabase/client";
 
 // Meta Ads: subida de criativos em massa para a BIBLIOTECA (não cria anúncio, não gasta verba).
 // Fluxo: novo lote → arquivos + planilha de copy → validação → envio dos arquivos ao armazenamento →
@@ -63,19 +62,22 @@ function useSessao() {
   });
   useEffect(() => {
     let ativo = true;
-    supabase.auth
-      .getSession()
-      .then(
-        ({ data }) =>
-          ativo && setEstado({ carregando: false, email: data.session?.user.email ?? null }),
-      )
-      .catch(() => ativo && setEstado({ carregando: false, email: null }));
-    const { data } = supabase.auth.onAuthStateChange(
-      (_e, s) => ativo && setEstado({ carregando: false, email: s?.user.email ?? null }),
-    );
+    let cancelar: (() => void) | undefined;
+    import("@/integrations/supabase/client").then(({ supabase }) => {
+      supabase.auth
+        .getSession()
+        .then(
+          ({ data }) =>
+            ativo && setEstado({ carregando: false, email: data.session?.user.email ?? null }),
+        );
+      const { data } = supabase.auth.onAuthStateChange(
+        (_e, s) => ativo && setEstado({ carregando: false, email: s?.user.email ?? null }),
+      );
+      cancelar = () => data.subscription.unsubscribe();
+    });
     return () => {
       ativo = false;
-      data.subscription.unsubscribe();
+      cancelar?.();
     };
   }, []);
   return estado;
@@ -96,6 +98,7 @@ function Entrar() {
         onSubmit={async (e) => {
           e.preventDefault();
           setErro(null);
+          const { supabase } = await import("@/integrations/supabase/client");
           const { error } = await supabase.auth.signInWithOtp({
             email,
             options: { emailRedirectTo: window.location.href },
@@ -569,6 +572,7 @@ function Montagem({ d }: { d: LoteD }) {
     setMsg(null);
     setEtapa("enviando");
     try {
+      const { supabase } = await import("@/integrations/supabase/client");
       const pendentes = linhas.filter((l) => l.upload !== "enviado");
       const pedidos = [
         ...pendentes.map((l) => ({ sha256: l.sha256, mime: l.mime, bytes: l.bytes })),

@@ -384,6 +384,61 @@ export function creators360(
   return out.sort((a, b) => b.gmv - a.gmv);
 }
 
+// ---------------------------------------------------------------------------------------------
+// Tags dinâmicas (benchmark Cruva §10.2): calculadas por regra a cada leitura, sem ninguém marcar à mão.
+// Servem de filtro agora e de lista de entrada para as automações depois (Fase 3, com aprovação).
+
+export type TagDinamica = { id: string; label: string; regra: string };
+export const TAGS_DINAMICAS: TagDinamica[] = [
+  {
+    id: "top10",
+    label: "Top 10% do GMV",
+    regra: "GMV no período entre os 10% maiores (com venda)",
+  },
+  { id: "vendeu1k", label: "Vendeu R$ 1 mil+", regra: "GMV de R$ 1.000 ou mais no período" },
+  {
+    id: "traz_novos",
+    label: "Traz cliente novo",
+    regra: "60% ou mais dos pedidos de cliente novo",
+  },
+  { id: "roi_alto", label: "ROI 5×+", regra: "GMV ÷ custo de 5× ou mais" },
+  { id: "tiktok_forte", label: "Forte no TikTok", regra: "TikTok com 50% ou mais do GMV" },
+  { id: "em_risco", label: "Em risco", regra: "vendeu antes e agora está esfriando ou parado" },
+  { id: "devolucao_alta", label: "Devolução alta", regra: "10% ou mais das unidades devolvidas" },
+  { id: "pago_sem_venda", label: "Pago sem venda", regra: "teve custo no período e nenhuma venda" },
+];
+
+export function tagsDinamicas<T extends Creator>(creators: T[]): (T & { tags: string[] })[] {
+  const gmvs = creators
+    .map((c) => c.gmv)
+    .filter((g) => g > 0)
+    .sort((a, b) => a - b);
+  const p90 = gmvs.length
+    ? gmvs[Math.min(gmvs.length - 1, Math.floor(gmvs.length * 0.9))]!
+    : Infinity;
+  const regra: Record<string, (c: Creator) => boolean> = {
+    top10: (c) => c.gmv > 0 && c.gmv >= p90,
+    vendeu1k: (c) => c.gmv >= 1000,
+    traz_novos: (c) => (c.pctNovos ?? 0) >= 60,
+    roi_alto: (c) => (c.roi ?? 0) >= 5,
+    tiktok_forte: (c) => c.gmv > 0 && c.gmvTikTok / c.gmv >= 0.5,
+    em_risco: (c) => (c.estado === "esfriando" || c.estado === "parado") && c.gmv > 0,
+    devolucao_alta: (c) => (c.devolucaoPct ?? 0) >= 10,
+    pago_sem_venda: (c) => c.pagoSemVenda,
+  };
+  return creators.map((c) => ({
+    ...c,
+    tags: TAGS_DINAMICAS.filter((t) => regra[t.id]!(c)).map((t) => t.id),
+  }));
+}
+
+export function contagemTags(creators: { tags: string[] }[]) {
+  return TAGS_DINAMICAS.map((t) => ({
+    ...t,
+    creators: creators.filter((c) => c.tags.includes(t.id)).length,
+  }));
+}
+
 /** Concentração: quantos creators fazem 80% do GMV e quanto os 3 maiores representam. */
 export function concentracao(creators: Creator[]) {
   const vend = creators.filter((c) => c.gmv > 0).sort((a, b) => b.gmv - a.gmv);

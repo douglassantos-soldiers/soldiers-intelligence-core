@@ -58,7 +58,7 @@ const NOMES: Record<string, string> = {
 };
 
 function Shopee() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getShopee);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["shopee", p], queryFn: () => fn({ data: p }) });

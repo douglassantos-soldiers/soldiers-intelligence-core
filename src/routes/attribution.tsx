@@ -40,7 +40,7 @@ type D = Awaited<ReturnType<typeof getAtribuicao>>;
 const T = (r: unknown) => r as Record<string, unknown>[];
 
 function Atribuicao() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getAtribuicao);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["atribuicao", p], queryFn: () => fn({ data: p }) });

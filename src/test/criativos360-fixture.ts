@@ -19,6 +19,7 @@ import {
   padroesVencedores,
   MEDIDA_TIKTOK,
   MEDIDA_META,
+  vidaUtilResumo,
 } from "@/lib/dna";
 
 export const DE = "2026-09-01";
@@ -321,6 +322,7 @@ export function criativosFixture() {
       pecasMeta: pm,
       pecasTikTok: pt,
       cobertura: cob,
+      vidaUtil: vidaUtilResumo(pt),
     },
     alertas: [...alertasCriativos(placar, biblio), ...alertasDNA(rm, rt, cob)],
     erros: {} as Record<string, string>,

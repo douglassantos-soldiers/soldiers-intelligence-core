@@ -22,6 +22,7 @@ import {
   padroesVencedores,
   MEDIDA_TIKTOK,
   MEDIDA_META,
+  vidaUtilResumo,
 } from "@/lib/dna";
 
 type Rows = Record<string, unknown>[];
@@ -161,7 +162,7 @@ export async function dadosCriativos(p: { de: string; ate: string }) {
           () =>
             c
               .from("fact_tiktok_video_dia")
-              .select("data,video_id,titulo,produto_nome,criador,views,gmv,unidades")
+              .select("data,video_id,titulo,produto_nome,criador,views,gmv,unidades,publicado_em")
               .gte("data", p.de)
               .lte("data", p.ate),
           "tiktok videos",
@@ -212,6 +213,7 @@ export async function dadosCriativos(p: { de: string; ate: string }) {
       pecasMeta: pecasMeta.slice(0, 200),
       pecasTikTok: pecasTT.slice(0, 200),
       cobertura: dnaCob,
+      vidaUtil: vidaUtilResumo(pecasTT),
       padroesTikTok: padroesVencedores(pecasTT, MEDIDA_TIKTOK).slice(0, 20),
       padroesMeta: padroesVencedores(pecasMeta, MEDIDA_META, 3).slice(0, 20),
     },

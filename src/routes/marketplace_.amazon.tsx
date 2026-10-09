@@ -22,7 +22,7 @@ import { DIAS_SEMANA, type ShareTermo } from "@/lib/amazon";
 import { CRITERIOS_ANUNCIO } from "@/lib/amazon-operacao";
 import { Bars } from "@/components/charts";
 import { PainelAds } from "@/components/painel-ads";
-import { abasDe } from "@/lib/painel-ads";
+import { abasDe, avisoDsp } from "@/lib/painel-ads";
 
 // Amazon: o que já é coletado e não aparecia em nenhuma tela (benchmarks/amazon/ANALISE.md §4).
 // ASIN 360°, search terms de Ads, share de busca (Brand Analytics), reposição FBA e recompra.
@@ -69,7 +69,7 @@ const NOMES_BLOCO: Record<string, string> = {
 };
 
 function Amazon() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getAmazon);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["amazon", p], queryFn: () => fn({ data: p }) });
@@ -125,8 +125,8 @@ function Body({ d }: { d: D }) {
         Ainda sem tarifas reais nem repasse da Amazon: margem e contribuição entram quando a
         Finances API for conectada. Venda de Ads é <strong>atribuída</strong> pela Amazon (Sponsored
         Products em 7 dias, Brands e Display em 14, como no Console para vendedor) e não se soma à
-        venda realizada. Ads = Sponsored Products + Brands + Display; Amazon DSP ainda não é
-        coletado.
+        venda realizada. Ads = Sponsored Products + Brands + Display; o Amazon DSP aparece separado
+        na aba Ads e não entra no resumo.
         {r.diasEmConsolidacao > 0 &&
           ` ${fmtNum(r.diasEmConsolidacao)} dia(s) do período ainda em consolidação pela Amazon.`}
         {r.ads.diasMaturando > 0 &&
@@ -359,7 +359,7 @@ function Body({ d }: { d: D }) {
                 {
                   id: "DSP",
                   label: "DSP",
-                  aviso: "Amazon DSP ainda não é coletado: não há tabela de DSP no banco.",
+                  ...(avisoDsp(d.painel.dsp) ? { aviso: avisoDsp(d.painel.dsp)! } : {}),
                 },
               ],
               ["SP", "SB", "SD", "DSP"],
@@ -455,8 +455,8 @@ function Body({ d }: { d: D }) {
               <p className="mt-3 text-xs text-muted-foreground">
                 Sponsored Brands e Display vêm das tabelas próprias de cada tipo; um tipo que não
                 aparece aqui não tem gasto no período ou não está sendo coletado (ver Data Health).
-                Amazon DSP: sem dados no banco; precisa de conector próprio (acesso de DSP e
-                relatórios de DSP da Amazon Ads API).
+                Amazon DSP fica na aba DSP do painel acima (tabela fact_amazon_dsp_dia, por pedido e
+                line item).
               </p>
             </Panel>
             <Orcamento o={d.orcamento} />

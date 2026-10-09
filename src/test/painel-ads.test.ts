@@ -15,6 +15,9 @@ import {
   itensMeliDsp,
   rotuloObjetivoMeta,
   rotuloTipoGoogle,
+  avisoDsp,
+  dspPorDia,
+  linhasMidiaGeral,
 } from "@/lib/painel-ads";
 import {
   mlPainelFixture,
@@ -22,6 +25,7 @@ import {
   metaPainelFixture,
   googlePainelFixture,
   midiaPainelFixture,
+  dspAmz,
 } from "./painel-ads-fixture";
 
 describe("status de campanha", () => {
@@ -259,5 +263,41 @@ describe("painel nas telas de mídia", () => {
     expect(l[0]!.tipo).not.toBe(l[1]!.tipo);
     const it = itensMeliDsp([{ data: "2026-09-01", campaign_id: "a", line_item_id: "li" }], l);
     expect(it[0]!.tipo).toBe(l[0]!.tipo);
+  });
+});
+
+describe("Amazon DSP", () => {
+  it("order vira campanha e line item abre dentro dela", () => {
+    const dsp = amazonPainelFixture.linhas.filter((l) => l.tipo === "DSP");
+    const p = painelAds(
+      dsp,
+      amazonPainelFixture.itens.filter((l) => l.tipo === "DSP"),
+    );
+    expect(p.campanhas).toHaveLength(1);
+    expect(p.campanhas[0]!.nome).toBe("DSP | Remarketing Creatina");
+    expect(p.campanhas[0]!.itens.map((i) => i.nome).sort()).toEqual([
+      "Compradores da categoria",
+      "Visitantes 30d",
+    ]);
+    const soma = dspAmz.reduce((s, r) => s + r.investimento, 0);
+    expect(p.totais.investimento).toBeCloseTo(soma, 6);
+  });
+
+  it("aviso diz o que falta: tabela, carga ou nada", () => {
+    expect(avisoDsp(undefined)).toMatch(/migration 20261007130000/);
+    expect(avisoDsp({ tabela: false, linhas: 0 })).toMatch(/migration/);
+    expect(avisoDsp({ tabela: true, linhas: 0 })).toMatch(/falta ligar a carga/);
+    expect(avisoDsp({ tabela: true, linhas: 3 })).toBeNull();
+  });
+
+  it("entra na visão geral de Media como um canal, somado por dia", () => {
+    const dias = dspPorDia(dspAmz);
+    expect(dias).toHaveLength(new Set(dspAmz.map((r) => r.data)).size);
+    const linhas = linhasMidiaGeral(dias);
+    expect(new Set(linhas.map((l) => l.campanha))).toEqual(new Set(["Amazon DSP"]));
+    expect(linhas.reduce((s, l) => s + l.investimento, 0)).toBeCloseTo(
+      dspAmz.reduce((s, r) => s + r.investimento, 0),
+      6,
+    );
   });
 });

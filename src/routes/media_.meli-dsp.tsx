@@ -45,7 +45,7 @@ type Aba = "painel" | "mix" | "campanhas" | "criativos";
 const T = (r: unknown) => r as Record<string, unknown>[];
 
 function MeliDsp() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getMeliDsp);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["meli-dsp", p], queryFn: () => fn({ data: p }) });

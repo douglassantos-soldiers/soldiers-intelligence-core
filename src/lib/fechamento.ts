@@ -221,6 +221,82 @@ export function porCreator(linhas: LinhaFechamento[]) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Exportação para pagamento (onda 3 do benchmark Cruva: "fechamento exportável para pagamento")
+
+/** Abaixo disso, o valor fica acumulado para o mês seguinte. [HIPÓTESE] política a definir com o financeiro. */
+export const PAGAMENTO_MINIMO = 10;
+
+export type LinhaPagamento = {
+  referencia: string;
+  creator: string;
+  tiktok: string;
+  cupons: string;
+  vendaConsiderada: number;
+  comissao: number;
+  situacao: "pronto" | "conferir" | "abaixo do mínimo";
+  motivo: string;
+  documentoFiscal: string;
+};
+
+/**
+ * Uma linha por creator (cupons do mesmo @ juntos) com comissão a pagar. Sem CPF, chave PIX ou conta: o financeiro
+ * completa fora da plataforma. "Conferir" quando algum cupom do creator não bate com a planilha do mês.
+ */
+export function exportPagamento(
+  linhas: LinhaFechamento[],
+  mes: string,
+  conf: { linhas: { cupom: string; situacao: string }[] } | null,
+) {
+  const naoBate = new Set(
+    (conf?.linhas ?? []).filter((l) => l.situacao !== "bate").map((l) => chave(l.cupom)),
+  );
+  const m = new Map<string, LinhaFechamento[]>();
+  for (const l of linhas) {
+    const k = l.tiktok ? `@${l.tiktok}` : l.cupom;
+    m.set(k, [...(m.get(k) ?? []), l]);
+  }
+  const out: LinhaPagamento[] = [];
+  for (const [k, ls] of m) {
+    const comissao = r2(ls.reduce((s, l) => s + l.comissao, 0));
+    if (comissao <= 0) continue;
+    const divergentes = ls.filter((l) => naoBate.has(chave(l.cupom))).map((l) => l.cupom);
+    const situacao: LinhaPagamento["situacao"] = divergentes.length
+      ? "conferir"
+      : comissao < PAGAMENTO_MINIMO
+        ? "abaixo do mínimo"
+        : "pronto";
+    out.push({
+      referencia: mes,
+      creator: ls.find((l) => l.nome)?.nome || k,
+      tiktok: ls[0]!.tiktok ? `@${ls[0]!.tiktok}` : "",
+      cupons: ls.map((l) => l.cupom).join(", "),
+      vendaConsiderada: r2(ls.reduce((s, l) => s + l.vendaConsiderada, 0)),
+      comissao,
+      situacao,
+      motivo:
+        situacao === "conferir"
+          ? `diferente da planilha ou fora dela: ${divergentes.join(", ")}`
+          : situacao === "abaixo do mínimo"
+            ? `menos de R$ ${PAGAMENTO_MINIMO}: acumula para o próximo mês`
+            : "",
+      documentoFiscal: "",
+    });
+  }
+  const ordem = { pronto: 0, conferir: 1, "abaixo do mínimo": 2 };
+  out.sort((a, b) => ordem[a.situacao] - ordem[b.situacao] || b.comissao - a.comissao);
+  const soma = (s: LinhaPagamento["situacao"]) =>
+    r2(out.filter((x) => x.situacao === s).reduce((t, x) => t + x.comissao, 0));
+  return {
+    linhas: out,
+    total: r2(out.reduce((t, x) => t + x.comissao, 0)),
+    prontos: out.filter((x) => x.situacao === "pronto").length,
+    valorPronto: soma("pronto"),
+    valorConferir: soma("conferir"),
+    valorAbaixo: soma("abaixo do mínimo"),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
 // Conferência com a planilha (affiliate_fechamento_planilha)
 
 export const TOLERANCIA = 0.05; // R$ 0,05 por linha (arredondamento)

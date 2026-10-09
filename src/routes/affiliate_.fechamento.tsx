@@ -17,7 +17,7 @@ import {
 } from "@/components/kit";
 import { ErrosLeitura } from "@/components/erros-leitura";
 import { getFechamento, mesAnterior } from "@/lib/fechamento.functions";
-import { CAMPOS, BASES_CUPOM, type BaseCupom } from "@/lib/fechamento";
+import { CAMPOS, BASES_CUPOM, PAGAMENTO_MINIMO, type BaseCupom } from "@/lib/fechamento";
 import { fmtBRL2, fmtNum, fmtPct } from "@/lib/format";
 
 // Fechamento de comissões de influenciadores e afiliados, com a MESMA regra da planilha "Vendas gerais":
@@ -38,7 +38,7 @@ export const Route = createFileRoute("/affiliate_/fechamento")({
 });
 
 type D = Awaited<ReturnType<typeof getFechamento>>;
-type Aba = "cupons" | "creators" | "conferencia";
+type Aba = "cupons" | "creators" | "conferencia" | "pagamento";
 const T = (r: unknown) => r as Record<string, unknown>[];
 const NOME_BASE: Record<BaseCupom, string> = {
   faturamento_liquido: "faturamento líquido",
@@ -137,11 +137,13 @@ function Body({ d, base, setBase }: { d: D; base: BaseCupom; setBase: (b: BaseCu
           { id: "cupons", label: "Por cupom" },
           { id: "creators", label: "Por creator" },
           { id: "conferencia", label: "Conferência com a planilha" },
+          { id: "pagamento", label: "Para pagamento" },
         ]}
       />
       {aba === "cupons" && <Cupons d={d} />}
       {aba === "creators" && <Creators d={d} />}
       {aba === "conferencia" && <Conferencia d={d} base={base} setBase={setBase} />}
+      {aba === "pagamento" && <Pagamento d={d} />}
     </div>
   );
 }
@@ -394,6 +396,72 @@ function Conferencia({
         ) : (
           <Empty>Todos os cupons batem com a planilha.</Empty>
         )}
+      </Panel>
+    </div>
+  );
+}
+
+const TOM_PAGAMENTO = { pronto: "success", conferir: "warn", "abaixo do mínimo": "muted" } as const;
+
+function Pagamento({ d }: { d: D }) {
+  const p = d.pagamento;
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi
+          label="Pronto para pagar"
+          value={fmtBRL2(p.valorPronto)}
+          hint={`${fmtNum(p.prontos)} creator(s)`}
+          tone="up"
+        />
+        <Kpi
+          label="Conferir antes"
+          value={fmtBRL2(p.valorConferir)}
+          hint="cupom diferente da planilha ou fora dela"
+          {...(p.valorConferir ? { tone: "warn" as const } : {})}
+        />
+        <Kpi
+          label="Abaixo do mínimo"
+          value={fmtBRL2(p.valorAbaixo)}
+          hint={`menos de R$ ${PAGAMENTO_MINIMO} acumula`}
+        />
+        <Kpi
+          label="Total de comissão"
+          value={fmtBRL2(p.total)}
+          hint={`${fmtNum(p.linhas.length)} creator(s)`}
+        />
+      </div>
+      <Panel
+        title={`Lista para pagamento (${d.mes})`}
+        right={<CsvButton name={`pagamento-${d.mes}`} rows={T(p.linhas)} />}
+      >
+        {p.linhas.length ? (
+          <Table
+            head={["Creator", "TikTok", "Cupons", "Venda considerada", "Comissão", "Situação"]}
+          >
+            {p.linhas.slice(0, 300).map((x) => (
+              <tr key={`${x.creator}-${x.cupons}`}>
+                <Td className="font-medium">{x.creator}</Td>
+                <Td>{x.tiktok || "—"}</Td>
+                <Td className="text-xs">{x.cupons}</Td>
+                <Td mono>{fmtBRL2(x.vendaConsiderada)}</Td>
+                <Td mono>{fmtBRL2(x.comissao)}</Td>
+                <Td>
+                  <StatusTag tone={TOM_PAGAMENTO[x.situacao]}>{x.situacao}</StatusTag>
+                  {x.motivo && <div className="mt-1 text-xs text-muted-foreground">{x.motivo}</div>}
+                </Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Empty>Nenhuma comissão a pagar no mês.</Empty>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Uma linha por creator (cupons do mesmo @ juntos), só a comissão sobre a venda considerada.
+          O CSV não tem CPF, CNPJ, chave PIX nem conta: o financeiro completa fora da plataforma,
+          com o documento fiscal (RPA ou nota do MEI). Pagar continua fora da plataforma até a Fase
+          3. O mínimo de R$ {PAGAMENTO_MINIMO} é hipótese a definir com o financeiro.
+        </p>
       </Panel>
     </div>
   );

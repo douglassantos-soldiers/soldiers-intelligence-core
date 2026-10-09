@@ -49,7 +49,7 @@ const AWIN_FIELDS = [
 const PUB_FIELDS = ["pedidos", "venda", "comissao", "taxa_awin"];
 
 function Affiliate() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getAffiliate);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["affiliate", p], queryFn: () => fn({ data: p }) });

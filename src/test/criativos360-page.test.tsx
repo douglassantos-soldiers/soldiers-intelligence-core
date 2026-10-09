@@ -32,6 +32,8 @@ describe("tela Central de criativos", () => {
     expect(screen.getByText("Por formato")).toBeTruthy();
     aba("DNA do conteúdo");
     expect(screen.getByText("Ângulo nos vídeos de creators")).toBeTruthy();
+    expect(screen.getByText("Vida útil do vídeo")).toBeTruthy();
+    expect(screen.getAllByText("Impacto").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Ciência / pureza").length).toBeGreaterThan(0);
     expect(screen.getAllByText("@atleta.alfa").length).toBeGreaterThan(0);
     expect(screen.getByText("Padrões vencedores por produto (vídeos de creators)")).toBeTruthy();

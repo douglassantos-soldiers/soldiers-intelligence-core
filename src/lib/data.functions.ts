@@ -17,7 +17,7 @@ import { economiaML, anuncios360, diagnosticoAds, alertasML } from "@/lib/mercad
 import { filaDeAcao, calibracao, reguaReposicao, emailRD, automacoesRD, utmEmail, funilLeads, acoesGrowth, saudeKlaviyo, alertasCRM } from "@/lib/crm";
 import { tendenciaSemanal, hojeAteAgora, buyBoxCompleto, qualidadeAnuncio, estoqueFba, sbParaTermos, sdPorProduto, campanhasNoLimite, pedidosAmazon } from "@/lib/amazon-operacao";
 import { adsUnificados, adsPorSemana } from "@/lib/amazon";
-import { linhasMlProductAds, linhasMlDisplay, linhasMlBrand, linhasAmazon, itensAmazon, linhasShopee, linhasMeta, itensMeta, linhasGoogle, itensGoogle, linhasMidiaGeral } from "@/lib/painel-ads";
+import { linhasMlProductAds, linhasMlDisplay, linhasMlBrand, linhasAmazon, itensAmazon, linhasShopee, linhasMeta, itensMeta, linhasGoogle, itensGoogle, linhasMidiaGeral, linhasAmazonDsp, itensAmazonDsp, dspPorDia } from "@/lib/painel-ads";
 import { resumoAmazon, asin360, termosAds, shareDeBusca, reposicaoFba, recompraAsin, organicoVsAds, vendasPorHora, novosParaMarca, alvosKeywords, alvosSd, classificaLances, alertasAmazon, amazonDoSku } from "@/lib/amazon";
 
 import { db, check, fetchAll, fetchIn, type Db } from "@/lib/db-helpers";
@@ -251,16 +251,18 @@ export const getMedia = createServerFn({ method: "GET" })
   .inputValidator((d) => Periodo.parse(d))
   .handler(async ({ data }) => {
     const c = await db();
-    const [tipos, funil, sbNtb, sdNtb] = await Promise.all([
+    const [tipos, funil, sbNtb, sdNtb, dsp] = await Promise.all([
       fetchAll(() => c.from("vw_ads_por_tipo_dia").select("data,tipo,investimento,receita,impressoes,cliques,unidades").gte("data", data.de).lte("data", data.ate).order("data"), "ads tipo"),
       // Funil por canal de venda (impressão → clique → conversão), previsto no plano revisado da Fase 1.
       fetchAll(() => c.from("vw_ads_funil_canal_dia").select("data,canal,invest,receita_ads,impressoes,cliques,conversoes,base_conversao").gte("data", data.de).lte("data", data.ate).order("data"), "ads funil"),
       // Amazon: clientes novos para a marca (Sponsored Brands e Display). Falha aqui não derruba a tela.
       fetchAll(() => c.from("fact_amazon_ads_sb_campanha_dia").select("data,campaign_id,campaign_name,cost,sales,ntb_sales,ntb_purchases").gte("data", data.de).lte("data", data.ate), "amazon sb").catch(() => null),
       fetchAll(() => c.from("fact_amazon_ads_sd_campanha_dia").select("data,campaign_id,campaign_name,cost,sales,ntb_sales_clicks,ntb_purchases_clicks").gte("data", data.de).lte("data", data.ate), "amazon sd").catch(() => null),
+      // Amazon DSP: fora de vw_ads_por_tipo_dia (só tem Sponsored); entra como canal próprio. Sem a tabela, fica de fora.
+      fetchAll(() => c.from("vw_amazon_dsp_dia").select("data,order_id,order_name,line_item_id,line_item_name,status,investimento,impressoes,cliques,compras,unidades,receita,fonte").gte("data", data.de).lte("data", data.ate), "amazon dsp").catch(() => null),
     ]);
     const amazonNtb = sbNtb || sdNtb ? novosParaMarca(sbNtb ?? [], sdNtb ?? [], data.de, data.ate) : null;
-    return { tipos, funil, amazonNtb, painel: linhasMidiaGeral(tipos) };
+    return { tipos, funil, amazonNtb, painel: linhasMidiaGeral([...tipos, ...dspPorDia(dsp ?? [])]) };
   });
 
 export const getAffiliate = createServerFn({ method: "GET" })
@@ -544,7 +546,7 @@ export const getAlertas = createServerFn({ method: "GET" }).handler(async () => 
     so(dadosDevolucoes(p30)),
     so(dadosAtribuicao(p30)),
     so(dadosInteligencia(p30)),
-    so(dadosAffiliateOS({ foco: "Creatina" })),
+    so(dadosAffiliateOS({ foco: "Creatina" }, { coortes: false })),
     so(dadosCriativos(p14)),
     so(dadosFechamento({ mes: mesAnterior(), base: "faturamento_liquido" })),
   ]);
@@ -692,6 +694,8 @@ export const getAmazon = createServerFn({ method: "GET" })
       safe("adsProduto", fetchAll(() => c.from("fact_amazon_ads_produto_dia").select("data,campaign_id,campaign_name,ad_type,asin,sku,cost,clicks,impressions,sales_14d,units_14d").gte("data", data.de).lte("data", data.ate), "amazon ads produto", 90000)),
       safe("pedidos", fetchAll(() => c.from("fact_amazon_pedido").select("amazon_order_id,purchase_dia,order_status,fulfillment_channel,sku,asin,quantity,item_price").gte("purchase_dia", data.de).lte("purchase_dia", data.ate), "amazon pedidos", 120000)),
     ]);
+    // Amazon DSP (migration 20261007130000_amazon_dsp.sql). null = tabela ainda não existe no banco; [] = sem carga.
+    const dsp = await fetchAll(() => c.from("vw_amazon_dsp_dia").select("data,order_id,order_name,line_item_id,line_item_name,status,investimento,impressoes,cliques,compras,unidades,receita,fonte").gte("data", data.de).lte("data", data.ate), "amazon dsp", 60000).catch(() => null);
     const ads = adsUnificados(adsSp, adsSb, adsSd);
     const vendasPorAsin = new Map<string, number>();
     for (const r of vendas) {
@@ -709,8 +713,9 @@ export const getAmazon = createServerFn({ method: "GET" })
     return {
       resumo: resumoAmazon(trafego, ads, data.de, data.ate, dataLocal(new Date())),
       painel: {
-        linhas: linhasAmazon(ads.filter((r) => String(r["data"] ?? "").slice(0, 10) >= data.de), campanhas),
-        itens: itensAmazon(adsProduto, campanhas, titulos),
+        linhas: [...linhasAmazon(ads.filter((r) => String(r["data"] ?? "").slice(0, 10) >= data.de), campanhas), ...linhasAmazonDsp(dsp ?? [])],
+        itens: [...itensAmazon(adsProduto, campanhas, titulos), ...itensAmazonDsp(dsp ?? [])],
+        dsp: { tabela: dsp != null, linhas: dsp?.length ?? 0, fontes: [...new Set((dsp ?? []).map((r) => String(r["fonte"] ?? "")).filter(Boolean))] },
       },
       asins: asin360(vendas, buybox, estoque, reposicao, cadastro, data.de, data.ate).slice(0, 60),
       termos: termosAds(termos, data.de, data.ate),

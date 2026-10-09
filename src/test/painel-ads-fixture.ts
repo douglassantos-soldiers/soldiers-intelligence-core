@@ -11,6 +11,8 @@ import {
   linhasGoogle,
   itensGoogle,
   linhasMidiaGeral,
+  linhasAmazonDsp,
+  itensAmazonDsp,
 } from "@/lib/painel-ads";
 
 const DIAS = Array.from({ length: 14 }, (_, i) =>
@@ -160,8 +162,43 @@ const adsAmz = DIAS.flatMap((d, i) => [
     impressions: 40000,
   },
 ]);
+// Amazon DSP: dia × order × line item, no formato de vw_amazon_dsp_dia (dados fictícios).
+export const dspAmz = DIAS.flatMap((d, i) => [
+  {
+    data: d,
+    order_id: "o1",
+    order_name: "DSP | Remarketing Creatina",
+    line_item_id: "li1",
+    line_item_name: "Visitantes 30d",
+    status: "DELIVERING",
+    investimento: 150 * onda(i),
+    impressoes: 60000,
+    cliques: 120,
+    compras: 5,
+    unidades: 6,
+    receita: 700 * onda(i, 1),
+    fonte: "windsor",
+  },
+  {
+    data: d,
+    order_id: "o1",
+    order_name: "DSP | Remarketing Creatina",
+    line_item_id: "li2",
+    line_item_name: "Compradores da categoria",
+    status: "DELIVERING",
+    investimento: 80 * onda(i, 2),
+    impressoes: 45000,
+    cliques: 70,
+    compras: 2,
+    unidades: 2,
+    receita: 260 * onda(i, 3),
+    fonte: "windsor",
+  },
+]);
+
 export const amazonPainelFixture = {
-  linhas: linhasAmazon(adsAmz, campanhasAmz),
+  dsp: { tabela: true, linhas: dspAmz.length, fontes: ["windsor"] },
+  linhas: [...linhasAmazon(adsAmz, campanhasAmz), ...linhasAmazonDsp(dspAmz)],
   itens: itensAmazon(
     DIAS.flatMap((d, i) => [
       {
@@ -194,7 +231,7 @@ export const amazonPainelFixture = {
       ["B0CREA", "Creatina Amazon 300g"],
       ["B0CREA1K", "Creatina Amazon 1kg"],
     ]),
-  ),
+  ).concat(itensAmazonDsp(dspAmz)),
 };
 
 export const shopeePainelFixture = linhasShopee(

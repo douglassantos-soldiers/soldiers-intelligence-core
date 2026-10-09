@@ -19,7 +19,7 @@ export const Route = createFileRoute("/produtos/")({
 });
 
 function Produtos() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const [canal, setCanal] = useState("");
   const [busca, setBusca] = useState("");
   const q = useProdutos(dias, canal || undefined);

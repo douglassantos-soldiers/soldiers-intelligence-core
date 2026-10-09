@@ -48,7 +48,7 @@ const TOM: Record<string, "danger" | "warn" | "success"> = {
 };
 
 function MidiaProdutos() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getMidiaSku);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["midia-sku", p], queryFn: () => fn({ data: p }) });

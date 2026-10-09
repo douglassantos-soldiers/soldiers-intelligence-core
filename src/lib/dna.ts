@@ -197,6 +197,7 @@ export function dnaMeta(
 }
 
 export type PecaTikTok = {
+  vidaUtilDias: number | null;
   id: string;
   titulo: string;
   produtoNome: string;
@@ -217,7 +218,16 @@ export function dnaTikTok(
 ): PecaTikTok[] {
   const m = new Map<
     string,
-    { titulo: string; produto: string; creator: string; views: number; gmv: number; un: number }
+    {
+      titulo: string;
+      produto: string;
+      creator: string;
+      views: number;
+      gmv: number;
+      un: number;
+      publicado: string;
+      porDia: Map<string, number>;
+    }
   >();
   for (const v of videos) {
     const d = dia(v["data"]);
@@ -231,8 +241,11 @@ export function dnaTikTok(
       views: 0,
       gmv: 0,
       un: 0,
+      publicado: dia(v["publicado_em"]),
+      porDia: new Map<string, number>(),
     };
     if (!cur.titulo && txt(v["titulo"])) cur.titulo = txt(v["titulo"]);
+    cur.porDia.set(d, (cur.porDia.get(d) ?? 0) + n(v["views"]));
     if (!cur.produto && txt(v["produto_nome"])) cur.produto = txt(v["produto_nome"]);
     // views do fact são do dia [INFERÊNCIA pelo nome da tabela *_dia]
     cur.views += n(v["views"]);
@@ -251,8 +264,65 @@ export function dnaTikTok(
       gmv: x.gmv,
       unidades: x.un,
       gmvMilViews: x.views ? (x.gmv / x.views) * 1000 : null,
+      vidaUtilDias: vidaUtil(x.porDia, x.publicado, de, ate),
     }))
     .sort((a, b) => b.gmv - a.gmv);
+}
+
+/**
+ * Vida útil do vídeo (benchmark Cruva §10.2): dias da publicação até as views diárias caírem abaixo de 10% do pico.
+ * Só vídeos com 21 dias ou mais dentro do período e publicados dentro dele; quem ainda está acima do limite no fim
+ * do período fica de fora (null). Dia sem linha no fact conta como zero view [INFERÊNCIA].
+ */
+export const VIDA_UTIL = { quedaPct: 10, idadeMinDias: 21 } as const;
+
+export function vidaUtil(
+  porDia: Map<string, number>,
+  publicado: string,
+  de: string,
+  ate: string,
+): number | null {
+  if (!porDia.size) return null;
+  const dias = [...porDia.keys()].sort();
+  if (publicado && publicado < de) return null; // publicado antes do período: série incompleta
+  const inicio = publicado || dias[0]!;
+  const ms = (x: string) => Date.parse(x + "T00:00:00Z");
+  const total = Math.round((ms(ate) - ms(inicio)) / 86400000);
+  if (total < VIDA_UTIL.idadeMinDias) return null;
+  const serie = Array.from(
+    { length: total + 1 },
+    (_, k) => porDia.get(new Date(ms(inicio) + k * 86400000).toISOString().slice(0, 10)) ?? 0,
+  );
+  const pico = Math.max(...serie);
+  if (pico <= 0) return null;
+  const iPico = serie.indexOf(pico);
+  for (let k = iPico + 1; k < serie.length; k++)
+    if (serie[k]! < (pico * VIDA_UTIL.quedaPct) / 100) return k;
+  return null;
+}
+
+/** Mediana e faixas de vida útil (só vídeos maduros). */
+export function vidaUtilResumo(pecas: { vidaUtilDias: number | null }[]) {
+  const xs = pecas.map((p) => p.vidaUtilDias).filter((x): x is number => x != null);
+  const o = [...xs].sort((a, b) => a - b);
+  const k = Math.floor(o.length / 2);
+  const mediana = !o.length ? null : o.length % 2 ? o[k]! : (o[k - 1]! + o[k]!) / 2;
+  const faixas: [string, number, number][] = [
+    ["1–3 dias", 1, 3],
+    ["4–7 dias", 4, 7],
+    ["8–14 dias", 8, 14],
+    ["15–30 dias", 15, 30],
+    ["mais de 30", 31, Infinity],
+  ];
+  return {
+    mediana,
+    videosMaduros: o.length,
+    faixas: faixas.map(([faixa, a, b]) => ({
+      faixa,
+      videos: o.filter((x) => x >= a && x <= b).length,
+      pct: pct(o.filter((x) => x >= a && x <= b).length, o.length),
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -322,7 +392,10 @@ export type GrupoTikTok = {
   gmv: number;
   fatiaGmvPct: number | null;
   gmvMilViews: number | null;
-  indice: number | null; // GMV por mil views ÷ média geral
+  indice: number | null; // lift: GMV por mil views ÷ média geral
+  /** Impacto (como o "impacto" de gancho da Cruva): GMV a mais que a média teria feito com as mesmas views. */
+  impacto: number | null;
+  vidaUtilMediana: number | null;
 };
 
 export function resumoTikTok(pecas: PecaTikTok[]): GrupoTikTok[] {
@@ -347,6 +420,8 @@ export function resumoTikTok(pecas: PecaTikTok[]): GrupoTikTok[] {
         fatiaGmvPct: pct(gmv, gmvT),
         gmvMilViews: gmvMil,
         indice: gmvMil != null && media ? gmvMil / media : null,
+        impacto: gmvMil != null && media != null ? ((gmvMil - media) * views) / 1000 : null,
+        vidaUtilMediana: vidaUtilResumo(ps).mediana,
       });
     }
   }

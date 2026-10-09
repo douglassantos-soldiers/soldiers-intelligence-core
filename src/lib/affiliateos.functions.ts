@@ -6,6 +6,8 @@ import { db, fetchAll } from "@/lib/db-helpers";
 import {
   listaCreatorsOS,
   funilCreators,
+  funilAmostrasSemanal,
+  retencaoCoortes,
   amostrasOS,
   outreachOS,
   elasticidade,
@@ -22,12 +24,15 @@ import {
   NAO_IDENTIFICADO,
 } from "@/lib/dna";
 import { produtoDoTexto } from "@/lib/criativos360";
+import { programaAffiliate } from "@/lib/playbooks";
 
 type Rows = Record<string, unknown>[];
+const LIMITE_COORTE = 300000;
 const menos = (iso: string, d: number) =>
   new Date(Date.parse(iso + "T00:00:00Z") - d * 86400000).toISOString().slice(0, 10);
 
-export async function dadosAffiliateOS(p: { foco: string }) {
+/** `coortes: false` pula a leitura de 12 meses de vídeos (usado pelos alertas do Command Center). */
+export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: boolean } = {}) {
   const c = await db();
   const erros: Record<string, string> = {};
   let migracaoPendente = false;
@@ -42,6 +47,15 @@ export async function dadosAffiliateOS(p: { foco: string }) {
       return [] as Rows;
     }
   };
+  let onda2Pendente = false;
+  let onda3Pendente = false;
+  const opcionalOnda2 = (pr: Promise<Rows>) =>
+    pr.catch((e) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/does not exist|não existe|schema cache|Could not find/i.test(msg)) onda2Pendente = true;
+      else erros["programa"] = msg;
+      return [] as Rows;
+    });
   const hoje = new Date().toISOString().slice(0, 10);
   const de90 = menos(hoje, 89);
   const de180 = menos(hoje, 179);
@@ -59,6 +73,10 @@ export async function dadosAffiliateOS(p: { foco: string }) {
     qual,
     influ,
     etiq,
+    videosAno,
+    regras,
+    direitosRows,
+    workflowRows,
   ] = await Promise.all([
     safe(
       "videos",
@@ -66,7 +84,7 @@ export async function dadosAffiliateOS(p: { foco: string }) {
         () =>
           c
             .from("fact_tiktok_video_dia")
-            .select("data,criador,produto_nome,gmv,views,video_id,titulo,unidades")
+            .select("data,criador,produto_nome,gmv,views,video_id,titulo,unidades,publicado_em")
             .gte("data", de90)
             .lte("data", hoje),
         "tiktok videos",
@@ -79,8 +97,23 @@ export async function dadosAffiliateOS(p: { foco: string }) {
         () =>
           c
             .from("affiliate_creator")
-            .select("id,nome,tiktok_username,cupom,nicho,tier,estagio,concorrentes"),
+            .select(
+              "id,nome,tiktok_username,cupom,nicho,tier,estagio,concorrentes,seguidores,tipo_conta",
+            ),
         "affiliate_creator",
+      ).catch((e) =>
+        // tipo_conta vem da migração 20261006140000; sem ela, lê sem a coluna.
+        /tipo_conta/.test(String(e?.message ?? e))
+          ? fetchAll(
+              () =>
+                c
+                  .from("affiliate_creator")
+                  .select(
+                    "id,nome,tiktok_username,cupom,nicho,tier,estagio,concorrentes,seguidores",
+                  ),
+              "affiliate_creator",
+            )
+          : Promise.reject(e),
       ),
       true,
     ),
@@ -91,9 +124,21 @@ export async function dadosAffiliateOS(p: { foco: string }) {
           c
             .from("affiliate_amostra")
             .select(
-              "id,creator_id,sku,produto,status,solicitado_em,aprovado_em,enviado_em,recebido_em,publicado_em,primeira_venda_em,custo_produto,frete,desconto,outros_custos",
+              "id,creator_id,sku,produto,status,solicitado_em,aprovado_em,enviado_em,recebido_em,publicado_em,primeira_venda_em,encerrado_em,custo_produto,frete,desconto,outros_custos",
             ),
         "affiliate_amostra",
+      ).catch((e) =>
+        /encerrado_em/.test(String(e?.message ?? e))
+          ? fetchAll(
+              () =>
+                c
+                  .from("affiliate_amostra")
+                  .select(
+                    "id,creator_id,sku,produto,status,solicitado_em,aprovado_em,enviado_em,recebido_em,publicado_em,primeira_venda_em,custo_produto,frete,desconto,outros_custos",
+                  ),
+              "affiliate_amostra",
+            )
+          : Promise.reject(e),
       ),
       true,
     ),
@@ -189,6 +234,52 @@ export async function dadosAffiliateOS(p: { foco: string }) {
       () => c.from("vw_conteudo_etiqueta_atual").select("canal,conteudo_id,dimensao,valor"),
       "conteudo etiqueta",
     ).catch(() => [] as Rows),
+    // Retenção por coorte: 12 meses de vídeos, só o necessário (vídeo, creator, publicação).
+    opcoes.coortes === false
+      ? Promise.resolve([] as Rows)
+      : safe(
+          "videosCoorte",
+          fetchAll(
+            () =>
+              c
+                .from("fact_tiktok_video_dia")
+                .select("data,criador,video_id,publicado_em")
+                .gte("data", menos(hoje, 364))
+                .lte("data", hoje),
+            "tiktok videos 12m",
+            LIMITE_COORTE,
+          ),
+        ),
+    // Onda 2: faixas de comissão e direitos de uso (migração 20261006150000). Sem ela, vale a regra padrão do código.
+    opcionalOnda2(
+      fetchAll(
+        () =>
+          c
+            .from("affiliate_regra_comissao")
+            .select("nome,versao,vigente_desde,base,janela_dias,faixas"),
+        "affiliate_regra_comissao",
+      ),
+    ),
+    opcionalOnda2(
+      fetchAll(
+        () =>
+          c
+            .from("affiliate_direito_uso")
+            .select("id,creator_id,video_id,plataforma,status,valor,inicio,fim,tem_codigo"),
+        "affiliate_direito_uso",
+      ),
+    ),
+    // Onda 3: workflows cadastrados (migração 20261006160000). Sem ela, valem os 6 modelos do código.
+    fetchAll(
+      () =>
+        c.from("affiliate_workflow").select("chave,nome,versao,vigente_desde,gatilho,passos,ativo"),
+      "affiliate_workflow",
+    ).catch((e) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/does not exist|não existe|schema cache|Could not find/i.test(msg)) onda3Pendente = true;
+      else erros["workflows"] = msg;
+      return [] as Rows;
+    }),
   ]);
   const ref =
     videos.reduce(
@@ -228,15 +319,40 @@ export async function dadosAffiliateOS(p: { foco: string }) {
     videosFoco: pecasFoco.length,
     semProduto: pecas.filter((x) => x.dna.produto === NAO_IDENTIFICADO).length,
   };
+  const programa = programaAffiliate({
+    videos,
+    cadastro,
+    amostras: am,
+    creators,
+    regras,
+    direitos: direitosRows,
+    workflows: workflowRows,
+    pecas,
+    padroes: [...conteudo.padroes].sort(
+      (a, b) => Number(b.produto === focoNome) - Number(a.produto === focoNome),
+    ),
+    margemPct: margemAfiliado,
+    foco: p.foco,
+    ref,
+    hoje,
+  });
   return {
     ref,
     foco: p.foco,
     conteudo,
+    ...programa,
+    onda2Pendente,
+    onda3Pendente,
     margemAfiliadoPct: margemAfiliado,
     creators: creators.slice(0, 300),
     totalCreators: creators.length,
     funil: funilCreators(creators),
     amostras: am,
+    funilAmostras: funilAmostrasSemanal(am, hoje),
+    coortes:
+      opcoes.coortes === false ? [] : retencaoCoortes(videosAno.length ? videosAno : videos, hoje),
+    coorteIncompleta: videosAno.length >= LIMITE_COORTE,
+    contasLoja: creators.filter((x) => x.tipoConta === "loja").length,
     outreach: outreachOS(campanhas, convites, cadastro, videos, skuNome, ref),
     elasticidade: [
       elasticidade("Mercado Livre", mlCamp, { taxa: "taxa_efetiva_pct", gmv: "gmv" }, margemSem),
@@ -250,7 +366,13 @@ export async function dadosAffiliateOS(p: { foco: string }) {
     sinais,
     qualidade: qualidadePorCreator(qual, nomes).slice(0, 200),
     migracaoPendente,
-    alertas: alertasAffiliateOS({ amostras: am, creators, sinais }),
+    alertas: alertasAffiliateOS({
+      amostras: am,
+      creators,
+      sinais,
+      recomendacoes: programa.recomendacoes,
+      direitosVencendo: programa.direitos.vencendo.length + programa.direitos.vencidos,
+    }),
     erros,
   };
 }

@@ -60,7 +60,7 @@ const NOMES: Record<string, string> = {
 const f1 = (v: number | null | undefined) => (v == null ? "—" : v.toFixed(1).replace(".", ","));
 
 function CrmAcao() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getCrmAcao);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["crm-acao", p], queryFn: () => fn({ data: p }) });

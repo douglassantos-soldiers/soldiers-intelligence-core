@@ -698,3 +698,70 @@ export function linhasMidiaGeral(rows: Row[]): LinhaAds[] {
     };
   });
 }
+
+// ---------------------------------------------------------------------------------------------
+// Amazon DSP (vw_amazon_dsp_dia: dia × order × line item). Receita = venda atribuída pela Amazon.
+
+const linhaDsp = (r: Row): LinhaAds => ({
+  ...vazio(),
+  data: dia(r["data"]),
+  tipo: "DSP",
+  campanhaId: txt(r["order_id"]) || "—",
+  campanha: txt(r["order_name"]) || txt(r["order_id"]),
+  status: statusCampanha(r["status"]),
+  investimento: n(r["investimento"]),
+  receita: n(r["receita"]),
+  unidades: n(r["unidades"]) || n(r["compras"]),
+  impressoes: n(r["impressoes"]),
+  cliques: n(r["cliques"]),
+});
+
+/** Amazon DSP por pedido (order) — vira a "campanha" do painel. */
+export function linhasAmazonDsp(rows: Row[]): LinhaAds[] {
+  return rows.map(linhaDsp);
+}
+
+/** Amazon DSP por line item, para abrir o pedido. */
+export function itensAmazonDsp(rows: Row[]): LinhaAds[] {
+  return rows
+    .filter((r) => txt(r["line_item_id"]))
+    .map((r) => ({
+      ...linhaDsp(r),
+      status: "outro" as StatusCampanha,
+      itemId: txt(r["line_item_id"]),
+      item: txt(r["line_item_name"]) || txt(r["line_item_id"]),
+    }));
+}
+
+/** Soma o DSP por dia no formato de vw_ads_por_tipo_dia (visão geral de Media). */
+export function dspPorDia(rows: Row[], tipo = "Amazon DSP"): Row[] {
+  const m = new Map<string, Row>();
+  for (const r of rows) {
+    const d = dia(r["data"]);
+    const a = m.get(d) ?? {
+      data: d,
+      tipo,
+      investimento: 0,
+      receita: 0,
+      impressoes: 0,
+      cliques: 0,
+      unidades: 0,
+    };
+    a["investimento"] = n(a["investimento"]) + n(r["investimento"]);
+    a["receita"] = n(a["receita"]) + n(r["receita"]);
+    a["impressoes"] = n(a["impressoes"]) + n(r["impressoes"]);
+    a["cliques"] = n(a["cliques"]) + n(r["cliques"]);
+    a["unidades"] = n(a["unidades"]) + (n(r["unidades"]) || n(r["compras"]));
+    m.set(d, a);
+  }
+  return [...m.values()].sort((a, b) => String(a["data"]).localeCompare(String(b["data"])));
+}
+
+/** Aviso da aba DSP da Amazon quando não há linha no período (null = tem dado, sem aviso). */
+export function avisoDsp(dsp: { tabela: boolean; linhas: number } | undefined): string | null {
+  if (!dsp || !dsp.tabela)
+    return "Amazon DSP ainda não tem tabela no banco: aplicar a migration 20261007130000_amazon_dsp.sql.";
+  if (dsp.linhas === 0)
+    return "Sem dados de Amazon DSP no período. A tabela já existe; falta ligar a carga (conector Amazon DSP do Windsor.ai ou coletor próprio com o convite da conta DSP).";
+  return null;
+}

@@ -34,5 +34,9 @@ describe("tela Fechamento de comissões", () => {
     expect(screen.getByText("GAMA")).toBeTruthy();
     aba("Por creator");
     expect(screen.getByText("@beta.treino")).toBeTruthy();
+    aba("Para pagamento");
+    expect(screen.getByText("Lista para pagamento (2026-09)")).toBeTruthy();
+    expect(screen.getAllByText("pronto")).toHaveLength(3);
+    expect(screen.getByText("diferente da planilha ou fora dela: SOUP")).toBeTruthy();
   });
 });

@@ -41,7 +41,7 @@ export const Route = createFileRoute("/media")({
 const FUNIL_FIELDS = ["invest", "receita_ads", "impressoes", "cliques", "conversoes"];
 
 function Media() {
-  const [dias, setDias] = useState("30");
+  const [dias, setDias] = useState("28");
   const fn = useServerFn(getMedia);
   const p = periodo(dias);
   const q = useQuery({ queryKey: ["media", p], queryFn: () => fn({ data: p }) });

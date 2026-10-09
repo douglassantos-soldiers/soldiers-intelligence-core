@@ -13,7 +13,7 @@ export const Route = createFileRoute("/commerce")({
     ],
   }),
   component: () => {
-    const [dias, setDias] = useState("30");
+    const [dias, setDias] = useState("28");
     return (
       <>
         <PageHeader title="Commerce" subtitle="Site próprio (Shopify): receita, margem, mídia e produtos." />

@@ -836,7 +836,9 @@ describe("telas novas renderizam com dados", () => {
     const C = Route.options.component!;
     wrap(<C />);
     // painel visual: uma linha por canal/tipo, que abre ao ordenar e filtrar
-    expect(await screen.findByText("Desempenho por tipo de campanha", {}, { timeout: 10000 })).toBeTruthy();
+    expect(
+      await screen.findByText("Desempenho por tipo de campanha", {}, { timeout: 10000 }),
+    ).toBeTruthy();
     expect(screen.getByText("Mercado Ads")).toBeTruthy();
     expect(screen.getByText("Funil por canal de venda")).toBeTruthy();
     expect(screen.getByText("Amazon Ads: clientes novos para a marca")).toBeTruthy();
@@ -961,7 +963,8 @@ describe("telas novas renderizam com dados", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Sponsored Display" })[0]!);
     expect(screen.getByText("SD Remarketing")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "DSP" }));
-    expect(screen.getByText(/DSP ainda não é coletado: não há tabela/)).toBeTruthy();
+    expect(screen.getByText("DSP | Remarketing Creatina")).toBeTruthy();
+    expect(screen.queryByText(/Sem dados de Amazon DSP/)).toBeNull();
     fireEvent.click(screen.getAllByRole("button", { name: "Sponsored Products" })[0]!);
     expect(screen.getAllByText("Sponsored Display").length).toBeGreaterThan(0); // Ads por tipo: SP + SB + SD
     fireEvent.click(screen.getAllByRole("button", { name: "Sponsored Brands" }).at(-1)!);
