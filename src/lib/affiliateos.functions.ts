@@ -1,5 +1,6 @@
 // Leituras do Affiliate OS: creators e notas, funil, amostras, outreach, comissão, risco e qualidade do cliente.
 // Só leitura. As tabelas affiliate_* vêm da migração 20261005140000; sem ela, a tela usa só os dados existentes.
+import { hojeSP, diasAtrasSP } from "@/lib/datas";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { db, fetchAll } from "@/lib/db-helpers";
@@ -56,7 +57,7 @@ export async function dadosAffiliateOS(p: { foco: string }, opcoes: { coortes?: 
       else erros["programa"] = msg;
       return [] as Rows;
     });
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeSP();
   const de90 = menos(hoje, 89);
   const de180 = menos(hoje, 179);
   const [

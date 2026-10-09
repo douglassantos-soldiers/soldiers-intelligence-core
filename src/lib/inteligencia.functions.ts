@@ -1,5 +1,6 @@
 // Leituras da tela Intelligence: Channel Intelligence, Matriz Produto × Canal, previsão de demanda e estoque
 // por local e experimentos. Só leitura. Cálculos em src/lib/inteligencia.ts.
+import { hojeSP, diasAtrasSP } from "@/lib/datas";
 import { createServerFn } from "@tanstack/react-start";
 import { db, fetchAll, Periodo } from "@/lib/db-helpers";
 import {
@@ -30,7 +31,7 @@ export async function dadosInteligencia(p: { de: string; ate: string }) {
       return [] as Rows;
     }
   };
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeSP();
   const dias = Math.round((Date.parse(p.ate) - Date.parse(p.de)) / 86400000) + 1;
   const deAnt = menos(p.de, dias);
   const deProd = [p.de, menos(hoje, 2 * PREVISAO.janelaLonga)].sort()[0]!;

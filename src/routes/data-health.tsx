@@ -266,6 +266,28 @@ function Body({ d }: { d: D }) {
           Fonte: vw_saude_shopify, vw_saude_ml, vw_saude_amazon.
         </p>
       </Panel>
+
+      <Panel title="Leituras cortadas pelo limite">
+        {(d.cortes ?? []).length ? (
+          <Table head={["Leitura", "Teto (linhas)", "Quando"]}>
+            {(d.cortes ?? []).map((x, i) => (
+              <tr key={i}>
+                <Td>{x.ctx}</Td>
+                <Td mono>{fmtNum(x.max)}</Td>
+                <Td mono>
+                  {new Date(x.quando).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
+                </Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Empty>Nenhuma leitura bateu no teto desde que o servidor iniciou.</Empty>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Quando uma tela lê mais linhas do que o teto da consulta, o resultado sai incompleto. Esta
+          lista mostra quais leituras precisam de teto maior ou de agregação no banco.
+        </p>
+      </Panel>
     </div>
   );
 }

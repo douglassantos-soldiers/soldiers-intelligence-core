@@ -1,5 +1,6 @@
 // Leituras de Estado da base, Consentimento, Cliente único, próxima ação por cliente e Attribution Engine v1.
 // Só leitura. LGPD: nenhuma coluna de nome, e-mail, telefone, documento ou endereço é selecionada aqui.
+import { hojeSP, diasAtrasSP } from "@/lib/datas";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { db, check, fetchAll, Periodo, type Db } from "@/lib/db-helpers";
@@ -82,13 +83,13 @@ export async function dadosCrmBase() {
 
   const canais = () =>
     c.from("tab_cliente_canais").select("cliente_chave", { count: "exact", head: true });
-  const desde = new Date(Date.now() - 364 * 86400000).toISOString().slice(0, 10);
+  const desde = diasAtrasSP(364);
   const itens = () =>
     c
       .from("stg_shopify_orders_item")
       .select("order_id", { count: "exact", head: true })
       .gte("order_created_at", desde);
-  const de90 = new Date(Date.now() - 89 * 86400000).toISOString().slice(0, 10);
+  const de90 = diasAtrasSP(89);
   const [um, dois, tresMais, idsInternos, aceita, recusa, semInfo, leadDia] = await Promise.all([
     safe("canais1", conta(canais().eq("canais", 1), "canais 1"), 0),
     safe("canais2", conta(canais().eq("canais", 2), "canais 2"), 0),
@@ -139,8 +140,8 @@ export async function dadosCrmBase() {
       return vazio;
     }
   };
-  const de180 = new Date(Date.now() - 179 * 86400000).toISOString().slice(0, 10);
-  const de30 = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
+  const de180 = diasAtrasSP(179);
+  const de30 = diasAtrasSP(29);
   const vw = () =>
     c
       .from("vw_cliente_consentimento_atual")
@@ -226,7 +227,7 @@ export const getClienteAcao = createServerFn({ method: "GET" })
   .inputValidator((d) => z.object({ chave: z.string().regex(/^[0-9a-zA-Z_-]{8,128}$/) }).parse(d))
   .handler(async ({ data }) => {
     const c = await db();
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeSP();
     const [perfilR, pedidosR, idR] = await Promise.all([
       c
         .from("mv_growth_cliente_perfil")
@@ -307,7 +308,7 @@ export async function dadosAtribuicao(p: { de: string; ate: string }) {
       return [] as Rows;
     }
   };
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeSP();
   const [consol, origem, recon, config, funil, utmSite] = await Promise.all([
     safe(
       "consolidada",

@@ -1,4 +1,5 @@
 // Leitura do Fechamento de comissões (/affiliate/fechamento). Só leitura; nada é pago ou alterado por aqui.
+import { hojeSP } from "@/lib/datas";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { db, fetchAll } from "@/lib/db-helpers";
@@ -20,7 +21,9 @@ type Rows = Record<string, unknown>[];
 
 /** Mês anterior ao de hoje (o fechamento é sempre do mês que acabou). */
 export const mesAnterior = (hoje = new Date()) => {
-  const d = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - 1, 1));
+  // Mês corrente em Brasília (na virada do mês, UTC já estaria no mês seguinte).
+  const [a, m] = hojeSP(hoje).split("-").map(Number);
+  const d = new Date(Date.UTC(a!, m! - 2, 1));
   return d.toISOString().slice(0, 7);
 };
 
