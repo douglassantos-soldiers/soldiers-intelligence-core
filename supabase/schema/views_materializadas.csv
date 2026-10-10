@@ -1,0 +1,987 @@
+﻿definicao,objeto,preenchida
+"create materialized view public.mv_afiliado_canal_dia as
+ SELECT vw_ml_afiliado_dia.data,
+    'Mercado Livre'::text AS canal,
+    vw_ml_afiliado_dia.gmv_afiliado AS rec,
+    vw_ml_afiliado_dia.custo_afiliado AS inv
+   FROM vw_ml_afiliado_dia
+UNION ALL
+ SELECT vw_shopee_afiliado_dia.data,
+    'Shopee'::text AS canal,
+    vw_shopee_afiliado_dia.gmv_afiliado AS rec,
+    vw_shopee_afiliado_dia.custo_afiliado AS inv
+   FROM vw_shopee_afiliado_dia
+UNION ALL
+ SELECT vw_tiktok_afiliado_dia.data,
+    'TikTok'::text AS canal,
+    vw_tiktok_afiliado_dia.gmv_afiliado AS rec,
+    vw_tiktok_afiliado_dia.custo_total AS inv
+   FROM vw_tiktok_afiliado_dia;","mv_afiliado_canal_dia","True"
+"create materialized view public.mv_criativo_cliente as
+ WITH pedidos AS (
+         SELECT DISTINCT ON (s.order_id) s.order_id,
+            s.order_created_at::date AS data,
+            TRIM(BOTH FROM s.order_customer_last_visit_utm_content) AS utm_content,
+            regexp_replace(COALESCE(s.order_customer_id, ''::text), '^gid://shopify/Customer/'::text, ''::text) AS customer_id,
+            s.order_total_price AS receita
+           FROM stg_shopify_orders_item s
+          WHERE s.order_cancelled_at IS NULL AND COALESCE(TRIM(BOTH FROM s.order_customer_last_visit_utm_content), ''::text) <> ''::text
+          ORDER BY s.order_id, s._loaded_at DESC NULLS LAST
+        ), anuncio_id AS (
+         SELECT DISTINCT dim_meta_anuncio.ad_id
+           FROM dim_meta_anuncio
+          WHERE dim_meta_anuncio.ad_id IS NOT NULL
+        ), anuncio_nome AS (
+         SELECT lower(dim_meta_anuncio.ad_name) AS nome,
+            min(dim_meta_anuncio.ad_id) AS ad_id
+           FROM dim_meta_anuncio
+          WHERE dim_meta_anuncio.ad_id IS NOT NULL AND COALESCE(TRIM(BOTH FROM dim_meta_anuncio.ad_name), ''::text) <> ''::text
+          GROUP BY (lower(dim_meta_anuncio.ad_name))
+        ), ligados AS (
+         SELECT p_1.order_id,
+            p_1.data,
+            p_1.customer_id,
+            p_1.receita,
+            COALESCE(i.ad_id, n.ad_id) AS ad_id
+           FROM pedidos p_1
+             LEFT JOIN anuncio_id i ON i.ad_id = p_1.utm_content
+             LEFT JOIN anuncio_nome n ON n.nome = lower(p_1.utm_content)
+          WHERE COALESCE(i.ad_id, n.ad_id) IS NOT NULL
+        ), clientes AS (
+         SELECT dim_cliente.cliente_id::text AS customer_id,
+            dim_cliente.cliente_chave
+           FROM dim_cliente
+          WHERE dim_cliente.cliente_id IS NOT NULL
+        ), com_cliente AS (
+         SELECT l.order_id,
+            l.data,
+            l.customer_id,
+            l.receita,
+            l.ad_id,
+            d.cliente_chave
+           FROM ligados l
+             LEFT JOIN clientes d ON d.customer_id = l.customer_id
+        )
+ SELECT c.ad_id,
+    count(DISTINCT c.order_id)::integer AS pedidos,
+    sum(c.receita) AS receita,
+    count(DISTINCT c.cliente_chave)::integer AS clientes,
+    count(DISTINCT c.cliente_chave) FILTER (WHERE p.primeira_compra = c.data)::integer AS clientes_novos,
+    count(DISTINCT c.cliente_chave) FILTER (WHERE p.primeira_compra = c.data AND p.pedidos >= 2)::integer AS novos_que_recompraram,
+    avg(p.valor_total) FILTER (WHERE p.primeira_compra = c.data) AS ltv_medio_novos,
+    min(c.data) AS primeiro_pedido,
+    max(c.data) AS ultimo_pedido,
+    now() AS gerado_em
+   FROM com_cliente c
+     LEFT JOIN mv_growth_cliente_perfil p ON p.cliente_chave = c.cliente_chave
+  GROUP BY c.ad_id;","mv_criativo_cliente","True"
+"create materialized view public.mv_cupom_cliente_qualidade as
+ WITH uso AS (
+         SELECT upper(TRIM(BOTH FROM s.order_discount_code)) AS cupom,
+            regexp_replace(COALESCE(s.order_customer_id, ''::text), '^gid://shopify/Customer/'::text, ''::text) AS customer_id,
+            min(s.order_created_at)::date AS primeiro_uso
+           FROM stg_shopify_orders_item s
+          WHERE COALESCE(TRIM(BOTH FROM s.order_discount_code), ''::text) <> ''::text
+          GROUP BY (upper(TRIM(BOTH FROM s.order_discount_code))), (regexp_replace(COALESCE(s.order_customer_id, ''::text), '^gid://shopify/Customer/'::text, ''::text))
+        ), clientes AS (
+         SELECT dim_cliente.cliente_id::text AS customer_id,
+            dim_cliente.cliente_chave
+           FROM dim_cliente
+          WHERE dim_cliente.cliente_id IS NOT NULL
+        ), uso_cliente AS (
+         SELECT u_1.cupom,
+            d.cliente_chave,
+            min(u_1.primeiro_uso) AS primeiro_uso
+           FROM uso u_1
+             JOIN clientes d ON d.customer_id = u_1.customer_id
+          GROUP BY u_1.cupom, d.cliente_chave
+        )
+ SELECT u.cupom,
+    count(*)::integer AS clientes,
+    count(*) FILTER (WHERE p.primeira_compra >= u.primeiro_uso)::integer AS clientes_novos,
+    count(*) FILTER (WHERE p.pedidos >= 2 AND p.ultima_compra > u.primeiro_uso)::integer AS recompraram,
+    avg(p.valor_total) AS ltv_medio,
+    avg(p.pedidos) AS pedidos_medio,
+    now() AS gerado_em
+   FROM uso_cliente u
+     JOIN mv_growth_cliente_perfil p ON p.cliente_chave = u.cliente_chave
+  GROUP BY u.cupom;","mv_cupom_cliente_qualidade","True"
+"create materialized view public.mv_growth_acao_resumo as
+ SELECT acao,
+    canal_ultimo AS canal,
+    acionavel,
+    count(*) AS clientes,
+    round(sum(valor_esperado_90), 2) AS valor_esperado,
+    round(avg(chance_90), 1) AS chance_media,
+    round(sum(valor_total) / NULLIF(sum(pedidos), 0::numeric), 2) AS ticket_medio,
+    round(sum(valor_total), 2) AS valor_historico,
+    now() AS gerado_em
+   FROM mv_growth_cliente_perfil
+  GROUP BY acao, canal_ultimo, acionavel;","mv_growth_acao_resumo","True"
+"create materialized view public.mv_growth_cac_canal_mes as
+ SELECT mes_entrada AS mes,
+    canal_entrada,
+    count(*) AS novos,
+    sum(receita) AS receita_acumulada,
+    sum(receita) / NULLIF(count(*), 0)::numeric AS ltv_medio,
+    now() AS gerado_em
+   FROM mv_growth_origem_cliente
+  GROUP BY mes_entrada, canal_entrada;","mv_growth_cac_canal_mes","True"
+"create materialized view public.mv_growth_cac_cohort as
+ WITH novos AS (
+         SELECT to_char(o.mes_entrada::timestamp with time zone, 'YYYY-MM'::text) AS mes,
+                CASE
+                    WHEN COALESCE(NULLIF(btrim(o.canal_entrada), ''::text), 'Sem canal'::text) = 'Shopify'::text THEN 'Site'::text
+                    ELSE COALESCE(NULLIF(btrim(o.canal_entrada), ''::text), 'Sem canal'::text)
+                END AS canal,
+            count(*) AS novos
+           FROM mv_growth_origem_cliente o
+          WHERE o.mes_entrada IS NOT NULL
+          GROUP BY (to_char(o.mes_entrada::timestamp with time zone, 'YYYY-MM'::text)), (
+                CASE
+                    WHEN COALESCE(NULLIF(btrim(o.canal_entrada), ''::text), 'Sem canal'::text) = 'Shopify'::text THEN 'Site'::text
+                    ELSE COALESCE(NULLIF(btrim(o.canal_entrada), ''::text), 'Sem canal'::text)
+                END)
+        ), inv AS (
+         SELECT to_char(date_trunc('month'::text, v.data::timestamp with time zone), 'YYYY-MM'::text) AS mes,
+                CASE
+                    WHEN v.canal = 'Shopify'::text THEN 'Site'::text
+                    ELSE v.canal
+                END AS canal,
+            sum(COALESCE(v.invest_aquisicao, 0::numeric)) AS invest_aquisicao
+           FROM vw_receita_consolidada v
+          WHERE v.data IS NOT NULL AND v.canal IS NOT NULL
+          GROUP BY (to_char(date_trunc('month'::text, v.data::timestamp with time zone), 'YYYY-MM'::text)), (
+                CASE
+                    WHEN v.canal = 'Shopify'::text THEN 'Site'::text
+                    ELSE v.canal
+                END)
+        )
+ SELECT COALESCE(n.mes, i.mes) AS mes,
+    COALESCE(n.canal, i.canal) AS canal,
+    COALESCE(n.novos, 0::bigint) AS novos,
+    i.invest_aquisicao,
+        CASE
+            WHEN COALESCE(n.novos, 0::bigint) > 0 AND i.invest_aquisicao IS NOT NULL AND i.invest_aquisicao > 0::numeric THEN i.invest_aquisicao / n.novos::numeric
+            ELSE NULL::numeric
+        END AS cac,
+    now() AS gerado_em
+   FROM novos n
+     FULL JOIN inv i ON i.mes = n.mes AND i.canal = n.canal;","mv_growth_cac_cohort","True"
+"create materialized view public.mv_growth_cliente_perfil as
+ WITH ped AS (
+         SELECT p.cliente_chave,
+            p.canal,
+            p.pedido_id,
+            p.data,
+            max(p.valor) AS valor
+           FROM fact_pedido_cliente p
+          WHERE p.cliente_chave IS NOT NULL
+          GROUP BY p.cliente_chave, p.canal, p.pedido_id, p.data
+        ), gaps AS (
+         SELECT ped.cliente_chave,
+            (ped.data - lag(ped.data) OVER (PARTITION BY ped.cliente_chave ORDER BY ped.data, ped.pedido_id))::numeric AS dias
+           FROM ped
+        ), ritmo_cli AS (
+         SELECT gaps.cliente_chave,
+            percentile_cont(0.5::double precision) WITHIN GROUP (ORDER BY (gaps.dias::double precision)) AS ritmo
+           FROM gaps
+          WHERE gaps.dias > 0::numeric
+          GROUP BY gaps.cliente_chave
+        ), base AS (
+         SELECT ped.cliente_chave,
+            count(*) AS pedidos,
+            min(ped.data) AS primeira_compra,
+            max(ped.data) AS ultima_compra,
+            sum(COALESCE(ped.valor, 0::numeric)) AS valor_total,
+            avg(COALESCE(ped.valor, 0::numeric)) AS ticket_medio,
+            count(DISTINCT ped.canal) AS canais,
+            (array_agg(ped.canal ORDER BY ped.data DESC, ped.pedido_id DESC))[1] AS canal_ultimo,
+            (array_agg(ped.canal ORDER BY ped.data, ped.pedido_id))[1] AS canal_entrada
+           FROM ped
+          GROUP BY ped.cliente_chave
+        ), ritmo_canal AS (
+         SELECT b.canal_ultimo AS canal,
+            percentile_cont(0.5::double precision) WITHIN GROUP (ORDER BY r.ritmo) AS ritmo
+           FROM base b
+             JOIN ritmo_cli r ON r.cliente_chave = b.cliente_chave
+          GROUP BY b.canal_ultimo
+        ), item_cli AS (
+         SELECT p.cliente_chave,
+            i.sku,
+            min(COALESCE(NULLIF(i.produto, ''::text), i.sku)) AS produto,
+            count(*) AS vezes,
+            sum(COALESCE(i.valor_total, 0::numeric)) AS receita,
+            max(p.data) AS ultima
+           FROM fact_pedido_item_cliente i
+             JOIN ped p ON p.canal = i.canal AND p.pedido_id = i.pedido_id
+          WHERE i.sku IS NOT NULL
+          GROUP BY p.cliente_chave, i.sku
+        ), item_top AS (
+         SELECT t.cliente_chave,
+            t.sku,
+            t.produto,
+            t.vezes
+           FROM ( SELECT ic.cliente_chave,
+                    ic.sku,
+                    ic.produto,
+                    ic.vezes,
+                    ic.receita,
+                    ic.ultima,
+                    row_number() OVER (PARTITION BY ic.cliente_chave ORDER BY ic.vezes DESC, ic.receita DESC, ic.ultima DESC, ic.sku) AS pos
+                   FROM item_cli ic) t
+          WHERE t.pos = 1
+        ), calc AS (
+         SELECT b.cliente_chave,
+            b.pedidos,
+            b.primeira_compra,
+            b.ultima_compra,
+            b.valor_total,
+            b.ticket_medio,
+            b.canais,
+            b.canal_ultimo,
+            b.canal_entrada,
+            it.sku AS sku_principal,
+            it.produto AS produto_principal,
+            COALESCE(rc.ritmo, pc.ciclo_mediano::numeric::double precision, rcanal.ritmo, 68::double precision)::numeric AS ritmo,
+            rc.ritmo IS NOT NULL AS ritmo_proprio,
+            (CURRENT_DATE - b.ultima_compra)::numeric AS dias_ultima,
+            prox.sku_seguinte,
+            prox.produto_seguinte
+           FROM base b
+             LEFT JOIN ritmo_cli rc ON rc.cliente_chave = b.cliente_chave
+             LEFT JOIN item_top it ON it.cliente_chave = b.cliente_chave
+             LEFT JOIN mv_growth_produto_ciclo pc ON pc.sku = it.sku
+             LEFT JOIN ritmo_canal rcanal ON rcanal.canal = b.canal_ultimo
+             LEFT JOIN mv_growth_produto_proximo prox ON prox.sku_origem = it.sku AND prox.pos = 1
+        ), prob AS (
+         SELECT c.cliente_chave,
+            c.pedidos,
+            c.primeira_compra,
+            c.ultima_compra,
+            c.valor_total,
+            c.ticket_medio,
+            c.canais,
+            c.canal_ultimo,
+            c.canal_entrada,
+            c.sku_principal,
+            c.produto_principal,
+            c.ritmo,
+            c.ritmo_proprio,
+            c.dias_ultima,
+            c.sku_seguinte,
+            c.produto_seguinte,
+            c.dias_ultima / NULLIF(c.ritmo, 0::numeric) AS razao,
+            growth_prob_recompra(c.ritmo, c.dias_ultima, c.pedidos::integer, c.canais::integer, 30) AS p30,
+            growth_prob_recompra(c.ritmo, c.dias_ultima, c.pedidos::integer, c.canais::integer, 60) AS p60,
+            growth_prob_recompra(c.ritmo, c.dias_ultima, c.pedidos::integer, c.canais::integer, 90) AS p90
+           FROM calc c
+        )
+ SELECT cliente_chave,
+    pedidos,
+    primeira_compra,
+    ultima_compra,
+    round(valor_total, 2) AS valor_total,
+    round(ticket_medio, 2) AS ticket_medio,
+    canais,
+    canal_ultimo,
+    canal_entrada,
+    sku_principal,
+    produto_principal,
+    round(ritmo)::integer AS ritmo_dias,
+    ritmo_proprio,
+    dias_ultima::integer AS dias_ultima_compra,
+    round(razao, 2) AS razao_ritmo,
+    GREATEST(0::numeric, round(dias_ultima - ritmo))::integer AS dias_atraso,
+    round(100::numeric * p30, 1) AS chance_30,
+    round(100::numeric * p60, 1) AS chance_60,
+    round(100::numeric * p90, 1) AS chance_90,
+    round(p90 * ticket_medio, 2) AS valor_esperado_90,
+    round(valor_total + p90 * ticket_medio, 2) AS ltv_esperado,
+        CASE
+            WHEN pedidos = 1 AND razao <= 1.6 THEN 'segunda_compra'::text
+            WHEN valor_total >= 1000::numeric AND razao > 1.6 AND razao <= 4::numeric THEN 'valioso_em_risco'::text
+            WHEN razao < 0.7 THEN 'aguardar'::text
+            WHEN razao <= 1.6 THEN 'recompra'::text
+            WHEN razao <= 3::numeric THEN 'resgate'::text
+            ELSE 'reativacao'::text
+        END AS acao,
+        CASE
+            WHEN canal_ultimo = ANY (ARRAY['Shopify'::text, 'Site'::text, 'TikTok'::text]) THEN 'direto'::text
+            ELSE 'midia'::text
+        END AS acionavel,
+        CASE
+            WHEN pedidos > 1 THEN COALESCE(sku_principal, sku_seguinte)
+            ELSE COALESCE(sku_seguinte, sku_principal)
+        END AS sku_provavel,
+        CASE
+            WHEN pedidos > 1 THEN COALESCE(produto_principal, produto_seguinte)
+            ELSE COALESCE(produto_seguinte, produto_principal)
+        END AS produto_provavel,
+    now() AS gerado_em
+   FROM prob;","mv_growth_cliente_perfil","True"
+"create materialized view public.mv_growth_cliente_primeira as
+ SELECT cliente_id,
+    min(data) AS primeira
+   FROM vw_cliente_pedidos
+  WHERE cliente_id IS NOT NULL AND data IS NOT NULL
+  GROUP BY cliente_id;","mv_growth_cliente_primeira","True"
+"create materialized view public.mv_growth_cohort_canal_mes as
+ WITH base AS (
+         SELECT o.cliente_chave,
+            COALESCE(NULLIF(btrim(o.canal_entrada), ''::text), 'Sem canal'::text) AS canal_entrada,
+            to_char(o.mes_entrada::timestamp with time zone, 'YYYY-MM'::text) AS safra,
+            o.mes_entrada
+           FROM mv_growth_origem_cliente o
+          WHERE o.cliente_chave IS NOT NULL AND o.mes_entrada IS NOT NULL
+        ), tam AS (
+         SELECT base.safra,
+            base.canal_entrada,
+            count(*) AS clientes_safra
+           FROM base
+          GROUP BY base.safra, base.canal_entrada
+        ), ped AS (
+         SELECT f.cliente_chave,
+            date_trunc('month'::text, f.data::timestamp with time zone)::date AS mes,
+            COALESCE(f.valor, 0::numeric) AS valor
+           FROM fact_pedido_cliente f
+          WHERE f.cliente_chave IS NOT NULL AND f.data IS NOT NULL
+        )
+ SELECT b.safra,
+    b.canal_entrada,
+    (EXTRACT(year FROM p.mes) - EXTRACT(year FROM b.mes_entrada))::integer * 12 + (EXTRACT(month FROM p.mes) - EXTRACT(month FROM b.mes_entrada))::integer AS mes_offset,
+    max(t.clientes_safra) AS clientes_safra,
+    count(DISTINCT p.cliente_chave) AS clientes,
+    count(*) AS pedidos,
+    sum(p.valor) AS receita,
+    now() AS gerado_em
+   FROM base b
+     JOIN ped p ON p.cliente_chave = b.cliente_chave
+     JOIN tam t ON t.safra = b.safra AND t.canal_entrada = b.canal_entrada
+  GROUP BY b.safra, b.canal_entrada, ((EXTRACT(year FROM p.mes) - EXTRACT(year FROM b.mes_entrada))::integer * 12 + (EXTRACT(month FROM p.mes) - EXTRACT(month FROM b.mes_entrada))::integer);","mv_growth_cohort_canal_mes","True"
+"create materialized view public.mv_growth_cohort_mes as
+ WITH p AS (
+         SELECT vw_cliente_pedidos.cliente_id,
+            date_trunc('month'::text, vw_cliente_pedidos.data::timestamp with time zone) AS mes,
+            COALESCE(vw_cliente_pedidos.valor, 0::numeric) AS valor
+           FROM vw_cliente_pedidos
+          WHERE vw_cliente_pedidos.cliente_id IS NOT NULL AND vw_cliente_pedidos.data IS NOT NULL
+        ), f AS (
+         SELECT p_1.cliente_id,
+            min(p_1.mes) AS safra
+           FROM p p_1
+          GROUP BY p_1.cliente_id
+        ), tam AS (
+         SELECT f_1.safra,
+            count(*) AS clientes_safra
+           FROM f f_1
+          GROUP BY f_1.safra
+        )
+ SELECT to_char(f.safra, 'YYYY-MM'::text) AS safra,
+    (EXTRACT(year FROM p.mes) - EXTRACT(year FROM f.safra))::integer * 12 + (EXTRACT(month FROM p.mes) - EXTRACT(month FROM f.safra))::integer AS mes_offset,
+    max(tam.clientes_safra) AS clientes_safra,
+    count(DISTINCT p.cliente_id) AS clientes,
+    count(*) AS pedidos,
+    sum(p.valor) AS receita,
+    now() AS gerado_em
+   FROM p
+     JOIN f ON f.cliente_id = p.cliente_id
+     JOIN tam ON tam.safra = f.safra
+  GROUP BY (to_char(f.safra, 'YYYY-MM'::text)), ((EXTRACT(year FROM p.mes) - EXTRACT(year FROM f.safra))::integer * 12 + (EXTRACT(month FROM p.mes) - EXTRACT(month FROM f.safra))::integer);","mv_growth_cohort_mes","True"
+"create materialized view public.mv_growth_ltv_canal as
+ WITH p AS (
+         SELECT vw_cliente_pedidos.cliente_id,
+            vw_cliente_pedidos.data,
+            vw_cliente_pedidos.canal,
+            COALESCE(vw_cliente_pedidos.valor, 0::numeric) AS valor
+           FROM vw_cliente_pedidos
+          WHERE vw_cliente_pedidos.cliente_id IS NOT NULL AND vw_cliente_pedidos.data IS NOT NULL
+        ), origem AS (
+         SELECT DISTINCT ON (p_1.cliente_id) p_1.cliente_id,
+            COALESCE(p_1.canal, 'Sem canal'::text) AS canal
+           FROM p p_1
+          ORDER BY p_1.cliente_id, p_1.data
+        )
+ SELECT o.canal,
+    count(DISTINCT p.cliente_id) AS clientes,
+    count(*) AS pedidos,
+    sum(p.valor) AS receita,
+    now() AS gerado_em
+   FROM p
+     JOIN origem o ON o.cliente_id = p.cliente_id
+  GROUP BY o.canal;","mv_growth_ltv_canal","True"
+"create materialized view public.mv_growth_mes as
+ WITH p AS (
+         SELECT vw_cliente_pedidos.cliente_id,
+            date_trunc('month'::text, vw_cliente_pedidos.data::timestamp with time zone) AS mes,
+            COALESCE(vw_cliente_pedidos.valor, 0::numeric) AS valor
+           FROM vw_cliente_pedidos
+          WHERE vw_cliente_pedidos.data IS NOT NULL
+        ), f AS (
+         SELECT p_1.cliente_id,
+            min(p_1.mes) AS safra
+           FROM p p_1
+          WHERE p_1.cliente_id IS NOT NULL
+          GROUP BY p_1.cliente_id
+        )
+ SELECT to_char(p.mes, 'YYYY-MM'::text) AS mes,
+    sum(p.valor) AS receita,
+    count(*) AS pedidos,
+    count(DISTINCT p.cliente_id) AS clientes,
+    count(DISTINCT p.cliente_id) FILTER (WHERE f.safra = p.mes) AS novos,
+    count(DISTINCT p.cliente_id) FILTER (WHERE f.safra < p.mes) AS recorrentes,
+    now() AS gerado_em
+   FROM p
+     LEFT JOIN f ON f.cliente_id = p.cliente_id
+  GROUP BY (to_char(p.mes, 'YYYY-MM'::text));","mv_growth_mes","True"
+"create materialized view public.mv_growth_origem_campanha as
+ SELECT COALESCE(origem_entrada, 'nao informado'::text) AS origem_entrada,
+    COALESCE(campanha_entrada, 'sem campanha'::text) AS campanha_entrada,
+    count(*) AS clientes,
+    sum(pedidos)::bigint AS pedidos,
+    sum(receita) AS receita,
+    sum(receita) / NULLIF(count(*), 0)::numeric AS ltv_medio,
+    count(*) FILTER (WHERE pedidos > 1) AS recompradores,
+    now() AS gerado_em
+   FROM mv_growth_origem_cliente
+  WHERE canal_entrada = 'Shopify'::text
+  GROUP BY (COALESCE(origem_entrada, 'nao informado'::text)), (COALESCE(campanha_entrada, 'sem campanha'::text));","mv_growth_origem_campanha","True"
+"create materialized view public.mv_growth_origem_canal as
+ SELECT canal_entrada,
+    count(*) AS clientes,
+    sum(pedidos)::bigint AS pedidos,
+    sum(receita) AS receita,
+    sum(receita) / NULLIF(count(*), 0)::numeric AS ltv_medio,
+    count(*) FILTER (WHERE pedidos > 1) AS recompradores,
+    100.0 * count(*) FILTER (WHERE pedidos > 1)::numeric / NULLIF(count(*), 0)::numeric AS pct_recompra,
+    min(data_entrada) AS primeira_entrada,
+    max(data_entrada) AS ultima_entrada,
+    now() AS gerado_em
+   FROM mv_growth_origem_cliente
+  GROUP BY canal_entrada;","mv_growth_origem_canal","True"
+"create materialized view public.mv_growth_origem_cliente as
+ WITH primeiro AS (
+         SELECT DISTINCT ON (f.cliente_chave) f.cliente_chave,
+            f.pedido_id,
+            f.canal AS canal_entrada,
+            f.data AS data_entrada
+           FROM fact_pedido_cliente f
+          WHERE f.cliente_chave IS NOT NULL AND f.data IS NOT NULL
+          ORDER BY f.cliente_chave, f.data, f.pedido_id
+        ), shop AS (
+         SELECT s.order_id AS pedido_id,
+            max(NULLIF(btrim(s.order_customer_last_visit_source), ''::text)) AS origem,
+            max(NULLIF(btrim(s.order_customer_last_visit_utm_source), ''::text)) AS utm_source,
+            max(NULLIF(btrim(s.order_customer_last_visit_utm_medium), ''::text)) AS utm_medium,
+            max(NULLIF(btrim(s.order_customer_last_visit_utm_campaign), ''::text)) AS utm_campaign
+           FROM stg_shopify_orders_item s
+          GROUP BY s.order_id
+        ), tot AS (
+         SELECT fact_pedido_cliente.cliente_chave,
+            count(*) AS pedidos,
+            COALESCE(sum(fact_pedido_cliente.valor), 0::numeric) AS receita,
+            max(fact_pedido_cliente.data) AS ultima_compra
+           FROM fact_pedido_cliente
+          WHERE fact_pedido_cliente.cliente_chave IS NOT NULL
+          GROUP BY fact_pedido_cliente.cliente_chave
+        )
+ SELECT p.cliente_chave,
+    p.canal_entrada,
+    p.data_entrada,
+    date_trunc('month'::text, p.data_entrada::timestamp with time zone)::date AS mes_entrada,
+        CASE
+            WHEN p.canal_entrada = 'Shopify'::text THEN COALESCE(sh.utm_source, sh.origem, 'nao informado'::text)
+            ELSE p.canal_entrada
+        END AS origem_entrada,
+        CASE
+            WHEN p.canal_entrada = 'Shopify'::text THEN sh.utm_campaign
+            ELSE NULL::text
+        END AS campanha_entrada,
+        CASE
+            WHEN p.canal_entrada = 'Shopify'::text THEN sh.utm_medium
+            ELSE NULL::text
+        END AS midia_entrada,
+    t.pedidos,
+    t.receita,
+    t.ultima_compra,
+    now() AS gerado_em
+   FROM primeiro p
+     JOIN tot t ON t.cliente_chave = p.cliente_chave
+     LEFT JOIN shop sh ON sh.pedido_id = p.pedido_id;","mv_growth_origem_cliente","True"
+"create materialized view public.mv_growth_produto_ciclo as
+ WITH ped AS (
+         SELECT p.cliente_chave,
+            p.canal,
+            p.pedido_id,
+            p.data
+           FROM fact_pedido_cliente p
+          WHERE p.cliente_chave IS NOT NULL
+          GROUP BY p.cliente_chave, p.canal, p.pedido_id, p.data
+        ), item AS (
+         SELECT DISTINCT p.cliente_chave,
+            i.sku,
+            COALESCE(NULLIF(i.produto, ''::text), i.sku) AS produto,
+            p.data
+           FROM fact_pedido_item_cliente i
+             JOIN ped p ON p.canal = i.canal AND p.pedido_id = i.pedido_id
+          WHERE i.sku IS NOT NULL
+        ), seq AS (
+         SELECT item.sku,
+            item.produto,
+            item.cliente_chave,
+            item.data,
+            lead(item.data) OVER (PARTITION BY item.sku, item.cliente_chave ORDER BY item.data) AS proxima
+           FROM item
+        ), calc AS (
+         SELECT seq.sku,
+            min(seq.produto) AS produto,
+            count(DISTINCT seq.cliente_chave) AS clientes,
+            count(*) AS compras,
+            count(*) FILTER (WHERE seq.proxima IS NOT NULL AND seq.proxima > seq.data) AS recompras,
+            percentile_cont(0.5::double precision) WITHIN GROUP (ORDER BY (
+                CASE
+                    WHEN seq.proxima > seq.data THEN (seq.proxima - seq.data)::numeric
+                    ELSE NULL::numeric
+                END::double precision)) AS ciclo_mediano,
+            count(*) FILTER (WHERE seq.proxima IS NOT NULL AND (seq.proxima - seq.data) <= 30) AS r30,
+            count(*) FILTER (WHERE seq.proxima IS NOT NULL AND (seq.proxima - seq.data) <= 60) AS r60,
+            count(*) FILTER (WHERE seq.proxima IS NOT NULL AND (seq.proxima - seq.data) <= 90) AS r90,
+            count(*) FILTER (WHERE seq.data <= (CURRENT_DATE - 30)) AS base30,
+            count(*) FILTER (WHERE seq.data <= (CURRENT_DATE - 60)) AS base60,
+            count(*) FILTER (WHERE seq.data <= (CURRENT_DATE - 90)) AS base90
+           FROM seq
+          GROUP BY seq.sku
+        )
+ SELECT sku,
+    produto,
+    clientes,
+    compras,
+    recompras,
+    round(ciclo_mediano)::integer AS ciclo_mediano,
+    round(100.0 * r30::numeric / NULLIF(base30, 0)::numeric, 2) AS pct_retorno_30,
+    round(100.0 * r60::numeric / NULLIF(base60, 0)::numeric, 2) AS pct_retorno_60,
+    round(100.0 * r90::numeric / NULLIF(base90, 0)::numeric, 2) AS pct_retorno_90,
+    now() AS gerado_em
+   FROM calc
+  WHERE compras >= 5;","mv_growth_produto_ciclo","True"
+"create materialized view public.mv_growth_produto_proximo as
+ WITH ped AS (
+         SELECT p.cliente_chave,
+            p.canal,
+            p.pedido_id,
+            p.data
+           FROM fact_pedido_cliente p
+          WHERE p.cliente_chave IS NOT NULL AND p.data >= (CURRENT_DATE - 540)
+          GROUP BY p.cliente_chave, p.canal, p.pedido_id, p.data
+        ), item AS (
+         SELECT DISTINCT p.cliente_chave,
+            i.sku,
+            COALESCE(NULLIF(i.produto, ''::text), i.sku) AS produto,
+            p.data
+           FROM fact_pedido_item_cliente i
+             JOIN ped p ON p.canal = i.canal AND p.pedido_id = i.pedido_id
+          WHERE i.sku IS NOT NULL
+        ), multi AS (
+         SELECT item.cliente_chave
+           FROM item
+          GROUP BY item.cliente_chave
+         HAVING count(DISTINCT item.data) > 1
+        ), item_m AS (
+         SELECT i.cliente_chave,
+            i.sku,
+            i.produto,
+            i.data
+           FROM item i
+             JOIN multi m ON m.cliente_chave = i.cliente_chave
+        ), par AS (
+         SELECT a.sku AS sku_origem,
+            b.sku AS sku_seguinte,
+            min(b.produto) AS produto_seguinte,
+            count(*) AS ocorrencias
+           FROM item_m a
+             JOIN item_m b ON b.cliente_chave = a.cliente_chave AND b.data > a.data AND b.data <= (a.data + 180)
+          GROUP BY a.sku, b.sku
+        ), tot AS (
+         SELECT par.sku_origem,
+            sum(par.ocorrencias) AS total
+           FROM par
+          GROUP BY par.sku_origem
+        ), rank_par AS (
+         SELECT par.sku_origem,
+            par.sku_seguinte,
+            par.produto_seguinte,
+            par.ocorrencias,
+            round(100.0 * par.ocorrencias::numeric / NULLIF(tot.total, 0::numeric), 2) AS forca_pct,
+            row_number() OVER (PARTITION BY par.sku_origem ORDER BY par.ocorrencias DESC, par.sku_seguinte) AS pos
+           FROM par
+             JOIN tot ON tot.sku_origem = par.sku_origem
+          WHERE par.ocorrencias >= 5
+        )
+ SELECT sku_origem,
+    sku_seguinte,
+    produto_seguinte,
+    ocorrencias,
+    forca_pct,
+    pos,
+    now() AS gerado_em
+   FROM rank_par
+  WHERE pos <= 5;","mv_growth_produto_proximo","True"
+"create materialized view public.mv_growth_recompra_acuracia as
+ WITH ped AS (
+         SELECT p.cliente_chave,
+            p.canal,
+            p.pedido_id,
+            p.data
+           FROM fact_pedido_cliente p
+          WHERE p.cliente_chave IS NOT NULL AND p.data >= (CURRENT_DATE - 800)
+          GROUP BY p.cliente_chave, p.canal, p.pedido_id, p.data
+        ), safra AS (
+         SELECT s.h
+           FROM ( VALUES (30), (60), (90)) s(h)
+        ), estado AS (
+         SELECT s.h,
+            p.cliente_chave,
+            count(*) AS pedidos,
+            max(p.data) AS ultima,
+            count(DISTINCT p.canal) AS canais
+           FROM safra s
+             JOIN ped p ON p.data <= (CURRENT_DATE - s.h)
+          GROUP BY s.h, p.cliente_chave
+        ), gaps AS (
+         SELECT s.h,
+            p.cliente_chave,
+            (p.data - lag(p.data) OVER (PARTITION BY s.h, p.cliente_chave ORDER BY p.data, p.pedido_id))::numeric AS dias
+           FROM safra s
+             JOIN ped p ON p.data <= (CURRENT_DATE - s.h)
+        ), ritmo AS (
+         SELECT gaps.h,
+            gaps.cliente_chave,
+            percentile_cont(0.5::double precision) WITHIN GROUP (ORDER BY (gaps.dias::double precision)) AS ritmo
+           FROM gaps
+          WHERE gaps.dias > 0::numeric
+          GROUP BY gaps.h, gaps.cliente_chave
+        ), previsto AS (
+         SELECT e.h,
+            e.cliente_chave,
+            growth_prob_recompra(COALESCE(r.ritmo, 68::double precision)::numeric, (CURRENT_DATE - e.h - e.ultima)::numeric, e.pedidos::integer, e.canais::integer, e.h) AS p
+           FROM estado e
+             LEFT JOIN ritmo r ON r.h = e.h AND r.cliente_chave = e.cliente_chave
+          WHERE e.ultima >= (CURRENT_DATE - e.h - 365)
+        ), realizado AS (
+         SELECT s.h,
+            p.cliente_chave
+           FROM safra s
+             JOIN ped p ON p.data > (CURRENT_DATE - s.h)
+          GROUP BY s.h, p.cliente_chave
+        )
+ SELECT pv.h AS horizonte_dias,
+        CASE
+            WHEN pv.p < 0.1 THEN 'ate 10%'::text
+            WHEN pv.p < 0.25 THEN '10% a 25%'::text
+            WHEN pv.p < 0.5 THEN '25% a 50%'::text
+            WHEN pv.p < 0.75 THEN '50% a 75%'::text
+            ELSE 'acima de 75%'::text
+        END AS faixa,
+    count(*) AS clientes,
+    round(100::numeric * avg(pv.p), 1) AS previsto_pct,
+    round(100.0 * count(*) FILTER (WHERE rz.cliente_chave IS NOT NULL)::numeric / NULLIF(count(*), 0)::numeric, 1) AS realizado_pct,
+    now() AS gerado_em
+   FROM previsto pv
+     LEFT JOIN realizado rz ON rz.h = pv.h AND rz.cliente_chave = pv.cliente_chave
+  GROUP BY pv.h, (
+        CASE
+            WHEN pv.p < 0.1 THEN 'ate 10%'::text
+            WHEN pv.p < 0.25 THEN '10% a 25%'::text
+            WHEN pv.p < 0.5 THEN '25% a 50%'::text
+            WHEN pv.p < 0.75 THEN '50% a 75%'::text
+            ELSE 'acima de 75%'::text
+        END);","mv_growth_recompra_acuracia","True"
+"create materialized view public.mv_growth_rfm_segmento as
+ WITH base AS (
+         SELECT vw_cliente_lista.cliente_id,
+            CURRENT_DATE - vw_cliente_lista.ultima_compra AS recencia,
+            COALESCE(vw_cliente_lista.pedidos, 0::bigint) AS frequencia,
+            COALESCE(vw_cliente_lista.faturamento, 0::numeric) AS monetario
+           FROM vw_cliente_lista
+          WHERE vw_cliente_lista.cliente_id IS NOT NULL AND vw_cliente_lista.ultima_compra IS NOT NULL
+        ), notas AS (
+         SELECT base.recencia,
+            base.frequencia,
+            base.monetario,
+            6 - ntile(5) OVER (ORDER BY base.recencia) AS r,
+            ntile(5) OVER (ORDER BY base.frequencia) AS f,
+            ntile(5) OVER (ORDER BY base.monetario) AS m
+           FROM base
+        ), seg AS (
+         SELECT notas.recencia,
+            notas.frequencia,
+            notas.monetario,
+            notas.r,
+            notas.f,
+            notas.m,
+                CASE
+                    WHEN notas.r >= 4 AND notas.f >= 4 THEN 'Campe├Áes'::text
+                    WHEN notas.r >= 3 AND notas.f >= 3 THEN 'Fi├®is'::text
+                    WHEN notas.r >= 4 AND notas.f <= 2 THEN 'Novos'::text
+                    WHEN notas.r = 3 AND notas.f <= 2 THEN 'Promissores'::text
+                    WHEN notas.r <= 2 AND (notas.f >= 3 OR notas.m >= 4) THEN 'Em risco'::text
+                    WHEN notas.r <= 2 AND notas.f <= 2 THEN 'Perdidos'::text
+                    ELSE 'Aten├º├úo'::text
+                END AS segmento
+           FROM notas
+        )
+ SELECT segmento,
+    count(*) AS clientes,
+    sum(monetario) AS receita,
+    avg(recencia) AS recencia_media,
+    avg(frequencia) AS frequencia_media,
+    sum(monetario) / NULLIF(count(*), 0)::numeric AS ticket_medio,
+    now() AS gerado_em
+   FROM seg
+  GROUP BY segmento;","mv_growth_rfm_segmento","True"
+"create materialized view public.mv_pl_canal_dia as
+ SELECT data,
+    canal,
+    receita_bruta,
+    custo_canal,
+    det_taxa,
+    det_afiliado,
+    det_frete,
+    ads,
+    imposto,
+    cmv,
+    margem_contribuicao,
+    margem_pct,
+    qualidade_taxa,
+    cobertura_pct,
+    cmv_carregado,
+    cmv_cobertura_pct,
+    custo_canal_ref,
+    imposto_pct
+   FROM vw_pl_canal_dia;","mv_pl_canal_dia","True"
+"create materialized view public.mv_produto_dia as
+ WITH venda AS (
+         SELECT ml_pedido_item.data_venda AS data,
+            'Mercado Livre'::text AS canal,
+            upper(TRIM(BOTH FROM ml_pedido_item.seller_sku)) AS sku,
+            max(ml_pedido_item.title) AS produto,
+            sum(ml_pedido_item.quantity)::numeric AS unidades,
+            count(DISTINCT ml_pedido_item.pedido_id) AS pedidos,
+            sum(ml_pedido_item.unit_price * ml_pedido_item.quantity::numeric) AS receita
+           FROM vw_pedido_item_unificado ml_pedido_item
+             LEFT JOIN ml_pedido mlp ON mlp.pedido_id = ml_pedido_item.pedido_id
+          WHERE ml_pedido_item.seller_sku IS NOT NULL AND ml_pedido_item.seller_sku <> ''::text AND (mlp.status IS NULL OR mlp.status <> 'cancelled'::text)
+          GROUP BY ml_pedido_item.data_venda, (upper(TRIM(BOTH FROM ml_pedido_item.seller_sku)))
+        UNION ALL
+         SELECT stg_shopify_orders_item.date,
+            'Site'::text AS text,
+            upper(TRIM(BOTH FROM stg_shopify_orders_item.line_item__sku)) AS upper,
+            max(stg_shopify_orders_item.line_item__title) AS max,
+            sum(stg_shopify_orders_item.line_item__quantity) AS sum,
+            count(DISTINCT stg_shopify_orders_item.order_id) AS count,
+            sum(stg_shopify_orders_item.line_item__net_sales) AS sum
+           FROM stg_shopify_orders_item
+          WHERE stg_shopify_orders_item.line_item__sku IS NOT NULL AND stg_shopify_orders_item.line_item__sku <> ''::text AND COALESCE(stg_shopify_orders_item.order_test, false) = false AND stg_shopify_orders_item.order_financial_status = 'PAID'::text
+          GROUP BY stg_shopify_orders_item.date, (upper(TRIM(BOTH FROM stg_shopify_orders_item.line_item__sku)))
+        UNION ALL
+         SELECT tiktok_pedido_item.create_dia,
+            'TikTok'::text AS text,
+            upper(TRIM(BOTH FROM tiktok_pedido_item.seller_sku)) AS upper,
+            max(tiktok_pedido_item.product_name) AS max,
+            count(*)::numeric AS count,
+            count(DISTINCT tiktok_pedido_item.order_id) AS count,
+            sum(tiktok_pedido_item.sale_price) AS sum
+           FROM tiktok_pedido_item
+          WHERE tiktok_pedido_item.seller_sku IS NOT NULL AND tiktok_pedido_item.seller_sku <> ''::text AND tiktok_pedido_item.status <> 'CANCELLED'::text
+          GROUP BY tiktok_pedido_item.create_dia, (upper(TRIM(BOTH FROM tiktok_pedido_item.seller_sku)))
+        UNION ALL
+         SELECT fact_amazon_pedido.purchase_dia,
+            'Amazon'::text AS text,
+            regexp_replace(upper(TRIM(BOTH FROM fact_amazon_pedido.sku)), '_NOVAFBA$|_FBA$|_NOVA$'::text, ''::text) AS regexp_replace,
+            max(fact_amazon_pedido.asin) AS max,
+            sum(fact_amazon_pedido.quantity) AS sum,
+            count(DISTINCT fact_amazon_pedido.amazon_order_id) AS count,
+            sum(fact_amazon_pedido.item_price) AS sum
+           FROM fact_amazon_pedido
+          WHERE fact_amazon_pedido.sku IS NOT NULL AND fact_amazon_pedido.sku <> ''::text AND fact_amazon_pedido.order_status <> 'Cancelled'::text
+          GROUP BY fact_amazon_pedido.purchase_dia, (regexp_replace(upper(TRIM(BOTH FROM fact_amazon_pedido.sku)), '_NOVAFBA$|_FBA$|_NOVA$'::text, ''::text))
+        UNION ALL
+         SELECT shopee_pedido_item.create_dia,
+            'Shopee'::text AS text,
+            upper(TRIM(BOTH FROM COALESCE(NULLIF(TRIM(BOTH FROM shopee_pedido_item.model_sku), ''::text), shopee_pedido_item.item_sku))) AS upper,
+            max(shopee_pedido_item.item_name) AS max,
+            sum(shopee_pedido_item.model_quantity_purchased)::numeric AS sum,
+            count(DISTINCT shopee_pedido_item.order_sn) AS count,
+            sum(shopee_pedido_item.model_discounted_price * shopee_pedido_item.model_quantity_purchased::numeric * COALESCE(spv.venda / NULLIF(spv.valor_itens, 0::numeric), 1::numeric)) AS sum
+           FROM shopee_pedido_item
+             JOIN shopee_pedido spp ON spp.order_sn = shopee_pedido_item.order_sn
+             LEFT JOIN fact_shopee_pedido_venda spv ON spv.order_sn = shopee_pedido_item.order_sn
+          WHERE COALESCE(NULLIF(TRIM(BOTH FROM shopee_pedido_item.model_sku), ''::text), shopee_pedido_item.item_sku) IS NOT NULL AND (spp.order_status <> ALL (ARRAY['CANCELLED'::text, 'UNPAID'::text, 'INVOICE_PENDING'::text]))
+          GROUP BY shopee_pedido_item.create_dia, (upper(TRIM(BOTH FROM COALESCE(NULLIF(TRIM(BOTH FROM shopee_pedido_item.model_sku), ''::text), shopee_pedido_item.item_sku))))
+        ), map_variant AS (
+         SELECT DISTINCT ON (t.vid) t.vid,
+            t.sku
+           FROM ( SELECT stg_shopify_orders_item.line_item__variant_id AS vid,
+                    upper(TRIM(BOTH FROM stg_shopify_orders_item.line_item__sku)) AS sku,
+                    max(stg_shopify_orders_item.date) AS ultima
+                   FROM stg_shopify_orders_item
+                  WHERE stg_shopify_orders_item.line_item__variant_id IS NOT NULL AND stg_shopify_orders_item.line_item__sku IS NOT NULL AND stg_shopify_orders_item.line_item__sku <> ''::text
+                  GROUP BY stg_shopify_orders_item.line_item__variant_id, (upper(TRIM(BOTH FROM stg_shopify_orders_item.line_item__sku)))) t
+          ORDER BY t.vid, t.ultima DESC
+        ), shopee_peso AS (
+         SELECT shopee_pedido_item.create_dia AS data,
+            shopee_pedido_item.item_id,
+            upper(TRIM(BOTH FROM COALESCE(NULLIF(TRIM(BOTH FROM shopee_pedido_item.model_sku), ''::text), shopee_pedido_item.item_sku))) AS sku,
+            sum(shopee_pedido_item.model_discounted_price) / NULLIF(sum(sum(shopee_pedido_item.model_discounted_price)) OVER (PARTITION BY shopee_pedido_item.create_dia, shopee_pedido_item.item_id), 0::numeric) AS peso
+           FROM shopee_pedido_item
+          WHERE COALESCE(NULLIF(TRIM(BOTH FROM shopee_pedido_item.model_sku), ''::text), shopee_pedido_item.item_sku) IS NOT NULL AND shopee_pedido_item.order_status <> 'CANCELLED'::text
+          GROUP BY shopee_pedido_item.create_dia, shopee_pedido_item.item_id, (upper(TRIM(BOTH FROM COALESCE(NULLIF(TRIM(BOTH FROM shopee_pedido_item.model_sku), ''::text), shopee_pedido_item.item_sku))))
+        ), ads AS (
+         SELECT m.date AS data,
+            'Mercado Livre'::text AS canal,
+            upper(TRIM(BOTH FROM i.seller_sku)) AS sku,
+            sum(m.cost) AS invest,
+            sum(m.total_amount) AS receita_ads
+           FROM ml_product_ads_item_metricas m
+             JOIN ml_item i ON i.item_id = m.item_id
+          WHERE i.seller_sku IS NOT NULL AND i.seller_sku <> ''::text
+          GROUP BY m.date, (upper(TRIM(BOTH FROM i.seller_sku)))
+        UNION ALL
+         SELECT fact_amazon_ads_produto_dia.data,
+            'Amazon'::text AS text,
+            regexp_replace(upper(TRIM(BOTH FROM fact_amazon_ads_produto_dia.sku)), '_NOVAFBA$|_FBA$|_NOVA$'::text, ''::text) AS regexp_replace,
+            sum(fact_amazon_ads_produto_dia.cost) AS sum,
+            sum(fact_amazon_ads_produto_dia.sales_14d) AS sum
+           FROM fact_amazon_ads_produto_dia
+          WHERE fact_amazon_ads_produto_dia.sku IS NOT NULL AND fact_amazon_ads_produto_dia.sku <> ''::text
+          GROUP BY fact_amazon_ads_produto_dia.data, (regexp_replace(upper(TRIM(BOTH FROM fact_amazon_ads_produto_dia.sku)), '_NOVAFBA$|_FBA$|_NOVA$'::text, ''::text))
+        UNION ALL
+         SELECT vw_tiktok_ads_produto_dia.data,
+            'TikTok'::text AS text,
+            upper(TRIM(BOTH FROM vw_tiktok_ads_produto_dia.seller_sku)) AS upper,
+            sum(vw_tiktok_ads_produto_dia.invest) AS sum,
+            sum(vw_tiktok_ads_produto_dia.receita) AS sum
+           FROM vw_tiktok_ads_produto_dia
+          WHERE vw_tiktok_ads_produto_dia.seller_sku IS NOT NULL AND vw_tiktok_ads_produto_dia.seller_sku <> ''::text
+          GROUP BY vw_tiktok_ads_produto_dia.data, (upper(TRIM(BOTH FROM vw_tiktok_ads_produto_dia.seller_sku)))
+        UNION ALL
+         SELECT g.data,
+            'Site'::text AS text,
+            mv.sku,
+            sum(g.gasto) AS sum,
+            sum(g.receita) AS sum
+           FROM tab_google_produto_dia g
+             JOIN map_variant mv ON mv.vid = split_part(g.product_item_id, '_'::text, 4)
+          GROUP BY g.data, mv.sku
+        UNION ALL
+         SELECT f.data,
+            'Shopee'::text AS text,
+            p.sku,
+            sum(f.expense * p.peso) AS sum,
+            sum(f.direct_gmv * p.peso) AS sum
+           FROM fact_shopee_ads_campanha_dia f
+             JOIN dim_shopee_ads_campanha c ON c.campaign_id = f.campaign_id
+             JOIN shopee_peso p ON p.data = f.data AND p.item_id = c.item_id_list[1]
+          GROUP BY f.data, p.sku
+        ), nao_atribuido AS (
+         SELECT r.data,
+            r.canal_venda AS canal,
+            '(nao atribuido)'::text AS sku,
+            'Midia sem quebra por produto'::text AS produto,
+            0::numeric AS unidades,
+            0::bigint AS pedidos,
+            0::numeric AS receita,
+            GREATEST(r.invest_ads - COALESCE(a.invest, 0::numeric), 0::numeric) AS invest,
+            GREATEST(r.receita_ads - COALESCE(a.receita_ads, 0::numeric), 0::numeric) AS receita_ads
+           FROM fact_receita_diaria r
+             LEFT JOIN ( SELECT ads.data,
+                    ads.canal,
+                    sum(ads.invest) AS invest,
+                    sum(ads.receita_ads) AS receita_ads
+                   FROM ads
+                  GROUP BY ads.data, ads.canal) a ON a.data = r.data AND a.canal = r.canal_venda
+          WHERE GREATEST(r.invest_ads - COALESCE(a.invest, 0::numeric), 0::numeric) > 0::numeric
+        ), juntos AS (
+         SELECT COALESCE(v.data, a.data) AS data,
+            COALESCE(v.canal, a.canal) AS canal,
+            COALESCE(v.sku, a.sku) AS sku,
+            v.produto,
+            COALESCE(v.unidades, 0::numeric) AS unidades,
+            COALESCE(v.pedidos, 0::bigint) AS pedidos,
+            COALESCE(v.receita, 0::numeric) AS receita,
+            COALESCE(a.invest, 0::numeric) AS invest_ads,
+            COALESCE(a.receita_ads, 0::numeric) AS receita_ads
+           FROM venda v
+             FULL JOIN ads a ON a.data = v.data AND a.canal = v.canal AND a.sku = v.sku
+        UNION ALL
+         SELECT nao_atribuido.data,
+            nao_atribuido.canal,
+            nao_atribuido.sku,
+            nao_atribuido.produto,
+            nao_atribuido.unidades,
+            nao_atribuido.pedidos,
+            nao_atribuido.receita,
+            nao_atribuido.invest,
+            nao_atribuido.receita_ads
+           FROM nao_atribuido
+        )
+ SELECT data,
+    canal,
+    sku,
+    produto,
+    unidades,
+    pedidos,
+    round(receita, 2) AS receita,
+    round(receita / NULLIF(pedidos, 0)::numeric, 2) AS ticket,
+    round(receita / NULLIF(unidades, 0::numeric), 2) AS preco_medio,
+    round(invest_ads, 2) AS invest_ads,
+    round(receita_ads, 2) AS receita_ads,
+    round(receita_ads / NULLIF(invest_ads, 0::numeric), 2) AS roas,
+    round(100.0 * receita_ads / NULLIF(receita, 0::numeric), 1) AS share_ads_pct,
+    round(100.0 * invest_ads / NULLIF(receita, 0::numeric), 1) AS tacos_pct
+   FROM juntos
+  WHERE unidades <> 0::numeric OR invest_ads <> 0::numeric;","mv_produto_dia","True"
+"create materialized view public.mv_site_pedido_pagina_dia as
+ WITH ped AS (
+         SELECT stg_shopify_orders_item.date AS data,
+            regexp_replace('/'::text || regexp_replace(split_part(split_part(stg_shopify_orders_item.order_customer_last_visit_landing_page, '?'::text, 1), '://'::text, 2), '^[^/]+/'::text, ''::text), '/+$'::text, ''::text) AS pagina_path,
+            COALESCE(stg_shopify_orders_item.order_customer_last_visit_utm_source, ''::text) AS utm_source,
+            COALESCE(stg_shopify_orders_item.order_customer_last_visit_utm_medium, ''::text) AS utm_medium,
+            stg_shopify_orders_item.order_id,
+            sum(COALESCE(stg_shopify_orders_item.line_item__net_sales, 0::numeric)) AS receita_pedido,
+            sum(COALESCE(stg_shopify_orders_item.line_item__quantity, 0::numeric)) AS unidades_pedido
+           FROM stg_shopify_orders_item
+          WHERE stg_shopify_orders_item.order_customer_last_visit_landing_page IS NOT NULL AND COALESCE(stg_shopify_orders_item.order_test, false) = false AND (stg_shopify_orders_item.order_customer_last_visit_landing_page ~~* '%/pages/%'::text OR stg_shopify_orders_item.order_customer_last_visit_landing_page ~~* '%/products/%'::text) AND stg_shopify_orders_item.date >= '2026-08-01'::date
+          GROUP BY stg_shopify_orders_item.date, (regexp_replace('/'::text || regexp_replace(split_part(split_part(stg_shopify_orders_item.order_customer_last_visit_landing_page, '?'::text, 1), '://'::text, 2), '^[^/]+/'::text, ''::text), '/+$'::text, ''::text)), (COALESCE(stg_shopify_orders_item.order_customer_last_visit_utm_source, ''::text)), (COALESCE(stg_shopify_orders_item.order_customer_last_visit_utm_medium, ''::text)), stg_shopify_orders_item.order_id
+        )
+ SELECT data,
+    pagina_path,
+    utm_source,
+    utm_medium,
+    count(DISTINCT order_id)::integer AS pedidos,
+    round(sum(receita_pedido), 2) AS receita,
+    sum(unidades_pedido)::integer AS unidades
+   FROM ped
+  GROUP BY data, pagina_path, utm_source, utm_medium;","mv_site_pedido_pagina_dia","True"
+"create materialized view public.mv_sn_item_cat as
+ SELECT order_customer_id AS cli,
+    order_id,
+    order_created_at AS ts,
+        CASE
+            WHEN line_item__name ~~* '%kit%'::text THEN 'Kit'::text
+            WHEN line_item__name ~~* '%creatina%'::text THEN 'Creatina'::text
+            WHEN line_item__name ~~* '%whey%'::text OR line_item__name ~~* '%proteina%'::text OR line_item__name ~~* '%prote├¡na%'::text OR line_item__name ~~* '%albumina%'::text OR line_item__name ~~* '%beef protein%'::text THEN 'Prote├¡na'::text
+            WHEN line_item__name ~~* '%pre%treino%'::text OR line_item__name ~~* '%pr├®%treino%'::text OR line_item__name ~~* '%evolution%'::text OR line_item__name ~~* '%flames%'::text OR line_item__name ~~* '%cafeina%'::text OR line_item__name ~~* '%cafe├¡na%'::text THEN 'Pr├®-treino'::text
+            WHEN line_item__name ~~* '%termog%'::text OR line_item__name ~~* '%carnitina%'::text THEN 'Termog├¬nico'::text
+            WHEN line_item__name ~~* '%bcaa%'::text OR line_item__name ~~* '%glutamina%'::text OR line_item__name ~~* '%arginina%'::text OR line_item__name ~~* '%beta%alanina%'::text OR line_item__name ~~* '%taurina%'::text OR line_item__name ~~* '%leucina%'::text THEN 'Amino├ícidos'::text
+            WHEN line_item__name ~~* '%omega%'::text OR line_item__name ~~* '%├┤mega%'::text OR line_item__name ~~* '%vitamina%'::text OR line_item__name ~~* '%colageno%'::text OR line_item__name ~~* '%col├ígeno%'::text OR line_item__name ~~* '%melatonina%'::text OR line_item__name ~~* '%magnesio%'::text OR line_item__name ~~* '%magn├®sio%'::text OR line_item__name ~~* '%coenzima%'::text OR line_item__name ~~* '%multi%'::text OR line_item__name ~~* '%intera%'::text OR line_item__name ~~* '%├¡ntera%'::text THEN 'Sa├║de'::text
+            WHEN line_item__name ~~* '%malto%'::text OR line_item__name ~~* '%dextrose%'::text OR line_item__name ~~* '%waxy%'::text OR line_item__name ~~* '%palatinose%'::text OR line_item__name ~~* '%hiperca%'::text OR line_item__name ~~* '%carbo%'::text THEN 'Carboidrato'::text
+            WHEN line_item__name ~~* '%barra%'::text THEN 'Barra'::text
+            WHEN line_item__name ~~* '%coqueteleira%'::text OR line_item__name ~~* '%camiseta%'::text OR line_item__name ~~* '%garrafa%'::text OR line_item__name ~~* '%regata%'::text OR line_item__name ~~* '%shorts%'::text OR line_item__name ~~* '%galao%'::text THEN 'Acess├│rio'::text
+            ELSE 'Outros'::text
+        END AS cat,
+    line_item__name AS produto,
+    line_item__quantity AS qtd,
+    line_item__net_sales AS receita
+   FROM stg_shopify_orders_item
+  WHERE order_cancelled_at IS NULL AND order_test IS NOT TRUE AND order_customer_id IS NOT NULL;","mv_sn_item_cat","True"

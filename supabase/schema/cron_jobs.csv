@@ -1,0 +1,575 @@
+﻿active,comando,jobid,jobname,schedule
+"True","SET statement_timeout TO 0; SELECT public.affiliate_atualiza_qualidade_cupom();","244","affiliate-qualidade-cupom","40 7 * * *"
+"True","
+  select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/alerta-lives',
+    headers:=jsonb_build_object(
+      'x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),
+      'Content-Type','application/json'),
+    body:='{}'::jsonb,
+    timeout_milliseconds:=60000);
+","234","alerta-lives-diario","50 11 * * 1-5"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/alerta-ruptura-shopify', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{}'::jsonb, timeout_milliseconds:=60000);","105","alerta-ruptura-shopify-30min","*/30 * * * *"
+"True","select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-ads-api',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:=jsonb_build_object('mode','cron','graos',jsonb_build_array(
+      'campanha','keyword','produto','search_term','sb_campanha','sb_target','sb_search_term')),
+    timeout_milliseconds:=120000);","173","amazon-ads-api-hoje-30min","*/30 * * * *"
+"False","select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-ads-api',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:=jsonb_build_object('mode','backfill','lote',6)
+  );","174","amazon-ads-backfill-5min","*/5 * * * *"
+"False"," select net.http_post(
+       url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-ads',
+       headers:=jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+       body:=jsonb_build_object('mode','range'), timeout_milliseconds := 120000);","57","amazon-ads-manutencao-15min","*/15 * * * *"
+"True","select public.amazon_ads_recupera_425();","190","amazon-ads-recupera-425","*/10 * * * *"
+"True","select net.http_post(
+  url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-ads-api',
+  headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+  body:=jsonb_build_object('mode','disparar','dia', d.dia::text,
+    'graos', jsonb_build_array('sb_campanha','sb_target','sb_search_term')),
+  timeout_milliseconds:=120000)
+from (select ((now() at time zone 'America/Sao_Paulo')::date - 1
+              - (extract(hour from now() at time zone 'America/Sao_Paulo')::int % 14)) dia) d
+where not exists (select 1 from public.amazon_ads_report_fila f
+                  where f.dia = d.dia and f.status = 'pendente'
+                    and f.grao in ('sb_campanha','sb_target','sb_search_term'));","189","amazon-ads-refresh-sb-14d","45 * * * *"
+"True","select net.http_post(
+  url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-ads-api',
+  headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+  body:=jsonb_build_object('mode','disparar','dia', d.dia::text,
+    'graos', jsonb_build_array('campanha','keyword','produto')),
+  timeout_milliseconds:=120000)
+from (select ((now() at time zone 'America/Sao_Paulo')::date - 1
+              - (extract(hour from now() at time zone 'America/Sao_Paulo')::int % 14)) dia) d
+where not exists (select 1 from public.amazon_ads_report_fila f
+                  where f.dia = d.dia and f.status = 'pendente'
+                    and f.grao in ('campanha','keyword','produto'));","188","amazon-ads-refresh-sp-14d","15 * * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-aplus',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:='{}'::jsonb, timeout_milliseconds:=200000);","120","amazon-aplus-diario","20 4 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-buybox',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:='{}'::jsonb, timeout_milliseconds:=150000);","108","amazon-buybox-3x","0 11,17,23 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-cadastro',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:='{}'::jsonb, timeout_milliseconds:=150000);","119","amazon-cadastro-diario","0 4 * * *"
+"True"," select net.http_post(
+       url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-estoque',
+       headers := jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+       body := jsonb_build_object()
+     , timeout_milliseconds := 120000);","42","amazon-estoque-15min","*/15 * * * *"
+"True","select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-estoque-sp',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:='{}'::jsonb, timeout_milliseconds:=90000);","107","amazon-estoque-sp-15min","*/15 * * * *"
+"True"," select net.http_post(
+       url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-sp',
+       headers:=jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+       body:=jsonb_build_object('date_from', to_char(now()-interval '2 day','YYYY-MM-DD'), 'date_to', to_char(now()-interval '2 day','YYYY-MM-DD'), 'graos', jsonb_build_array('asin')), timeout_milliseconds := 120000);","59","amazon-geral-asin-manut","*/15 * * * *"
+"True"," select net.http_post(
+       url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-sp',
+       headers:=jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+       body:=jsonb_build_object('date_from', to_char(now()-interval '4 day','YYYY-MM-DD'), 'date_to', to_char(now(),'YYYY-MM-DD'), 'graos', jsonb_build_array('dia')), timeout_milliseconds := 120000);","58","amazon-geral-dia-manut","*/15 * * * *"
+"False"," select net.http_post(
+       url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-pedidos',
+       headers := jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+       body := jsonb_build_object('mode','realtime','dias',7)
+     , timeout_milliseconds := 120000);","37","amazon-pedidos-realtime-15min","*/15 * * * *"
+"True","select net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-pedidos-sp',
+      headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('update_min',30),
+      timeout_milliseconds:=120000);","133","amazon-pedidos-sp-15min","8,23,38,53 * * * *"
+"True"," select public.amazon_atualiza_reposicao() ","60","amazon-reposicao-15min","5,20,35,50 * * * *"
+"True","select net.http_post( url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/amazon-sales-metrics', headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')), body:=jsonb_build_object('date_from', to_char((now() at time zone 'America/Sao_Paulo')::date - 2, 'YYYY-MM-DD'), 'gravar', true), timeout_milliseconds:=60000);","208","amazon-sales-hora-15min","2,17,32,47 * * * *"
+"True","select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-search-term',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:='{}'::jsonb,
+    timeout_milliseconds:=60000);","77","amazon-search-term-backfill","*/2 * * * *"
+"True","insert into public.amazon_st_fila (data, status, tentativas)
+    select gs::date, 'pendente', 0 from generate_series(current_date-14, current_date-1, interval '1 day') gs
+    on conflict (data) do update set status='pendente', tentativas=0
+      where amazon_st_fila.status <> 'processando';","104","amazon-st-manutencao","0 9 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""amazon-ads""}'::jsonb, timeout_milliseconds:=150000);","75","analise-amazon-ads-diaria","3 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""amazon-anuncios""}'::jsonb, timeout_milliseconds:=150000);","76","analise-amazon-anuncios-diaria","3 11 * * *"
+"True","select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+    headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json',
+      'Authorization','Bearer <JWT_REMOVIDO>'),
+    body:=jsonb_build_object('chave','amazon-buybox'),
+    timeout_milliseconds:=170000);","125","analise-amazon-buybox-diaria","35 11 * * *"
+"True","select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+    headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json',
+      'Authorization','Bearer <JWT_REMOVIDO>'),
+    body:=jsonb_build_object('chave','amazon-cadastro'),
+    timeout_milliseconds:=170000);","127","analise-amazon-cadastro-diaria","36 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""amazon-concorrentes""}'::jsonb, timeout_milliseconds:=150000);","103","analise-amazon-concorrentes-diaria","11 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""amazon-estoque""}'::jsonb, timeout_milliseconds:=150000);","74","analise-amazon-estoque-diaria","2 11 * * *"
+"True","select net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+      headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+      body:='{""chave"":""amazon-sb""}'::jsonb,
+      timeout_milliseconds:=150000);","175","analise-amazon-sb-diaria","26 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""amazon-search-term-acoes""}'::jsonb, timeout_milliseconds:=150000);","79","analise-amazon-st-acoes-diaria","4 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""amazon-search-term-desempenho""}'::jsonb, timeout_milliseconds:=150000);","78","analise-amazon-st-desempenho-diaria","3 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""amazon-tendencia""}'::jsonb, timeout_milliseconds:=150000);","81","analise-amazon-tendencia-diaria","4 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""amazon-visao-geral""}'::jsonb, timeout_milliseconds:=150000);","73","analise-amazon-visao-geral-diaria","2 11 * * *"
+"True","
+  select net.http_post(
+    url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+    headers := jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+    body := '{""chave"":""ml-anuncios""}'::jsonb,
+    timeout_milliseconds := 150000
+  );
+  ","69","analise-ml-anuncios-diaria","1 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+    headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+    body:='{""chave"":""ml-brand-ads""}'::jsonb, timeout_milliseconds:=150000);","72","analise-ml-brand-ads-diaria","2 11 * * *"
+"True","select net.http_post(
+     url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+     headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+     body:=jsonb_build_object('chave','ml-brand-momentum'),
+     timeout_milliseconds:=150000);","128","analise-ml-brand-momentum-diaria","14 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+    headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+    body:='{""chave"":""ml-cadastros""}'::jsonb, timeout_milliseconds:=150000);","70","analise-ml-cadastros-diaria","1 11 * * *"
+"True","
+  select net.http_post(
+    url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+    headers := jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+    body := '{""chave"":""ml-display""}'::jsonb,
+    timeout_milliseconds := 150000
+  );
+  ","68","analise-ml-display-diaria","0 11 * * *"
+"True","select net.http_post(
+     url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+     headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+     body:=jsonb_build_object('chave','ml-display-fadiga'),
+     timeout_milliseconds:=150000);","123","analise-ml-display-fadiga-diaria","13 11 * * *"
+"True","select net.http_post(
+     url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+     headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+     body:=jsonb_build_object('chave','ml-display-momentum'),
+     timeout_milliseconds:=150000);","122","analise-ml-display-momentum-diaria","12 11 * * *"
+"True","
+  select net.http_post(
+    url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+    headers := jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+    body := '{""chave"":""ml-estoque""}'::jsonb,
+    timeout_milliseconds := 150000
+  );
+  ","67","analise-ml-estoque-diaria","0 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+    headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+    body:='{""chave"":""ml-product-ads""}'::jsonb, timeout_milliseconds:=150000);","71","analise-ml-product-ads-diaria","1 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""ml-tendencia""}'::jsonb, timeout_milliseconds:=150000);","82","analise-ml-tendencia-diaria","4 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-cupons""}'::jsonb, timeout_milliseconds:=150000);","102","analise-site-cupons-diaria","11 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-estoque""}'::jsonb, timeout_milliseconds:=150000);","101","analise-site-estoque-diaria","10 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-google-anuncios""}'::jsonb, timeout_milliseconds:=150000);","97","analise-site-google-anuncios-diaria","9 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-google-grupos""}'::jsonb, timeout_milliseconds:=150000);","98","analise-site-google-grupos-diaria","9 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-google-impression-share""}'::jsonb, timeout_milliseconds:=150000);","94","analise-site-google-impression-share-diaria","8 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-google-keywords""}'::jsonb, timeout_milliseconds:=150000);","96","analise-site-google-keywords-diaria","9 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-google-produtos""}'::jsonb, timeout_milliseconds:=150000);","95","analise-site-google-produtos-diaria","8 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-google-visaogeral""}'::jsonb, timeout_milliseconds:=150000);","93","analise-site-google-visaogeral-diaria","8 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-meta-criativos""}'::jsonb, timeout_milliseconds:=150000);","84","analise-site-meta-criativos-diaria","5 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-meta-criativos-geral""}'::jsonb, timeout_milliseconds:=150000);","85","analise-site-meta-criativos-geral-diaria","5 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-meta-demografia""}'::jsonb, timeout_milliseconds:=150000);","87","analise-site-meta-demografia-diaria","6 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-meta-fadiga""}'::jsonb, timeout_milliseconds:=150000);","91","analise-site-meta-fadiga-diaria","7 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-meta-funil""}'::jsonb, timeout_milliseconds:=150000);","92","analise-site-meta-funil-diaria","7 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-meta-horario""}'::jsonb, timeout_milliseconds:=150000);","89","analise-site-meta-horario-diaria","7 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-meta-objetivos""}'::jsonb, timeout_milliseconds:=150000);","83","analise-site-meta-objetivos-diaria","5 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-meta-posicionamento""}'::jsonb, timeout_milliseconds:=150000);","88","analise-site-meta-posicionamento-diaria","6 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-meta-publicos""}'::jsonb, timeout_milliseconds:=150000);","86","analise-site-meta-publicos-diaria","6 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-tendencia""}'::jsonb, timeout_milliseconds:=150000);","100","analise-site-tendencia-diaria","10 11 * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner', headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'), body:='{""chave"":""site-visaogeral""}'::jsonb, timeout_milliseconds:=150000);","99","analise-site-visaogeral-diaria","10 11 * * *"
+"True","select net.http_post(
+        url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+        headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+        body:=jsonb_build_object('chave','tiktok-ads'),
+        timeout_milliseconds:=150000);","144","analise-tiktok-ads-diaria","19 11 * * *"
+"True","select net.http_post(
+        url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+        headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+        body:=jsonb_build_object('chave','tiktok-cadastro'),
+        timeout_milliseconds:=150000);","147","analise-tiktok-cadastro-diaria","22 11 * * *"
+"True","select net.http_post(
+        url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+        headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+        body:=jsonb_build_object('chave','tiktok-cancelamentos'),
+        timeout_milliseconds:=150000);","149","analise-tiktok-cancelamentos-diaria","24 11 * * *"
+"True","select net.http_post(
+        url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+        headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+        body:=jsonb_build_object('chave','tiktok-conteudo'),
+        timeout_milliseconds:=150000);","141","analise-tiktok-conteudo-diaria","16 11 * * *"
+"True","select net.http_post(
+        url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+        headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+        body:=jsonb_build_object('chave','tiktok-criadores'),
+        timeout_milliseconds:=150000);","143","analise-tiktok-criadores-diaria","18 11 * * *"
+"True","select net.http_post(
+        url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+        headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+        body:=jsonb_build_object('chave','tiktok-estoque'),
+        timeout_milliseconds:=150000);","146","analise-tiktok-estoque-diaria","21 11 * * *"
+"True","select net.http_post(
+        url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+        headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+        body:=jsonb_build_object('chave','tiktok-margem'),
+        timeout_milliseconds:=150000);","148","analise-tiktok-margem-diaria","23 11 * * *"
+"True","select net.http_post(
+        url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+        headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+        body:=jsonb_build_object('chave','tiktok-produtos'),
+        timeout_milliseconds:=150000);","145","analise-tiktok-produtos-diaria","20 11 * * *"
+"True","select net.http_post(
+        url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+        headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+        body:=jsonb_build_object('chave','tiktok-tendencia'),
+        timeout_milliseconds:=150000);","150","analise-tiktok-tendencia-diaria","25 11 * * *"
+"True","select net.http_post(
+        url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+        headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+        body:=jsonb_build_object('chave','tiktok-videos'),
+        timeout_milliseconds:=150000);","142","analise-tiktok-videos-diaria","17 11 * * *"
+"True","select net.http_post(
+        url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+        headers:=jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>'),
+        body:=jsonb_build_object('chave','tiktok-visao-geral'),
+        timeout_milliseconds:=150000);","140","analise-tiktok-visao-geral-diaria","15 11 * * *"
+"True","
+  select net.http_post(
+    url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/analise-runner',
+    headers := jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),
+      'Content-Type','application/json',
+      'Authorization','Bearer <JWT_REMOVIDO>'
+    ),
+    body := '{""chave"":""ml-visao-geral""}'::jsonb,
+    timeout_milliseconds := 150000
+  );
+  ","65","analise-visao-geral-diaria","0 11 * * *"
+"True","SELECT public.awin_dispara_sync();","217","awin_sync_hora","7 * * * *"
+"True","select net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-amazon-cliente',
+      headers:=jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('lim',400,'budget_ms',90000),
+      timeout_milliseconds:=140000);","170","base-cliente-amazon-cpf","13,43 * * * *"
+"True","select net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-ml-cliente',
+      headers:=jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('ciclo',1500,'conc',16,'max_ciclos',2,'budget_ms',90000),
+      timeout_milliseconds:=140000);","162","base-cliente-ml-20min","7,27,47 * * * *"
+"True","select net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-shopify-cpf',
+      headers:=jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('dias',7),
+      timeout_milliseconds:=140000);","153","base-cliente-shopify-cpf","15 6,18 * * *"
+"True","select public.atualiza_base_cliente(5);","151","base-cliente-sql-20min","*/20 * * * *"
+"True"," select public.ml_call_fn('ingest-ml-brand-ads',
+       '?nivel=agregado&date_from=' || to_char((now() at time zone 'America/Sao_Paulo')::date - 10, 'YYYY-MM-DD') ||
+       '&date_to='   || to_char((now() at time zone 'America/Sao_Paulo')::date, 'YYYY-MM-DD')) ","198","brand-agregado-retroativo","35 9 * * *"
+"True"," select public.ml_call_fn('ingest-ml-brand-ads',
+    '?nivel=ambos&date_from=' || to_char((now() at time zone 'America/Sao_Paulo')::date - 2, 'YYYY-MM-DD') ||
+    '&date_to='   || to_char((now() at time zone 'America/Sao_Paulo')::date,     'YYYY-MM-DD')) ","25","brand-diario","*/15 * * * *"
+"True","select public.atualiza_cliente_canais();","160","cliente-canais-materializa","25 */2 * * *"
+"True","SELECT public.cria_dispara_worker();","205","cria_pipeline_meta","* * * * *"
+"True","SET statement_timeout TO 0; SELECT public.criativo_atualiza_cliente();","243","criativo-cliente","45 7 * * *"
+"True","
+  select net.http_post(
+    url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/disp-status-sync?scope=active',
+    headers := jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 120000
+  );
+  ","167","disp-status-sync-hora","2 * * * *"
+"True","
+  select net.http_post(
+    url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/google-backfill',
+    headers := jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'content-type','application/json','Authorization','Bearer <TOKEN_REMOVIDO>'),
+    body := jsonb_build_object('days', 7)
+  , timeout_milliseconds := 120000);","5","google-consolida-diario","0 11 * * *"
+"True","
+  select net.http_post(
+    url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/google-entidades',
+    headers := jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'content-type','application/json','Authorization','Bearer <TOKEN_REMOVIDO>'),
+    body := '{}'::jsonb
+  , timeout_milliseconds := 120000);","6","google-entidades-diario","20 11 * * *"
+"True","
+  select net.http_post(
+    url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/google-estrutura',
+    headers := jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'content-type','application/json','Authorization','Bearer <TOKEN_REMOVIDO>'),
+    body := '{}'::jsonb
+  , timeout_milliseconds := 120000);","7","google-estrutura-diario","40 11 * * *"
+"True"," select prune_google_intraday(); ","9","google-limpa-intraday","45 11 * * *"
+"True"," select net.http_post(
+       url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/google-backfill',
+       headers := jsonb_build_object('x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),'content-type','application/json','Authorization','Bearer <TOKEN_REMOVIDO>'),
+       body := jsonb_build_object('realtime', true)
+     , timeout_milliseconds := 120000);","63","google-realtime-15min","*/15 * * * *"
+"True"," select net.http_post(
+       url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/google-snapshot',
+       headers := jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+       body := '{}'::jsonb
+     , timeout_milliseconds := 120000);","64","google-snapshot-15min","*/15 * * * *"
+"True","set statement_timeout='3600s'; select public.atualiza_growth_intel();","200","growth-intel-diario","40 6 * * *"
+"True","select public.atualiza_intraday_erro(56);","210","intraday-erro-semanal","0 9 * * 1"
+"True","select public.atualiza_venda_hora(1);","209","intraday-venda-hora-15min","5,20,35,50 * * * *"
+"True","select net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/klaviyo-resgate-suprimidos', headers:=jsonb_build_object('Content-Type','application/json','Authorization','Bearer <JWT_REMOVIDO>','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')), body:='{}'::jsonb, timeout_milliseconds:=30000);","207","klaviyo-resgate-suprimidos-5min","*/5 * * * *"
+"True","
+  select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-lyvecom',
+    headers:=jsonb_build_object(
+      'x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),
+      'Content-Type','application/json'),
+    body:=jsonb_build_object('dias', 10),
+    timeout_milliseconds:=180000);
+","233","lyvecom-diario","40 9 * * *"
+"True","select public.atualiza_grupo1();","114","materializa-g1","1,16,31,46 * * * *"
+"True","select public.atualiza_grupo2();","115","materializa-g2","6,21,36,51 * * * *"
+"True","select public.atualiza_grupo3();","116","materializa-g3","11,26,41,56 * * * *"
+"True","
+    select public.ml_call_fn('ingest-meta-breakdowns','?recorte=demografia&auto=1');
+    select public.ml_call_fn('ingest-meta-breakdowns','?recorte=posicionamento&auto=1');
+    select public.ml_call_fn('ingest-meta-breakdowns','?recorte=hora&auto=1');
+  ","20","meta-breakdowns-diario","20 9 * * *"
+"True"," select net.http_post(
+    url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-meta',
+    headers := jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body := jsonb_build_object('mode','daily')
+  , timeout_milliseconds := 240000);","1","meta-consolida-diario","0 12 * * *"
+"True","
+  select net.http_post(
+    url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/meta-criativos-enviar',
+    headers := jsonb_build_object(
+      'content-type', 'application/json',
+      'x-criativos-segredo', '05098fccd5c1f4f47673f116cee16cf67e9546069381e11a'
+    ),
+    body := '{}'::jsonb
+  );
+  ","223","meta-criativos-enviar","* * * * *"
+"True"," select prune_meta_intraday(); ","2","meta-limpa-intraday","10 12 * * *"
+"True"," select public.ml_call_fn('ingest-meta-breakdowns','?recorte=regiao&auto=1'); ","62","meta-regiao-15min","*/15 * * * *"
+"True"," select net.http_post(
+    url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-meta',
+    headers := jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body := jsonb_build_object('mode','snapshot')
+  , timeout_milliseconds := 120000);","3","meta-snapshot-30min","14,29,44,59 * * * *"
+"True","select prune_ml_visao_geral_intraday();","40","ml-ads-intraday-prune","40 12 * * *"
+"True","select snapshot_ml_visao_geral();","39","ml-ads-snapshot-30min","13,28,43,58 * * * *"
+"True","
+  -- Reabre a janela de maturacao. O ML ainda atribui venda a afiliado ate ~4 dias
+  -- depois do pedido, entao os ultimos 5 dias precisam ser recoletados todo dia.
+  -- Quem drena a fila e o coletor no navegador (MLAF.hoje()) - a coleta nao pode
+  -- rodar no servidor porque o endpoint do ML so aceita cookie de sessao.
+  insert into public.ml_afiliado_fila (data, status)
+  select gs::date, 'pendente'
+  from generate_series(current_date - 5, current_date, interval '1 day') gs
+  on conflict (data) do update set status = 'pendente', atualizado_em = now()
+  ","186","ml-afiliados-janela-diaria","10 8 * * *"
+"True"," select public.atualiza_ml_anuncio_dia(5) ","197","ml-anuncio-dia-30min","11,41 * * * *"
+"True","
+  SELECT
+    net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-ml-competicao?limit=140&offset=0',   headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')), timeout_milliseconds:=115000),
+    net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-ml-competicao?limit=140&offset=140', headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')), timeout_milliseconds:=115000),
+    net.http_post(url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-ml-competicao?limit=140&offset=280', headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')), timeout_milliseconds:=115000);
+  ","194","ml-competicao-10min","*/10 * * * *"
+"True","select net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-ml-historico',
+      headers:=jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('modo','conciliacao','dias',4,'budget_ms',115000),
+      timeout_milliseconds:=145000);","163","ml-conciliacao-diaria","20 9 * * *"
+"True","
+  -- Fuso: current_date e UTC e vira o dia seguinte as 21h de Brasilia, o que fazia
+  -- as ultimas 3 horas do dia pararem de ser congeladas. Usa data de Brasilia e
+  -- reprocessa tambem o dia anterior, para capturar pedido que chega atrasado.
+  select public.congela_venda_dia_rt((now() at time zone 'America/Sao_Paulo')::date),
+         public.congela_venda_dia_rt((now() at time zone 'America/Sao_Paulo')::date - 1);
+","172","ml-congela-hoje-15min","2,17,32,47 * * * *"
+"True","select public.congela_venda_recentes(5);","171","ml-congela-venda-diaria","35 9 * * *"
+"True","SELECT public.ml_call_fn('ml-display-enqueue','?days=2&only_active=false&job=backfill');","17","ml-display-backfill","10 2,10,18 * * *"
+"True","SELECT public.ml_drain_queue();","13","ml-display-drain","*/3 * * * *"
+"True","SELECT public.ml_call_fn('ml-display-enqueue','?days=1&only_active=true&job=realtime');","16","ml-display-realtime","*/15 * * * *"
+"True"," select net.http_post(
+       url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-ml-estoque-full',
+       headers := jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+       body := '{}'::jsonb
+     , timeout_milliseconds := 120000);","45","ml-estoque-full-15min","10,25,40,55 * * * *"
+"True","select net.http_post(
+      url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-ml-frete',
+      headers := jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body := jsonb_build_object('limit',800,'conc',20,'dias',3),
+      timeout_milliseconds := 120000);","192","ml-frete-10min","4,14,24,34,44,54 * * * *"
+"True"," select public.atualiza_ml_kpi_dia(3) ","193","ml-kpi-dia-30min","*/30 * * * *"
+"True"," select net.http_post(
+       url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-ml-shipment-type',
+       headers := jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+       body := jsonb_build_object('fonte','both','limit',500,'conc',20)
+     , timeout_milliseconds := 120000);","38","ml-shipment-type-live","5,20,35,50 * * * *"
+"True","select public.refresh_mv_produto_dia();","199","mv-produto-dia-hora","47 * * * *"
+"True"," select public.ml_call_fn('ingest-ml-product-ads',
+    '?nivel=ambos&date_from=' || to_char(current_date - 7, 'YYYY-MM-DD') ||
+    '&date_to=' || to_char(current_date, 'YYYY-MM-DD')) ","24","pads-diario","*/15 * * * *"
+"True"," select public.migra_rt_para_historico(3) ","27","pedidos-migra-historico","10 3 * * *"
+"True"," select public.ml_call_fn('realtime-ml-pedidos', '?minutos=20') ","26","pedidos-realtime","*/15 * * * *"
+"True","refresh materialized view concurrently mv_pl_canal_dia","187","pl_canal_dia_refresh","*/30 * * * *"
+"True","SELECT public.rd_dispara_sync();","222","rd_sync_hora","17 * * * *"
+"True","select public.atualiza_receita_diaria(45);","211","receita-consolidada-backfill-noturno","25 6 * * *"
+"True","select public.atualiza_receita_diaria(5);","106","receita-consolidada-hora","12,27,42,57 * * * *"
+"True","refresh materialized view concurrently mv_afiliado_canal_dia","195","refresh-mv-afiliado-canal-dia","7,22,37,52 * * * *"
+"True","
+  select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-shopee-ads',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:='{""dias"":7}'::jsonb,
+    timeout_milliseconds:=120000);
+","178","shopee-ads-15min","8,23,38,53 * * * *"
+"True","
+  select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-shopee-ads-campanha',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:='{""dias"":7,""horas"":""1""}'::jsonb,
+    timeout_milliseconds:=180000);
+","181","shopee-ads-campanha-30min","13,43 * * * *"
+"True","
+  select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-shopee-ads-campanha',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:='{""dias"":2,""cadastro"":""1""}'::jsonb,
+    timeout_milliseconds:=180000);
+","182","shopee-ads-campanha-cadastro","35 6 * * *"
+"True","
+  select case when exists (
+      select 1 from public.shopee_backfill_fila
+       where status in ('pendente','erro') and tentativas < 40)
+    then net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-shopee-pedidos',
+      headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:='{""modo"":""fila"",""budget_ms"":110000}'::jsonb,
+      timeout_milliseconds:=150000)
+  end;
+","176","shopee-backfill-fila","*/2 * * * *"
+"True","
+  select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-shopee-cadastro',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:='{}'::jsonb,
+    timeout_milliseconds:=150000);
+","179","shopee-cadastro-diario","50 6 * * *"
+"True","
+  select case when exists (
+      select 1 from public.shopee_escrow_fila
+       where status in ('pendente','erro') and tentativas < 40)
+    then net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-shopee-financeiro',
+      headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:='{""modo"":""fila"",""budget_ms"":100000}'::jsonb,
+      timeout_milliseconds:=150000)
+  end;
+","183","shopee-escrow-fila","*/2 * * * *"
+"True","
+  select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-shopee-financeiro',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:='{""dias"":5}'::jsonb,
+    timeout_milliseconds:=180000);
+","184","shopee-escrow-recente","25 5 * * *"
+"True","
+  select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-shopee-pedidos',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:='{""update_min"":25}'::jsonb,
+    timeout_milliseconds:=150000);
+","177","shopee-pedidos-realtime","6,21,36,51 * * * *"
+"True","
+  select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-shopee-visitas',
+    headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+    body:='{}'::jsonb,
+    timeout_milliseconds:=120000);
+","185","shopee-visitas-diario","40 6 * * *"
+"True","select public.shopify_completar_disparar();","212","shopify-completar-api-disparar","7,22,37,52 * * * *"
+"True","select public.shopify_completar_processar();","213","shopify-completar-api-processar","*/5 * * * *"
+"True","select public.shopify_fv_recente_disparar();","215","shopify-fv-recente-disparar","3,23,43 * * * *"
+"True","select public.shopify_fv_recente_processar();","216","shopify-fv-recente-processar","*/5 * * * *"
+"False"," select net.http_post(
+       url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-shopify-orders',
+       headers := jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+       body := jsonb_build_object('date_col','updatedAt','days_back',2)
+     , timeout_milliseconds := 120000);","34","shopify-orders-15min","*/15 * * * *"
+"True"," select net.http_post(
+       url := 'https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-shopify-products',
+       headers := jsonb_build_object('content-type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+       body := '{}'::jsonb
+     , timeout_milliseconds := 120000);","32","shopify-products-5min","*/5 * * * *"
+"True"," select public.shopify_atualiza_reposicao() ","56","shopify-reposicao-15min","7,22,37,52 * * * *"
+"True","select site_paginas_coletar(); refresh materialized view concurrently mv_site_pedido_pagina_dia;","221","site-paginas-coletar","*/10 * * * *"
+"True","select site_paginas_enfileirar()","219","site-paginas-enfileirar","25 12 * * *"
+"True","select net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-tiktok-ads',
+      headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('dias',3),
+      timeout_milliseconds:=120000);","134","tiktok-ads-15min","9,24,39,54 * * * *"
+"True","select net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-tiktok-ads-criativo',
+      headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('modo','hoje'),
+      timeout_milliseconds:=150000);","169","tiktok-ads-criativo-15min","11,26,41,56 * * * *"
+"True","select case when exists (
+      select 1 from public.tiktok_analytics_fila
+       where status in ('pendente','erro') and tentativas < 5)
+    then net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-tiktok-analytics',
+      headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('modo','fila','budget_ms',100000),
+      timeout_milliseconds:=150000)
+    else null end;","135","tiktok-analytics-fila","*/2 * * * *"
+"True","select case when true then net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-tiktok-analytics',
+      headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('dias',3),
+      timeout_milliseconds:=150000) end;","136","tiktok-analytics-manut","35 5 * * *"
+"True","select net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-tiktok-cadastro',
+      headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('fazer',jsonb_build_array('cadastro'),'budget_ms',110000),
+      timeout_milliseconds:=150000);","138","tiktok-cadastro-diario","10 7 * * *"
+"True","select net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-tiktok-cadastro',
+      headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('fazer',jsonb_build_array('devolucao'),'budget_ms',110000),
+      timeout_milliseconds:=150000);","139","tiktok-devolucao-diario","25 7 * * *"
+"True","select net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-tiktok-financeiro',
+      headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('extratos',4,'budget_ms',110000),
+      timeout_milliseconds:=150000);","137","tiktok-financeiro-diario","50 5 * * *"
+"True","
+  select net.http_post(
+    url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-tiktok-lives',
+    headers:=jsonb_build_object(
+      'x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret'),
+      'Content-Type','application/json'),
+    body:=jsonb_build_object('dias', 9),
+    timeout_milliseconds:=180000);
+","232","tiktok-lives-diario","12 9 * * *"
+"True","select net.http_post(
+      url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-tiktok-pedidos',
+      headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+      body:=jsonb_build_object('dias',7),
+      timeout_milliseconds:=280000);","132","tiktok-manutencao-diaria","20 6 * * *"
+"True","select net.http_post(
+  url:='https://jlograndkpznragchbbe.supabase.co/functions/v1/ingest-tiktok-pedidos',
+  headers:=jsonb_build_object('Content-Type','application/json','x-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='cron_secret')),
+  body:=jsonb_build_object('update_min',30),
+  timeout_milliseconds:=120000);","131","tiktok-realtime-15min","4,19,34,49 * * * *"
+"True","SELECT public.uppromote_dispara_sync();","218","uppromote_sync_dia","15 9 * * *"
+"True"," select public.ml_call_fn('ingest-ml-visitas','?last=7&unit=day&offset=0&limit=175&status=active') ","28","visitas-diario-b1","30 3 * * *"
+"True"," select public.ml_call_fn('ingest-ml-visitas','?last=7&unit=day&offset=175&limit=210&status=active') ","29","visitas-diario-b2","33 3 * * *"
+"True","select public.ml_call_fn('ingest-ml-visitas','?last=2&unit=day&offset=0&limit=175&status=active');","129","visitas-hoje-15min-b1","2,17,32,47 * * * *"
+"True","select public.ml_call_fn('ingest-ml-visitas','?last=2&unit=day&offset=175&limit=210&status=active');","130","visitas-hoje-15min-b2","3,18,33,48 * * * *"
